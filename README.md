@@ -10,9 +10,8 @@ MindTheClub is built on a simple principle: no company server should store or ro
 ## Architecture at a glance
 
 - **WebRTC data channels** carry all message payloads directly between devices
-- **Firebase Cloud Messaging** is used only to wake a recipient''s device
-- **Firestore** stores transient signaling/delivery-tracking documents — not message content
-- **Cloudflare Realtime** provides TURN relay when a direct connection cannot be established
+- **Firebase Cloud Messaging** is used only to wake a recipient's device
+- **Cloudflare Realtime** handles connection signaling and provides TURN relay
 - **All message persistence is local** (Room database on the device)
 
 ## How to verify the trust claim
@@ -24,7 +23,7 @@ If you want to check that message content does not pass through a company server
 - WebRTC connection and data channels: `app/src/main/java/com/bolimot/mindtheclub/webrtc/`
 - FCM wake-up signaling (no payload): `app/src/main/java/com/bolimot/mindtheclub/firebase/`
 
-The FCM and Firestore layers carry signaling and wake-up only; message bodies move over the WebRTC data channel established between peers.
+FCM is used only to wake a recipient's device; connection signaling runs over Cloudflare. Message bodies move over the WebRTC data channel established directly between peers.
 
 ## Scope of this repository
 
