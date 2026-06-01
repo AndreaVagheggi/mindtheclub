@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:paddingBottom="24dp"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <include layout="@layout/date_header_chat"
+        android:id="@+id/date_header"
+        android:layout_width="wrap_content"
+        android:layout_height="84dp"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:visibility="gone" />
+
+    <!-- New selectable area container -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/selectable_area"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/date_header"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+
+    <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_message"
+            style="@style/InMessageCardViewStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="36dp"
+            android:layout_marginStart="8dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:cardBackgroundColor="@color/white">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:paddingBottom="2dp"
+                android:id="@+id/card_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/image_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginEnd="2dp"
+                    android:layout_marginBottom="4dp"
+                    android:backgroundTint="@color/white"
+                    android:visibility="visible">
+
+                    <ImageView
+                        android:id="@+id/image"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:scaleType="centerCrop" />
+
+                    <ImageView
+                        android:id="@+id/center_icon"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/play"
+                        android:contentDescription="@string/send" />
+
+                    <ImageView
+                        android:id="@+id/bottom_right_camera_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="bottom|start"
+                        android:layout_margin="8dp"
+                        android:src="@drawable/video"
+                        android:contentDescription="@string/camera" />
+
+                    <TextView
+                        android:id="@+id/media_unavailable_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="@string/media_lost"
+                        android:textColor="@android:color/black"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/insert"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/image_container"
+                    android:minWidth="128dp"
+                    android:alpha="0.5"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="@drawable/rounded_insert"
+                    android:backgroundTint="@color/white"
+                    android:visibility="gone">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="8dp">
+
+                        <TextView
+                            android:id="@+id/nameAttached"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textStyle="bold|italic"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintStart_toStartOf="parent" />
+
+                        <TextView
+                            android:id="@+id/textAttached"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:maxWidth="230dp"
+                            android:textStyle="italic"
+                            app:layout_constraintTop_toBottomOf="@+id/nameAttached"
+                            app:layout_constraintStart_toStartOf="parent" />
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintTop_toBottomOf="@+id/insert"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:maxWidth="230dp"
+                    android:padding="2dp"
+                    android:layout_marginBottom="12dp"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/time_stamp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/mtc_opaque"
+                    android:layout_marginEnd="2dp"
+                    android:textSize="11sp"
+                    app:layout_constraintTop_toBottomOf="@+id/message"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <TextView
+                    android:id="@+id/forwarded"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:text="@string/forwarded"
+                    android:textColor="@color/mtc_opaque"
+                    android:textSize="11sp"
+                    app:layout_constraintTop_toBottomOf="@+id/message"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="2dp" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/emoji"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:elevation="2dp"
+            android:visibility="gone"
+            android:gravity="center"
+            android:textSize="18sp"
+            android:textColor="@android:color/black"
+            android:background="@drawable/circle_white_background"
+            app:layout_constraintBottom_toBottomOf="@+id/card_message"
+            app:layout_constraintStart_toStartOf="@+id/card_message"
+            android:layout_marginStart="12dp"
+            android:layout_marginBottom="-16dp" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/mtc_opaque"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp"
+            app:layout_constraintTop_toBottomOf="@+id/card_message"
+            app:layout_constraintEnd_toEndOf="@+id/card_message"
+            />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

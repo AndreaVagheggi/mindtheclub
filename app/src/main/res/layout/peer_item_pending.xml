@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/MainLayout"
+    android:theme="@style/MindTheClub"
+    android:clickable="true"
+    android:paddingBottom="10dp"
+    android:paddingTop="10dp"
+    android:background="@drawable/custom_ripple"
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/peerImage"
+        android:layout_width="@dimen/picSize"
+        android:layout_height="@dimen/picSize"
+        android:scaleType="centerCrop"
+        android:src="@drawable/peer"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:shapeAppearance="@style/CircleShape" />
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="@+id/peerImage"
+        app:layout_constraintStart_toEndOf="@+id/peerImage"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="4dp" />
+
+    <ImageButton
+        android:id="@+id/reject"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="-8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/bio"
+        app:tint="@color/red"
+        android:background="@drawable/round_background"
+        android:foreground="@drawable/custom_ripple"
+        android:src="@drawable/reject"
+        android:contentDescription="@string/reject" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="@+id/reject"
+        app:layout_constraintEnd_toEndOf="@+id/reject"
+        app:layout_constraintTop_toBottomOf="@+id/reject"
+        android:layout_marginTop="-10dp"
+        android:textSize="12sp"
+        android:text="@string/reject"/>
+
+    <ImageButton
+        android:id="@+id/accept"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="-8dp"
+        app:layout_constraintEnd_toStartOf="@+id/reject"
+        app:layout_constraintTop_toBottomOf="@+id/bio"
+        app:tint="@color/green"
+        android:background="@drawable/round_background"
+        android:foreground="@drawable/custom_ripple"
+        android:src="@drawable/accept"
+        android:contentDescription="@string/accept" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="@+id/accept"
+        app:layout_constraintEnd_toEndOf="@+id/accept"
+        app:layout_constraintTop_toBottomOf="@+id/accept"
+        android:layout_marginTop="-10dp"
+        android:textSize="12sp"
+        android:text="@string/accept2"/>
+
+
+    <TextView
+        android:id="@+id/bio"
+        android:layout_width="0dp"
+        android:maxLength="110"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/name"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/name" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

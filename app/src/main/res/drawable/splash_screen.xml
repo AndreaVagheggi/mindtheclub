@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="@color/splash_background"/>
+    </item>
+
+  <item
+        android:gravity="center"
+        android:width="180dp"
+        android:height="180dp"
+        android:bottom="240dp"
+        android:drawable="@drawable/mtc_logo_icon"
+  />
+
+
+
+</layer-list>

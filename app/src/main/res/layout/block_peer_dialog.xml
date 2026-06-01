@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_marginRight="16dp"
+    android:layout_marginLeft="16dp"
+    android:padding="8dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/blockIcon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/black"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/block"
+        android:contentDescription="@string/app_name"/>
+
+    <TextView
+        android:id="@+id/blockTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/block_contact"
+        android:layout_marginStart="12dp"
+        app:layout_constraintStart_toEndOf="@+id/blockIcon"
+        app:layout_constraintTop_toTopOf="@+id/blockIcon"
+        app:layout_constraintBottom_toBottomOf="@+id/blockIcon"
+        android:textColor="@android:color/black" />
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="@+id/blockIcon"
+        app:layout_constraintTop_toBottomOf="@+id/blockIcon"
+        android:textColor="@android:color/black" />
+
+    <View
+        android:id="@+id/separator"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/name"
+        android:background="@color/grey" />
+
+    <TextView
+        android:id="@+id/blockMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/block_message"
+        android:layout_marginTop="12dp"
+        app:layout_constraintStart_toStartOf="@+id/blockIcon"
+        app:layout_constraintTop_toBottomOf="@+id/separator"
+        android:textColor="@android:color/black" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/peerPic"
+        android:contentDescription="@string/app_name"
+        android:scaleType="centerCrop"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/separator"
+        android:src="@drawable/peer"
+        app:shapeAppearance="@style/CircleShape"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

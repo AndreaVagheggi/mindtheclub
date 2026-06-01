@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="largeText">18sp</dimen>
+    <dimen name="picSize">52dp</dimen>
+    <dimen name="dialog_width">260dp</dimen>
+    <dimen name="dialog_height">260dp</dimen>
+    <dimen name="deselected">36dp</dimen>
+    <dimen name="selected">42dp</dimen>
+    <dimen name="fab_margin">50dp</dimen>
+</resources>

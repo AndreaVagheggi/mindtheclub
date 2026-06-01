@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?android:attr/colorControlHighlight"> <!-- Uses default ripple highlight -->
+
+    <!-- Camera Button with Transparent Ring -->
+    <item>
+        <layer-list >
+
+            <!-- Outer Transparent Area -->
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@android:color/transparent"/>
+                    <size android:width="48dp" android:height="48dp"/> <!-- Adjust as needed -->
+                </shape>
+            </item>
+
+            <!-- Outer White Ring -->
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@android:color/transparent"/> <!-- Transparent inside -->
+                    <stroke android:width="4dp" android:color="@android:color/white"/> <!-- White ring -->
+                </shape>
+            </item>
+
+            <!-- Camera Icon Centered -->
+            <item android:gravity="center">
+                <bitmap
+                    android:src="@drawable/camera"
+                    android:tint="@android:color/white"
+                    android:gravity="center"/>
+            </item>
+
+        </layer-list>
+    </item>
+
+</ripple>

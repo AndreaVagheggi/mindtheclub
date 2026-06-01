@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="device_sharedpref" path="default.xml" />
+        <include domain="device_database" path="mtc.db" />
+        <include domain="device_database" path="mtc.db-wal" />
+        <include domain="device_database" path="mtc.db-shm" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="device_sharedpref" path="default.xml" />
+        <include domain="device_database" path="mtc.db" />
+        <include domain="device_database" path="mtc.db-wal" />
+        <include domain="device_database" path="mtc.db-shm" />
+    </device-transfer>
+</data-extraction-rules>

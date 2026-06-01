@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:padding="4dp">
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:id="@+id/checkBox"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:elevation="2dp"
+        android:src="@drawable/check2"
+        app:tint="@color/primary_dark"
+        android:background="@color/icons"
+        android:visibility="gone"
+        android:layout_gravity="right"
+        android:scaleType="centerCrop"
+        android:contentDescription="@string/image" />
+
+</FrameLayout>

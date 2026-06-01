@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_marginRight="16dp"
+    android:layout_marginLeft="16dp"
+    android:padding="8dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/addPersonIcon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/black"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/delete_contact"
+        android:contentDescription="@string/app_name"/>
+
+    <TextView
+        android:id="@+id/addNewContact"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/delete_contact"
+        android:layout_marginStart="4dp"
+        app:layout_constraintStart_toEndOf="@+id/addPersonIcon"
+        app:layout_constraintTop_toTopOf="@+id/addPersonIcon"
+        app:layout_constraintBottom_toBottomOf="@+id/addPersonIcon"
+        android:textColor="@android:color/black" />
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="@+id/addPersonIcon"
+        app:layout_constraintTop_toBottomOf="@+id/addPersonIcon"
+        android:textColor="@android:color/black" />
+
+    <View
+        android:id="@+id/separator"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/bio"
+        android:background="@color/grey" />
+
+    <TextView
+        android:id="@+id/bio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:layout_constraintStart_toStartOf="@+id/addPersonIcon"
+        app:layout_constraintTop_toBottomOf="@+id/name"
+        android:textColor="@android:color/black" />
+
+    <TextView
+        android:id="@+id/addMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/delete_message"
+        android:layout_marginTop="12dp"
+        app:layout_constraintStart_toStartOf="@+id/addPersonIcon"
+        app:layout_constraintTop_toBottomOf="@+id/separator"
+        android:textColor="@android:color/black" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/peerPic"
+        android:contentDescription="@string/app_name"
+        android:scaleType="centerCrop"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/name"
+        app:layout_constraintBottom_toBottomOf="@+id/name"
+        android:src="@drawable/peer"
+        app:shapeAppearance="@style/CircleShape"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

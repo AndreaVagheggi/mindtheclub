@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<paths >
+    <external-files-path name="shared_files" path="."/>
+    <files-path name="internal_files" path="."/>
+    <files-path name="database_files" path="databases/"/>
+    <files-path name="my_private_files" path="." />
+    <external-path name="external_files" path="."/>
+</paths>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/add_member"
+        android:icon="@drawable/add_member"
+        android:title="@string/add_member" />
+    <item
+        android:id="@+id/remove_member"
+        android:icon="@drawable/remove_contact"
+        android:title="@string/remove_member" />
+
+    <item
+        android:id="@+id/delete_group"
+        android:icon="@drawable/delete"
+        android:title="@string/delete_group" />
+</menu>

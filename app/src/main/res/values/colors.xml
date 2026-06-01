@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFF</color>
+
+    <color name="mtc_main">#607D8B</color>
+
+    <color name="mtc_opaque">#607d9f</color>
+    <color name="primary_opaque">#607d9f</color>
+    <color name="primary_transparent">#7F607D8B</color>
+    <color name="background_transparent">#66000000</color>
+    <color name="surface_container">#E61F1F1F</color>
+    <color name="search_bar_background">#33FFFFFF</color>
+
+    <color name="mtc_transparent">#7F607D8B</color>
+    <color name="mtc_accent">#03A9F4</color>
+    <color name="mtc_accentTransparent">#7F03A9F4</color>
+    <color name="white_transparent">#80FFFFFF</color>
+
+    <color name="primary_dark">#0288D1</color>
+    <color name="primary_light">#B3E5FC</color>
+    <color name="accent">#03A9F4</color>
+    <color name="light_accent">#d2e1fa</color>
+
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#757575</color>
+    <color name="icons">#FFFFFF</color>
+    <color name="divider">#BDBDBD</color>
+
+    <color name="splash_screen">#F5F5F5</color>
+    <color name="lightGreen">#b2ff59</color>
+    <color name="lightYellow">#80FFFFE0</color>
+    <color name="green">#64dd17</color>
+    <color name="red">#DD1717</color>
+    <color name="insert">#dee2e6</color>
+
+
+    <color name="grey">#bdbdbd</color>
+    <color name="grey_transparent">#80808080</color>
+    <color name="lightGray">#e0e0e0</color>
+    <color name="darkGray">#757575</color>
+    <color name="splash_background">#FFFFFF</color>
+    <color name="colorAccent">#448AFF</color>
+    <color name="bottomSheet">#eceff1</color>
+
+    <color name="ListViewSelected">#96BCE3</color>
+    <color name="ListViewHighlighted">#E39696</color>
+
+</resources>

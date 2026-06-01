@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="52dp"
+    android:height="52dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
+    android:autoMirrored="true"
+    android:tint="?attr/colorControlNormal">
+
+  <!-- White triangle, inset 300px from each edge -->
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M300,300 L300,660 L660,480 Z" />
+</vector>
+
+

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:id="@+id/container"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/primary_opaque"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/peer_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="100dp"
+    />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/peer_pic"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toBottomOf="@+id/peer_name"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:scaleType="centerCrop"
+        android:layout_marginTop="12dp"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        app:strokeColor="@android:color/white"
+        app:strokeWidth="2dp"
+        android:src="@drawable/peer"
+        app:shapeAppearance="@style/CircleShape"
+    />
+
+    <TextView
+        android:id="@+id/calling_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@+id/peer_pic"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"
+    />
+
+    <FrameLayout
+        android:id="@+id/fab_container"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="124dp"
+        android:background="@drawable/fab_background"
+        android:elevation="6dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/peer_pic"
+        app:layout_constraintBottom_toBottomOf="parent"
+    >
+
+        <ImageButton
+            android:id="@+id/button_cancel_call"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/app_name"
+            android:scaleType="centerInside"
+            android:src="@drawable/phone_hangup"
+            app:tint="@android:color/white"
+        />
+
+    </FrameLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/cancel"
+        android:visibility="visible"
+        app:layout_constraintLeft_toLeftOf="@+id/fab_container"
+        app:layout_constraintRight_toRightOf="@+id/fab_container"
+        app:layout_constraintTop_toBottomOf="@+id/fab_container"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/white"
+    />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

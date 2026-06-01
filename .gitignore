@@ -1,0 +1,89 @@
+# Android / Gradle
+*.iml
+.gradle/
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# IDE
+/.idea/
+
+# Local config — never publish
+local.properties
+
+# Secrets — never publish
+google-services.json
+app/google-services.json
+*.jks
+*.keystore
+keystores/
+sentry.properties
+*.env
+.env
+
+# Node (Cloud Functions)
+node_modules/
+functions/node_modules/
+
+# Cloud Functions — kept private (Android app only in public repo)
+functions/
+
+# OS
+.DS_Store
+
+# Secrets / tokens missed by name
+DebugToken.txt
+*API_TOKEN*
+app/google-services*.json
+sentry-wizard.exe
+
+# Local databases & data
+db/
+*.db
+*.db-shm
+*.db-wal
+*.dat
+build.bin
+
+# Logs & crash dumps
+*.log
+*.logcat
+.kotlin/
+hs_err_pid*.log
+replay_pid*.log
+MTC_LOG.txt
+START_LOG.txt
+*_log.txt
+*_logs.txt
+LogcatRedirect.txt
+
+# Internal scripts & tooling
+*.bat
+*.cmd
+*.ps1
+check_ttl.js
+
+# Internal docs & notes (not for public repo)
+RELEASE NOTES.rtf
+MTC_Helpdesk_dataset.docx
+app/COMPONENT_INTERACTION_DIAGRAM.md
+app/COMPONENT_REFERENCE.md
+app/COMPREHENSIVE_REFERENCE.html
+app/DEVELOPER_REFERENCE_MANUAL.md
+app/QUICK_REFERENCE_GUIDE.md
+app/manual.html
+
+# Firebase backend config (Android-only public repo)
+firebase.json
+.firebaserc
+
+# Root npm (Cloud Functions manifests — backend kept private)
+package.json
+package-lock.json
+
+# Stray log
+/log.txt

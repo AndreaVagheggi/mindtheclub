@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/reaction_container"
+    android:orientation="horizontal"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/popup_background"
+    android:padding="2dp"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/emoji_like"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="👍"
+        android:textSize="24sp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/emoji_love"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="❤️"
+        android:textSize="24sp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/emoji_laugh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="😂"
+        android:textSize="24sp"
+        android:padding="4dp" />
+
+
+    <TextView
+        android:id="@+id/emoji_blink"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="😉"
+        android:textSize="24sp"
+        android:padding="4dp" />
+
+    <ImageButton
+        android:id="@+id/plus_icon_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginLeft="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/add"
+        app:tint="@color/black" />
+
+</LinearLayout>

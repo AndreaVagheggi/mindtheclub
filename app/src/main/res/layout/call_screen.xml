@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:id="@+id/container"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/primary_opaque"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/user"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="100dp"
+        />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/profilePic"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toBottomOf="@+id/user"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:scaleType="centerCrop"
+        android:layout_marginTop="12dp"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        app:strokeColor="@android:color/white"
+        app:strokeWidth="2dp"
+        android:src="@drawable/peer"
+        app:shapeAppearance="@style/CircleShape"/>
+
+    <TextView
+        android:id="@+id/calling"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@+id/profilePic"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"
+    />
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="87dp"
+        android:layout_height="200dp"
+        android:id="@+id/oval_card"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:layout_marginBottom="90dp"
+        android:alpha="0.1"
+        android:layout_gravity="center"
+        android:elevation="2dp"
+        android:visibility="invisible"
+        app:cardBackgroundColor="@color/black"
+        app:cardCornerRadius="32dp"
+        app:cardUseCompatPadding="true"
+        android:background="@drawable/ovalbackground"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/button_accept_call"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="invisible"
+        android:clickable="false"
+        android:contentDescription="@string/video_call"
+
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+
+        android:layout_marginBottom="90dp"
+
+        android:backgroundTint="@color/green"
+        app:fabSize="normal"
+        android:src="@drawable/phone"
+    />
+
+    <TextView
+        android:id="@+id/accept_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/accept"
+        android:visibility="invisible"
+
+        app:layout_constraintLeft_toLeftOf="@+id/button_accept_call"
+        app:layout_constraintRight_toRightOf="@+id/button_accept_call"
+        app:layout_constraintTop_toBottomOf="@+id/button_accept_call"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/white"
+    />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/button_decline_call"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="false"
+        android:visibility="invisible"
+        android:contentDescription="@string/video_call"
+
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/button_accept_call"
+
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="90dp"
+
+        android:backgroundTint="@color/red"
+        app:fabSize="normal"
+        android:src="@drawable/phone_hangup"
+    />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/button_cancel_call"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="false"
+        android:visibility="invisible"
+        android:contentDescription="@string/video_call"
+        app:layout_constraintLeft_toLeftOf="@+id/oval_card"
+        app:layout_constraintRight_toRightOf="@+id/oval_card"
+        app:layout_constraintBottom_toBottomOf="@+id/oval_card"
+        app:layout_constraintTop_toTopOf="@+id/oval_card"
+        android:backgroundTint="@color/red"
+        app:fabSize="normal"
+        android:src="@drawable/phone_hangup"
+        />
+
+    <TextView
+        android:id="@+id/cancel_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/cancel"
+        android:visibility="invisible"
+        app:layout_constraintLeft_toLeftOf="@+id/button_cancel_call"
+        app:layout_constraintRight_toRightOf="@+id/button_cancel_call"
+        app:layout_constraintTop_toBottomOf="@+id/button_cancel_call"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/white"
+        />
+
+    <TextView
+        android:id="@+id/decline_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/reject"
+        android:visibility="invisible"
+        app:layout_constraintLeft_toLeftOf="@+id/button_decline_call"
+        app:layout_constraintRight_toRightOf="@+id/button_decline_call"
+        app:layout_constraintTop_toBottomOf="@+id/button_decline_call"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/white"
+    />
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
