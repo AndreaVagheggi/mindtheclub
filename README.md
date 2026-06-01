@@ -44,4 +44,4 @@ This project is licensed under the GNU General Public License v3.0 — see the L
 
 ## Trademark
 
-"MindTheClub" is a trademark of Bolimot Ltd. The GPLv3 licence covers the source code only and does not grant any right to use the project name, logo, or branding.
+"MindTheClub" is a trademark of MindTheClub Ltd. The GPLv3 licence covers the source code only and does not grant any right to use the project name, logo, or branding.
