@@ -25,6 +25,7 @@ private data class BatchOutcome(
     val chunksSent: Int
 )
 
+@androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 suspend fun dispatchMessage(
     messageId: String,
     remoteUserId: String,
