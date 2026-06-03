@@ -17,6 +17,9 @@
     public <fields>;
 }
 
+# kotlinx-serialization references kotlin.uuid builtins it may not actually use; ignore if absent
+-dontwarn kotlin.uuid.**
+
 # ===== KEEP USER CLASSES IMPLEMENTING WEBRTC INTERFACES =====
 -keep class * implements org.webrtc.PeerConnection$Observer { *; }
 -keep class * implements org.webrtc.DataChannel$Observer { *; }
