@@ -1,4 +1,4 @@
-# Android / Gradle
+﻿# Android / Gradle
 *.iml
 .gradle/
 /build/
@@ -12,10 +12,10 @@
 # IDE
 /.idea/
 
-# Local config — never publish
+# Local config â€” never publish
 local.properties
 
-# Secrets — never publish
+# Secrets â€” never publish
 google-services.json
 app/google-services.json
 *.jks
@@ -29,8 +29,8 @@ sentry.properties
 node_modules/
 functions/node_modules/
 
-# Cloud Functions — kept private (Android app only in public repo)
-functions/
+# Cloud Functions â€” kept private (Android app only in public repo)
+/functions/
 
 # OS
 .DS_Store
@@ -81,7 +81,7 @@ app/manual.html
 firebase.json
 .firebaserc
 
-# Root npm (Cloud Functions manifests — backend kept private)
+# Root npm (Cloud Functions manifests â€” backend kept private)
 package.json
 package-lock.json
 

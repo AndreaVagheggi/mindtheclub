@@ -1,0 +1,112 @@
+package com.bolimot.mindtheclub.functions
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.view.View
+import androidx.core.content.ContextCompat.getString
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
+import androidx.core.graphics.set
+import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.firebase.getFirebaseValue
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import java.util.EnumMap
+
+fun generateQRCode(text: String): Bitmap? {
+    val width = 500
+    val height = 500
+
+    try {
+        val qrCodeWriter = QRCodeWriter()
+        val bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height)
+
+        val bitmap = createBitmap(width, height, Bitmap.Config.RGB_565)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap[x, y] = if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
+            }
+        }
+        return bitmap
+    }
+    catch(e: Exception) {
+        debugLine("generateQRCode", "Exception: ${e.message}")
+        return null
+    }
+}
+
+fun generateClubQRCode(text: String, context: Context): Bitmap? {
+    val width = 400
+    val height = 400
+
+    try {
+        val hints = EnumMap<EncodeHintType, Any>(EncodeHintType::class.java)
+        hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.H
+        hints[EncodeHintType.MARGIN] = 1
+
+        val qrCodeWriter = QRCodeWriter()
+        val bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height, hints)
+
+        val qrBitmap = createBitmap(width, height)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                qrBitmap[x, y] = if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
+            }
+        }
+
+        val logo = BitmapFactory.decodeResource(context.resources, R.drawable.mtc_logo_icon_png)
+
+        val logoSize = width / 5
+        val scaledLogo = logo.scale(logoSize, logoSize, false)
+
+        val combinedBitmap = createBitmap(width, height)
+        val canvas = Canvas(combinedBitmap)
+
+        canvas.drawBitmap(qrBitmap, 0f, 0f, null)
+
+        val xPos = (width - scaledLogo.width) / 2f
+        val yPos = (height - scaledLogo.height) / 2f
+
+        canvas.drawBitmap(scaledLogo, xPos, yPos, null)
+
+        return combinedBitmap
+
+    } catch(e: Exception) {
+        debugLine("generateQRCode", "Exception: ${e.message}")
+        return null
+    }
+}
+
+suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
+    generateQRCode(textToShare)?.let{
+        saveBitmap(it, "myQRCode.jpg", 100).let{
+            val text = getString(context, R.string.share_message) + "\n\n" + getFirebaseValue("MTC_URL")
+
+            val subject = "${getPreference("myName", context)} - ${getString(context, R.string.join_message)}"
+            val shareIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, text)
+                putExtra(Intent.EXTRA_STREAM, it)
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                type = "image/jpeg"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Label", getString(context, R.string.share_message))
+            clipboard.setPrimaryClip(clip)
+            showSnackbarAtTop(getString(context, R.string.paste_message), view)
+
+            val chooser = Intent.createChooser(shareIntent, getString(context, R.string.share_via))
+            context.startActivity(chooser)
+        }
+    }
+}
