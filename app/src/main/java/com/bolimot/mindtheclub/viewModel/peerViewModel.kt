@@ -261,35 +261,6 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
         }
     }
 
-    fun fetchMissingPublicKeys() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val peers = repository.getActiveNonGroupPeers()
-                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                var fetched = 0
-                for (peer in peers) {
-                    if (!peer.publicKey.isNullOrEmpty()) continue
-                    try {
-                        val doc = db.collection("users").document(peer.userId).get().await()
-                        val publicKey = doc.getString("publicKey")
-                        if (!publicKey.isNullOrEmpty()) {
-                            com.bolimot.mindtheclub.functions.getPeerDao(App.context())
-                                .updatePeerPublicKey(peer.userId, publicKey)
-                            com.bolimot.mindtheclub.transport.PeerIdentityResolver.markStale()
-                            fetched++
-                            debugLine("fetchMissingKeys", "publicKey stored for ${peer.userId}")
-                        }
-                    } catch (e: Exception) {
-                        debugLine("fetchMissingKeys", "Error for ${peer.userId}: ${e.message}")
-                    }
-                }
-                if (fetched > 0) debugLine("fetchMissingKeys", "Fetched $fetched missing publicKey(s)")
-            } catch (e: Exception) {
-                debugLine("fetchMissingKeys", "Error: ${e.message}")
-            }
-        }
-    }
-
     suspend fun getGroupPeersWithoutPicture(): List<Peer> = withContext(Dispatchers.IO) {
         repository.getGroupPeersWithoutPicture()
     }

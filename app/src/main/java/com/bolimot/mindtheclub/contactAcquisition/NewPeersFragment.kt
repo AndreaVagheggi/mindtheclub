@@ -42,6 +42,7 @@ class NewPeersFragment : Fragment(), NewPeersAdapter.OnItemClickListener {
             putExtra("name", request.name)
             putExtra("bio", request.bio)
             putExtra("picture", request.picture)
+            putExtra("fingerprint", request.fingerprint)
         }
 
         startActivity(intent)
@@ -133,7 +134,8 @@ class NewPeersFragment : Fragment(), NewPeersAdapter.OnItemClickListener {
                             userId = doc.id,
                             name = unseal(doc.getString("name")),
                             bio = unseal(doc.getString("bio")),
-                            picture = unseal(doc.getString("picture"))
+                            picture = unseal(doc.getString("picture")),
+                            fingerprint = if (isEnc) unseal(doc.getString("fingerprint")) else null
                         )
                     } catch (e: Exception) {
                         debugLine(

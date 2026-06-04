@@ -147,28 +147,9 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         lifecycleScope.launch {
             if (viewModel.setStatusToActive(peer.userId)) {
                 viewModel.sendMyProfileToRemotePeer(peer.userId)
-                fetchAndStorePeerPublicKey(peer.userId)
             } else {
                 debugLine("onAcceptClick", "Failed to set status to active")
             }
-        }
-    }
-
-    private suspend fun fetchAndStorePeerPublicKey(userId: String) {
-        try {
-            val doc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                .collection("users").document(userId).get().await()
-            val publicKey = doc.getString("publicKey")
-            if (!publicKey.isNullOrEmpty()) {
-                com.bolimot.mindtheclub.functions.getPeerDao(requireContext())
-                    .updatePeerPublicKey(userId, publicKey)
-                com.bolimot.mindtheclub.transport.PeerIdentityResolver.markStale()
-                debugLine("onAcceptClick", "publicKey stored for $userId")
-            } else {
-                debugLine("onAcceptClick", "No publicKey available yet for $userId")
-            }
-        } catch (e: Exception) {
-            debugLine("onAcceptClick", "fetchAndStorePeerPublicKey failed: ${e.message}")
         }
     }
 

@@ -155,7 +155,6 @@ class MainActivity : BaseActivity() {
 
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
             getPeerViewModel().requestMissingProfilePictures()
-            getPeerViewModel().fetchMissingPublicKeys()
         }
 
         App.instance!!.applicationScope.launch(Dispatchers.IO) {

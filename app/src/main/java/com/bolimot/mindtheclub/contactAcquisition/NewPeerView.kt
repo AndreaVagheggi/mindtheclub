@@ -54,6 +54,7 @@ class NewPeerView : BaseActivity() , DeletePeerDialog.DeletePeerListener, BlockP
         peerUserId = userId
         val name= intent?.getStringExtra("name")
         val bio= intent?.getStringExtra("bio")
+        val fingerprint = intent?.getStringExtra("fingerprint")
 
         profilePic = findViewById(R.id.profilePic)
         profilePicContainer = findViewById(R.id.profilePicContainer)
@@ -90,7 +91,14 @@ class NewPeerView : BaseActivity() , DeletePeerDialog.DeletePeerListener, BlockP
                 R.id.accept -> {
                     lifecycleScope.launch {
                         debugLine("NewPeerView", "Accepting new contact")
-                        acceptNewContact(this@NewPeerView, userId, name, bio, pictureString, this@NewPeerView)
+                        val ok = acceptNewContact(this@NewPeerView, userId, name, bio, pictureString, fingerprint, this@NewPeerView)
+                        if (!ok) {
+                            android.widget.Toast.makeText(
+                                this@NewPeerView,
+                                "Could not verify this contact's key. Please re-scan their QR code.",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                     true
                 }

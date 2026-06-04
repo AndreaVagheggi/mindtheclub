@@ -39,10 +39,10 @@ suspend fun writeMySelfOnRemotePeerFirestore(remoteUserId: String): Boolean {
             "name" to seal(localUserName),
             "bio" to seal(localBio),
             "picture" to NO_PICTURE,
+            "fingerprint" to seal(KeyManager.getMyPublicKeyFingerprint()),
             "enc" to !recipientKey.isNullOrEmpty(),
             "timestamp" to FieldValue.serverTimestamp()
         )
-
 
         val requestDocRef = db.collection("users").document(remoteUserId)
             .collection("requests")

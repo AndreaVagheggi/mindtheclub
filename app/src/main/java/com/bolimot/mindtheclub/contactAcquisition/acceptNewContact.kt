@@ -22,9 +22,11 @@ import kotlinx.coroutines.withTimeout
 
 suspend fun acceptNewContact(
     newPeerView: NewPeerView,
-    userId: String, name: String?, bio: String?, picture: Uri?, context: Context
-) {
-    val localUserId = MySelf.userId() ?: return
+    userId: String, name: String?, bio: String?, picture: Uri?,
+    expectedFingerprint: String?,
+    context: Context
+): Boolean {
+    val localUserId = MySelf.userId() ?: return false
 
     val requestDoc = FirebaseFirestore.getInstance()
         .collection("users").document(localUserId)
@@ -34,7 +36,17 @@ suspend fun acceptNewContact(
     if (!requestDoc.exists()) {
         debugLine("acceptNewContact", "Request from $userId no longer exists, aborting")
         newPeerView.finish()
-        return
+        return false
+    }
+
+    // Verify the requester's public key against the sealed fingerprint
+    // from the request BEFORE we admit them as a contact.
+    val verified = com.bolimot.mindtheclub.crypto.KeyManager
+        .fetchAndStorePublicKeyVerified(userId, expectedFingerprint, context)
+    if (!verified) {
+        debugLine("acceptNewContact", "Key verification failed for $userId. Refusing to accept.")
+        // Leave the request in Firestore so user can retry; do not finish() the view here.
+        return false
     }
 
     newPeerView.finish()
@@ -95,7 +107,7 @@ suspend fun acceptNewContact(
                     }
                 }
 
-                debugLine("acceptNewContact", "New peer added, sending my profile, set accepted in preferences")
+                debugLine("acceptNewContact", "New peer added with verified key.")
             } else {
                 debugLine("acceptNewContact", "Failed to add new peer")
             }
@@ -103,6 +115,8 @@ suspend fun acceptNewContact(
             debugLine("acceptNewContact", "Background accept failed: ${e.message}")
         }
     }
+
+    return true
 }
 
 suspend fun removeRequestFromFirestore(remoteUserId: String): Boolean {

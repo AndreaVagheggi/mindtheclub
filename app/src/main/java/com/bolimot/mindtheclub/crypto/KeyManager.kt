@@ -8,6 +8,7 @@ import com.google.crypto.tink.KeysetHandle
 import com.google.crypto.tink.TinkJsonProtoKeysetFormat
 import com.google.crypto.tink.hybrid.HybridConfig
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
+import kotlinx.coroutines.tasks.await
 
 object KeyManager {
 
@@ -25,6 +26,39 @@ object KeyManager {
         if (!registered) {
             HybridConfig.register()
             registered = true
+        }
+    }
+
+    suspend fun fetchAndStorePublicKeyVerified(
+        userId: String,
+        expectedFingerprint: String?,
+        context: Context
+    ): Boolean {
+        return try {
+            val doc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users").document(userId).get().await()
+            val publicKey = doc.getString("publicKey")
+
+            if (publicKey.isNullOrEmpty()) {
+                debugLine("KeyManager", "No publicKey published yet for $userId.")
+                return false
+            }
+            if (expectedFingerprint.isNullOrEmpty()) {
+                debugLine("KeyManager", "REFUSING to store unverified key for $userId.")
+                return false
+            }
+            if (fingerprintOf(publicKey) != expectedFingerprint) {
+                debugLine("KeyManager", "Fingerprint MISMATCH for $userId. Not storing.")
+                return false
+            }
+            com.bolimot.mindtheclub.functions.getPeerDao(context)
+                .updatePeerPublicKey(userId, publicKey)
+            com.bolimot.mindtheclub.transport.PeerIdentityResolver.markStale()
+            debugLine("KeyManager", "publicKey verified and stored for $userId.")
+            true
+        } catch (e: Exception) {
+            debugLine("KeyManager", "fetchAndStorePublicKeyVerified failed for $userId: ${e.message}")
+            false
         }
     }
 
