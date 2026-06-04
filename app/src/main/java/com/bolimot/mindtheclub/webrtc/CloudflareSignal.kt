@@ -52,11 +52,8 @@ private val signalClient: OkHttpClient by lazy {
         .build()
 }
 
-// Single-peer public-key recovery: pulls the key from Firestore into the local
-// Peer row, mirroring fetchMissingPublicKeys() but scoped to one user so a failed
-// signal self-heals on the next retry.
-private suspend fun recoverPeerPublicKey(userId: String) {
-    try {
+private suspend fun recoverPeerPublicKey(userId: String): String? {
+    return try {
         val doc = FirebaseFirestore.getInstance()
             .collection("users").document(userId).get().await()
         val publicKey = doc.getString("publicKey")
@@ -64,11 +61,14 @@ private suspend fun recoverPeerPublicKey(userId: String) {
             getPeerDao(App.context()).updatePeerPublicKey(userId, publicKey)
             PeerIdentityResolver.markStale()
             debugLine("CloudflareSignal", "Recovered publicKey for $userId")
+            publicKey
         } else {
             debugLine("CloudflareSignal", "No publicKey in Firestore for $userId yet")
+            null
         }
     } catch (e: Exception) {
         debugLine("CloudflareSignal", "recoverPeerPublicKey failed: ${e.message}")
+        null
     }
 }
 
@@ -103,6 +103,8 @@ class Socket(channelId: String, private val remoteUserId: String) {
     private val peerSeen = AtomicBoolean(false)
     private val joined = AtomicBoolean(false)
     private val closed = AtomicBoolean(false)
+    private val recovering = AtomicBoolean(false)
+    private val recoveryFailed = AtomicBoolean(false)
 
     internal fun connect(
         client: OkHttpClient,
@@ -145,8 +147,20 @@ class Socket(channelId: String, private val remoteUserId: String) {
 
         val key = remotePublicKey
         if (key.isNullOrEmpty()) {
-            debugLine("CloudflareSignal", "No peer public key — refusing to send unencrypted signal, attempting recovery")
-            scope.launch { recoverPeerPublicKey(remoteUserId) }
+            if (recoveryFailed.get()) return
+            if (recovering.compareAndSet(false, true)) {
+                debugLine("CloudflareSignal", "No peer public key — recovering once")
+                scope.launch {
+                    val recovered = recoverPeerPublicKey(remoteUserId)
+                    if (recovered.isNullOrEmpty()) {
+                        recoveryFailed.set(true)
+                    } else {
+                        remotePublicKey = recovered
+                        sendSignal(data)
+                    }
+                    recovering.set(false)
+                }
+            }
             return
         }
         val sealed = KeyManager.encryptFor(key, inner)

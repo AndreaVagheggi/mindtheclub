@@ -137,9 +137,18 @@ object FcmMessageSender {
             // App Check token (cached by the SDK unless expired). Proves "genuine MTC
             // app" to Google; it is app-level, not a per-user/per-install identifier.
             val appCheckToken = try {
-                FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
+                var t = FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
+                if (t.isEmpty()) {
+                    t = FirebaseAppCheck.getInstance().getAppCheckToken(true).await().token
+                }
+                t
             } catch (e: Exception) {
                 debugLine("fcmMessageSender", "App Check token fetch failed: ${e.message}")
+                return@withContext FCM.FAILURE
+            }
+
+            if (appCheckToken.isEmpty()) {
+                debugLine("fcmMessageSender", "App Check token empty after refresh, aborting send")
                 return@withContext FCM.FAILURE
             }
 
