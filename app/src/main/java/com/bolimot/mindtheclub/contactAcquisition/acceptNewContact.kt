@@ -53,15 +53,16 @@ suspend fun acceptNewContact(
 
     App.instance!!.applicationScope.launch(Dispatchers.IO) {
         try {
-            val pictureUri = saveFirebaseImageToDisk(picture, "pic_${userId}", 100)
-
             val peerViewModel = getPeerViewModel()
+
+            val downloadedPicUri = saveFirebaseImageToDisk(picture, "pic_${userId}", 100)
+            val resolvedPicture = downloadedPicUri?.toString() ?: peerViewModel.getPeer(userId)?.picture
 
             val newPeer = Peer(
                 userId = userId,
                 name = name ?: "",
                 bio = bio ?: "",
-                picture = pictureUri.toString(),
+                picture = resolvedPicture,
                 uid = 0,
                 token = "",
                 status = Contact.NEW,

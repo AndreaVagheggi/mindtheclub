@@ -5,7 +5,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.contactAcquisition.setAcquisitionStatus
 import com.bolimot.mindtheclub.contactAcquisition.writeMySelfOnRemotePeerFirestore
-import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerDao
@@ -14,8 +13,6 @@ import com.bolimot.mindtheclub.tools.AcquisitionStatus
 import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.Location
 import com.bolimot.mindtheclub.tools.ProfileType
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 
 class AcquireContactWorker(
     context: Context,
@@ -56,12 +53,20 @@ class AcquireContactWorker(
                 debugLine(tag, "Peer insert skipped (likely already exists): ${e.message}")
             }
 
+            // Verify and store the remote peer's public key FIRST.
+            // writeMySelfOnRemotePeerFirestore (next) needs the verified key
+            // to seal our own fingerprint into the contact request payload.
+            val keyVerified = com.bolimot.mindtheclub.crypto.KeyManager
+                .fetchAndStorePublicKeyVerified(userId, expectedFingerprint, applicationContext)
+            if (!keyVerified) {
+                debugLine(tag, "Could not verify remote public key. Will retry.")
+                return Result.retry()
+            }
+
             val remoteSuccess = writeMySelfOnRemotePeerFirestore(userId)
 
             if (remoteSuccess) {
                 debugLine(tag, "Remote write successful. Worker finished.")
-
-                fetchAndStorePublicKey(userId, expectedFingerprint, tag)
 
                 setAcquisitionStatus(userId,
                     Location.LOCAL,
@@ -78,41 +83,6 @@ class AcquireContactWorker(
         } catch (e: Exception) {
             debugLine(tag, "Fatal error in worker: ${e.message}")
             return Result.failure()
-        }
-    }
-
-    private suspend fun fetchAndStorePublicKey(
-        userId: String,
-        expectedFingerprint: String?,
-        tag: String
-    ) {
-        try {
-            val doc = FirebaseFirestore.getInstance()
-                .collection("users").document(userId).get().await()
-            val publicKey = doc.getString("publicKey")
-
-            if (publicKey.isNullOrEmpty()) {
-                debugLine(tag, "No publicKey published yet for $userId; skipping.")
-                return
-            }
-
-            if (expectedFingerprint.isNullOrEmpty()) {
-                debugLine(tag, "No out-of-band fingerprint; storing fetched key unverified.")
-                getPeerDao(applicationContext).updatePeerPublicKey(userId, publicKey)
-                com.bolimot.mindtheclub.transport.PeerIdentityResolver.markStale()
-                return
-            }
-
-            val actualFingerprint = KeyManager.fingerprintOf(publicKey)
-            if (actualFingerprint == expectedFingerprint) {
-                getPeerDao(applicationContext).updatePeerPublicKey(userId, publicKey)
-                com.bolimot.mindtheclub.transport.PeerIdentityResolver.markStale()
-                debugLine(tag, "publicKey verified and stored for $userId.")
-            } else {
-                debugLine(tag, "Fingerprint MISMATCH for $userId. Expected=$expectedFingerprint Actual=$actualFingerprint. Not storing.")
-            }
-        } catch (e: Exception) {
-            debugLine(tag, "fetchAndStorePublicKey failed for $userId: ${e.message}")
         }
     }
 }
