@@ -84,7 +84,10 @@ object TorManager {
     }
 
     suspend fun awaitReady(timeoutMs: Long): Int? {
-        if (ready.value && socksAlive()) return SOCKS_PORT
+        if (ready.value && socksAlive()) {
+            debugLine("TorManager", "Tor already ready (fast path), SOCKS $SOCKS_PORT")
+            return SOCKS_PORT
+        }
 
         start()
 
