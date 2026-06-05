@@ -61,6 +61,8 @@ class App : Application(), DefaultLifecycleObserver {
         debugLine("App", "WebRTC native libraries initialized")
 
         setupLifecycleListener()
+
+        com.bolimot.mindtheclub.transport.TorManager.start()
     }
 
     private fun clearLogOnNewInstall() {

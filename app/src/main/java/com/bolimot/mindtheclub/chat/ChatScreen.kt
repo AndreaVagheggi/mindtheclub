@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.bolimot.mindtheclub.chat
 
 import android.annotation.SuppressLint

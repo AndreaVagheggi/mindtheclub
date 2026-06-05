@@ -15,6 +15,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.bolimot.mindtheclub.transport.TorManager
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -22,34 +24,38 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import org.webrtc.PeerConnection
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Cloudflare WebSocket signalling. Drop-in replacement for FirestoreSignal.kt.
-//  Public contract consumed by RTCClient is UNCHANGED except openSignal now takes
-//  an `initiator: Boolean` (RTCClient already has this value).
-//
-//  Sealed-sender model: ONLY the initiator routes signalling through embedded Tor
-//  (TorManager, in-process, no second app). The recipient connects directly — it
-//  is not hiding, and this removes any cold-bootstrap problem on the wake path.
-//
-//  Mailboxes are opaque per-session slots; SDP/ICE is sealed with the peer's
-//  public key, so the relay forwards ciphertext only and keeps nothing on disk.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── Configuration ────────────────────────────────────────────────────────────
 private const val SIGNALING_WS_BASE = "wss://mtc-signal.long-sun-7368.workers.dev/c/"
-private const val PEER_TIMEOUT_MS = 45_000L      // peer wake + connect + first frame; resets on first signal
-private const val WS_CONNECT_TIMEOUT_S = 30L     // own WS connect; stays under outer ceiling
+private const val PEER_TIMEOUT_MS = 45_000L
+private const val WS_CONNECT_TIMEOUT_S = 30L
+private const val TOR_READY_TIMEOUT_MS = 60_000L
 
-private val signalClient: OkHttpClient by lazy {
-    OkHttpClient.Builder()
+@Volatile private var cachedClient: OkHttpClient? = null
+@Volatile private var cachedPort: Int? = null
+
+private fun signalClientFor(socksPort: Int?): OkHttpClient {
+    cachedClient?.let { if (cachedPort == socksPort) return it }
+    val builder = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
         .connectTimeout(WS_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
-        .build()
+    if (socksPort != null) {
+        builder.proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", socksPort)))
+        builder.dns(object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> =
+                listOf(InetAddress.getByAddress(hostname, byteArrayOf(0, 0, 0, 0)))
+        })
+    }
+    val client = builder.build()
+    cachedClient = client
+    cachedPort = socksPort
+    return client
 }
 
 private suspend fun recoverPeerPublicKey(userId: String): String? {
@@ -81,7 +87,6 @@ private fun slotFor(channelId: String, userId: String): String {
     )
 }
 
-// ── Socket ───────────────────────────────────────────────────────────────────
 class Socket(channelId: String, private val remoteUserId: String) {
 
     private val mySelf = MySelf.userId() ?: ""
@@ -266,7 +271,6 @@ class Socket(channelId: String, private val remoteUserId: String) {
     }
 }
 
-// ── Public functions (signatures match FirestoreSignal.kt + `initiator`) ───────
 fun closeSignal(socket: Socket?): Socket? {
     socket?.close()
     return null
@@ -275,7 +279,7 @@ fun closeSignal(socket: Socket?): Socket? {
 suspend fun openSignal(
     channelId: String,
     remoteUserId: String,
-    @Suppress("UNUSED_PARAMETER") initiator: Boolean,
+    initiator: Boolean,
     onPeerJoin: (remoteUserId: String) -> Unit,
     onSignal: (data: Map<String, Any>) -> Unit,
     onJoin: (socket: Socket) -> Unit = {},
@@ -301,6 +305,18 @@ suspend fun openSignal(
 
     onIceServersFetched(iceServers)
 
+    val socksPort: Int? = if (initiator) {
+        val port = TorManager.awaitReady(TOR_READY_TIMEOUT_MS)
+        if (port == null) {
+            debugLine(tag, "Tor not ready within budget")
+            onError("Tor not ready")
+            return iceServers
+        }
+        port
+    } else {
+        null
+    }
+
     val remoteKey = try {
         PeerIdentityResolver.publicKeyForUserId(remoteUserId)
     } catch (e: Exception) {
@@ -310,7 +326,7 @@ suspend fun openSignal(
 
     val socket = Socket(channelId, remoteUserId)
     socket.connect(
-        client = signalClient,
+        client = signalClientFor(socksPort),
         remotePublicKey = remoteKey,
         onJoin = { sk ->
             debugLine(tag, "JOIN: I have joined the channel")

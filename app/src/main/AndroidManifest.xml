@@ -79,6 +79,11 @@
             android:foregroundServiceType="shortService" />
 
         <service
+            android:name="org.torproject.jni.TorService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <service
             android:name=".voip.CallService"
             android:foregroundServiceType="phoneCall"
             android:exported="false" />
