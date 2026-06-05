@@ -13,6 +13,7 @@ import com.bolimot.mindtheclub.tools.AcquisitionStatus
 import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.Location
 import com.bolimot.mindtheclub.tools.ProfileType
+import com.bolimot.mindtheclub.contactAcquisition.clearAcquisitionStatus
 
 class AcquireContactWorker(
     context: Context,
@@ -33,6 +34,8 @@ class AcquireContactWorker(
 
         val tag = "AcquireContactWorker"
         debugLine(tag, "Starting background work for: $name")
+
+        clearAcquisitionStatus(userId, applicationContext)
 
         val peer = Peer(
             uid = 0,

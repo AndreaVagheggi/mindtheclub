@@ -34,6 +34,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import android.content.Context
 import androidx.core.content.edit
+import com.bolimot.mindtheclub.contactAcquisition.clearAcquisitionStatus
 
 
 class PeerViewModel(application: Application, private val repository: PeerRepository) : AndroidViewModel(application) {
@@ -103,6 +104,7 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 repository.deletePeer(peer)
+                clearAcquisitionStatus(peer.userId, App.context())
             }
         }
     }
@@ -115,6 +117,7 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
                     debugLine("PeerViewModel", "There were issues in deleting remote peer messages")
                 }
                 repository.deletePeerByUserId(userId)
+                clearAcquisitionStatus(userId, App.context())
             }
         }
     }
