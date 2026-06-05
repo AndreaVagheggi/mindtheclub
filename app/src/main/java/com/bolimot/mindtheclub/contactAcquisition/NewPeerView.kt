@@ -106,6 +106,7 @@ class NewPeerView : BaseActivity() , DeletePeerDialog.DeletePeerListener, BlockP
                     lifecycleScope.launch {
                         removeRequestFromFirestore(userId)
                     }
+                    finish()
                     true
 
                 }
