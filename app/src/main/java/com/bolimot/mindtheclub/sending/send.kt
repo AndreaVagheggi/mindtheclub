@@ -30,6 +30,7 @@ import kotlin.math.ceil
 import com.bolimot.mindtheclub.functions.countBatchChunks
 import com.bolimot.mindtheclub.functions.deleteBatchTables
 import com.bolimot.mindtheclub.functions.getPeerDao
+import com.bolimot.mindtheclub.functions.reconcileBatchTotalNo
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlinx.coroutines.runBlocking
@@ -324,6 +325,11 @@ fun sendMessageWork(message: MessageData, context: Context, scope: CoroutineScop
         }
 
         if (message.uri == null) message.uri = ""
+
+        val reconciled = reconcileBatchTotalNo(message.messageId)
+        if (reconciled > 0) {
+            debugLine("sendMediaMessage", "Batch totalNo reconciled to $reconciled for ${message.messageId}")
+        }
 
         submitDispatchWorker(message.messageId, message.toUserId, context, message.groupId, message.uri!!, message.chatGroupId ?: "", message.originalSenderId ?: "", message.date)
         return true

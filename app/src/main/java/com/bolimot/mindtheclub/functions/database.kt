@@ -178,3 +178,21 @@ fun countBatchChunks(messageId: String): Int {
     cursor.close()
     return totalChunks
 }
+
+fun reconcileBatchTotalNo(messageId: String): Int {
+    val actualChunks = countBatchChunks(messageId)
+    if (actualChunks <= 0) return actualChunks
+    val db = AppDatabase.getInstance(App.context()).openHelper.writableDatabase
+    val tableCursor = db.query(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ?",
+        arrayOf("batch$messageId%")
+    )
+    while (tableCursor.moveToNext()) {
+        val tableName = tableCursor.getString(0)
+        try {
+            db.execSQL("UPDATE `$tableName` SET totalNo = ? WHERE totalNo <> ?", arrayOf(actualChunks, actualChunks))
+        } catch (_: Exception) { }
+    }
+    tableCursor.close()
+    return actualChunks
+}
