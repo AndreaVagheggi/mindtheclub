@@ -29,6 +29,9 @@
 -keep class * extends org.webrtc.VideoSink { *; }
 -keep class org.jni_zero.** { *; }
 
+-keep class org.torproject.jni.** { *; }
+-keep class org.torproject.** { *; }
+
 # KEEP firebase
 -keep class com.google.firebase.** { *; }
 -keep class com.bolimot.mindtheclub.firebase.MyFirebaseMessagingService { *; }
