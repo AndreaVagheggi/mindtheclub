@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.net.Uri
 import android.view.View
 import androidx.core.content.ContextCompat.getString
 import androidx.core.graphics.createBitmap
@@ -85,10 +86,27 @@ fun generateClubQRCode(text: String, context: Context): Bitmap? {
     }
 }
 
+fun buildInviteLink(name: String, userId: String, bio: String, fingerprint: String): String {
+    return Uri.Builder()
+        .scheme("https")
+        .authority("mindtheclub.com")
+        .appendPath("add")
+        .appendQueryParameter("n", name)
+        .appendQueryParameter("u", userId)
+        .appendQueryParameter("b", bio)
+        .appendQueryParameter("f", fingerprint)
+        .build()
+        .toString()
+}
+
 suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
     generateQRCode(textToShare)?.let{
         saveBitmap(it, "myQRCode.jpg", 100).let{
-            val text = getString(context, R.string.share_message) + "\n\n" + getFirebaseValue("MTC_URL")
+            val inviteLink = parseQRCode(textToShare)?.let { qr ->
+                buildInviteLink(qr.name, qr.userId, qr.bio, qr.fingerprint)
+            } ?: getFirebaseValue("MTC_URL")
+
+            val text = getString(context, R.string.share_message) + "\n\n" + inviteLink
 
             val subject = "${getPreference("myName", context)} - ${getString(context, R.string.join_message)}"
             val shareIntent = Intent().apply {

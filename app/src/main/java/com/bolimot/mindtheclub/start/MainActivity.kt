@@ -27,12 +27,18 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.bolimot.mindtheclub.tools.Share
 
 class MainActivity : BaseActivity() {
     private var sharing: String? = null
     private var uri: String? = null
     private var type: String? = null
     private var text: String? = null
+
+    private var inviteName: String? = null
+    private var inviteUserId: String? = null
+    private var inviteBio: String? = null
+    private var inviteFingerprint: String? = null
 
     companion object {
         const val PERMISSIONS_REQUEST_CODE = 100
@@ -43,6 +49,14 @@ class MainActivity : BaseActivity() {
         type = i.getStringExtra("type")
         sharing = i.getStringExtra("sharing")
         text = i.getStringExtra("text")
+
+        if (i.action == Intent.ACTION_VIEW && i.data != null) {
+            val data = i.data!!
+            inviteUserId = data.getQueryParameter("u")
+            inviteName = data.getQueryParameter("n")
+            inviteBio = data.getQueryParameter("b")
+            inviteFingerprint = data.getQueryParameter("f")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -173,6 +187,19 @@ class MainActivity : BaseActivity() {
                 startActivities()
             }
         } else {
+            if (!inviteUserId.isNullOrEmpty() && !inviteName.isNullOrEmpty()) {
+                val inviteIntent = Intent(this, AppTab::class.java).apply {
+                    putExtra("sharing", Share.PROFILE)
+                    putExtra("name", inviteName)
+                    putExtra("userId", inviteUserId)
+                    putExtra("bio", inviteBio)
+                    putExtra("fingerprint", inviteFingerprint)
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                startActivity(inviteIntent)
+                return
+            }
+
             val shareType = type
             val shareSharing = sharing
             val shareUri = uri
