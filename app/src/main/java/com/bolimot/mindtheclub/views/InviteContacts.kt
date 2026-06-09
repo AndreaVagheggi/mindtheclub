@@ -14,6 +14,45 @@ import com.bolimot.mindtheclub.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.core.net.toUri
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
+import com.bolimot.mindtheclub.functions.debugLine
+
+fun letterAvatar(name: String): Bitmap {
+    val size = 120
+    val bitmap = createBitmap(size, size)
+    val canvas = Canvas(bitmap)
+
+    val letter = name.trim().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#"
+
+    val palette = intArrayOf(
+        0xFFE57373.toInt(), 0xFFBA68C8.toInt(), 0xFF64B5F6.toInt(),
+        0xFF4DB6AC.toInt(), 0xFF81C784.toInt(), 0xFFFFB74D.toInt(),
+        0xFFA1887F.toInt(), 0xFF90A4AE.toInt(), 0xFF7986CB.toInt(),
+        0xFF4FC3F7.toInt()
+    )
+    val color = palette[(name.hashCode() and 0x7FFFFFFF) % palette.size]
+
+    val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f, circlePaint)
+
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = Color.WHITE
+        textSize = size * 0.5f
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    }
+    val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+    canvas.drawText(letter, size / 2f, yPos, textPaint)
+
+    return bitmap
+}
 
 data class PhoneContact(val id: Long, val name: String, val photoUri: String?)
 
@@ -36,6 +75,38 @@ suspend fun loadPhoneContacts(context: Context): List<PhoneContact> = withContex
         while (c.moveToNext()) {
             val name = c.getString(nameIdx) ?: continue
             list.add(PhoneContact(c.getLong(idIdx), name, c.getString(photoIdx)))
+        }
+    }
+    list
+}
+
+data class ContactNumber(val number: String, val label: String)
+
+suspend fun loadPhoneNumbers(context: Context, contactId: Long): List<ContactNumber> = withContext(Dispatchers.IO) {
+    val list = mutableListOf<ContactNumber>()
+    val projection = arrayOf(
+        ContactsContract.CommonDataKinds.Phone.NUMBER,
+        ContactsContract.CommonDataKinds.Phone.TYPE,
+        ContactsContract.CommonDataKinds.Phone.LABEL
+    )
+    val selection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?"
+
+    context.contentResolver.query(
+        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+        projection, selection, arrayOf(contactId.toString()), null
+    )?.use { c ->
+        val numIdx = c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+        val typeIdx = c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.TYPE)
+        val labelIdx = c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.LABEL)
+        val seen = mutableSetOf<String>()
+        while (c.moveToNext()) {
+            val number = c.getString(numIdx) ?: continue
+            if (!seen.add(number.replace("\\s".toRegex(), ""))) continue
+            val type = c.getInt(typeIdx)
+            val customLabel = c.getString(labelIdx)
+            val label = ContactsContract.CommonDataKinds.Phone
+                .getTypeLabel(context.resources, type, customLabel).toString()
+            list.add(ContactNumber(number, label))
         }
     }
     list
@@ -64,14 +135,28 @@ class ContactsAdapter(private val onClick: (PhoneContact) -> Unit) :
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = getItem(position)
         holder.name.text = item.name
+
+        val ctx = holder.itemView.context
+        var photoSet = false
         if (item.photoUri != null) {
-            holder.photo.setImageURI(item.photoUri.toUri())
-            if (holder.photo.drawable == null) {
-                holder.photo.setImageResource(R.drawable.ic_contact_placeholder)
+            try {
+                ctx.contentResolver.openInputStream(item.photoUri.toUri()).use { stream ->
+                    val bmp = BitmapFactory.decodeStream(stream)
+                    if (bmp != null) {
+                        val rounded = RoundedBitmapDrawableFactory.create(ctx.resources, bmp)
+                        rounded.isCircular = true
+                        holder.photo.setImageDrawable(rounded)
+                        photoSet = true
+                    }
+                }
+            } catch (e: Exception) {
+                debugLine("ContactsAdapter", "OnBind $e")
             }
-        } else {
-            holder.photo.setImageResource(R.drawable.ic_contact_placeholder)
         }
+        if (!photoSet) {
+            holder.photo.setImageBitmap(letterAvatar(item.name))
+        }
+
         holder.itemView.setOnClickListener { onClick(item) }
     }
 }

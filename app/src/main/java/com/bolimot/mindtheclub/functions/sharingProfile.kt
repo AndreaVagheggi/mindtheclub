@@ -1,7 +1,5 @@
 package com.bolimot.mindtheclub.functions
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -117,11 +115,6 @@ suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
                 type = "image/jpeg"
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Label", getString(context, R.string.share_message))
-            clipboard.setPrimaryClip(clip)
-            showSnackbarAtTop(getString(context, R.string.paste_message), view)
 
             val chooser = Intent.createChooser(shareIntent, getString(context, R.string.share_via))
             context.startActivity(chooser)
