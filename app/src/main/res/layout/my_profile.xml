@@ -186,7 +186,6 @@
         app:layout_constraintBottom_toTopOf="@+id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:icon="@drawable/share"
         android:layout_marginBottom="24dp"/>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView

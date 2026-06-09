@@ -190,4 +190,6 @@
     <string name="invite_friends">Invite friends</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Other apps</string>
+    <string name="invite_share_other">Share with other apps</string>
+    <string name="contacts_permission_needed">Contacts permission is needed to show your address book</string>
 </resources>

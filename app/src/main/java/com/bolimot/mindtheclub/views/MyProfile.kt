@@ -1,55 +1,52 @@
 package com.bolimot.mindtheclub.views
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
+import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.net.toUri
-import androidx.lifecycle.lifecycleScope
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
 import com.bolimot.mindtheclub.functions.generateQRCode
+import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.keypadIsOpen
 import com.bolimot.mindtheclub.functions.saveBitmap
 import com.bolimot.mindtheclub.functions.saveBitmapFromUri
 import com.bolimot.mindtheclub.functions.setPreference
-import com.bolimot.mindtheclub.functions.shareMyProfile
 import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.transport.BluetoothToggle
 import com.bumptech.glide.Glide
+import com.bumptech.glide.signature.ObjectKey
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.launch
-import androidx.activity.enableEdgeToEdge
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updatePadding
-import android.graphics.Color
-import android.view.Menu
-import androidx.activity.SystemBarStyle
-import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
-import com.bolimot.mindtheclub.functions.getPeerViewModel
-import com.bumptech.glide.signature.ObjectKey
-import android.widget.LinearLayout
-import android.widget.TextView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.bolimot.mindtheclub.BuildConfig
-import com.bolimot.mindtheclub.transport.BluetoothToggle
 import com.google.android.material.switchmaterial.SwitchMaterial
-import android.bluetooth.BluetoothAdapter
+import com.google.android.material.textfield.TextInputEditText
 
 class MyProfile : BaseActivity() {
 
@@ -159,19 +156,18 @@ class MyProfile : BaseActivity() {
         }
 
         fab.setOnClickListener {
-            lifecycleScope.launch {
-                val name = nameEditText.text.toString().trim()
-                val userId = MySelf.userId() ?: ""
-                val bio = bioEditText.text.toString().trim()
+            val name = nameEditText.text.toString().trim()
+            val userId = MySelf.userId() ?: ""
+            val bio = bioEditText.text.toString().trim()
 
-                if (listOf(name, userId).any { it.isEmpty() }) {
-                    showToast("No profile to share", this@MyProfile)
-                    return@launch
-                }
-
-                val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
-                shareMyProfile("mtc;$name;$userId;$bio;$fingerprint", this@MyProfile, rootView)
+            if (listOf(name, userId).any { it.isEmpty() }) {
+                showToast("No profile to share", this@MyProfile)
+                return@setOnClickListener
             }
+
+            val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
+            val payload = "mtc;$name;$userId;$bio;$fingerprint"
+            startActivity(Intent(this@MyProfile, InviteActivity::class.java).putExtra("payload", payload))
         }
 
         bottomNavigationView.setOnItemSelectedListener { item ->
