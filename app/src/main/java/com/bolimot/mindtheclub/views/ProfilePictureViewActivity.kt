@@ -33,7 +33,6 @@ class ProfilePictureViewActivity : BaseActivity() {
 
         setContentView(R.layout.activity_profile_picture_view)
 
-        // Fullscreen immersive — same pattern as ImageGalleryActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowCompat.setDecorFitsSystemWindows(window, false)
             val insetsController = WindowInsetsControllerCompat(window, window.decorView)
@@ -62,12 +61,10 @@ class ProfilePictureViewActivity : BaseActivity() {
         supportActionBar?.title = title
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        // Toggle toolbar on tap (same UX as ImageGalleryActivity)
         photoView.setOnPhotoTapListener { _, _, _ ->
             if (barIsVisible) hideToolbar() else showToolbar()
         }
 
-        // Load the image — Glide handles both local URIs and remote URLs
         if (!pictureUri.isNullOrEmpty()) {
             Glide.with(this)
                 .load(pictureUri)

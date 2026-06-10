@@ -928,8 +928,31 @@ class RTCClient private constructor(
         }
     }
 
-    private fun initializePeerConnection(iceServers: List<PeerConnection.IceServer>) {
-        val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
+//    private fun verifyRelayOnly() {
+//        connection?.getStats { report ->
+//            val stats = report.statsMap
+//            val pair = stats.values.firstOrNull { s ->
+//                s.type == "candidate-pair" &&
+//                        s.members["state"] == "succeeded" &&
+//                        (s.members["nominated"] as? Boolean == true)
+//            }
+//            if (pair == null) {
+//                debugLine("StealthCheck", "No nominated candidate pair yet")
+//                return@getStats
+//            }
+//            val localId = pair.members["localCandidateId"] as? String
+//            val localType = localId?.let { stats[it]?.members?.get("candidateType") }
+//            val remoteId = pair.members["remoteCandidateId"] as? String
+//            val remoteType = remoteId?.let { stats[it]?.members?.get("candidateType") }
+//            val stealthOn = getPreference(PREF_STEALTH_MODE, context) == "true"
+//            debugLine("StealthCheck", "stealth=$stealthOn  local=$localType  remote=$remoteType")
+//            if (stealthOn && localType != "relay") {
+//                debugLine("StealthCheck", "LEAK: stealth ON but local candidate is '$localType' (expected 'relay')")
+//            }
+//        }
+//    }
+
+    private fun initializePeerConnection(iceServers: List<PeerConnection.IceServer>) {        val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
             rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
@@ -961,6 +984,11 @@ class RTCClient private constructor(
                         null -> IceConnectionState.NULL
                     }
                     this@RTCClient.iceConnectionState = newIceState
+
+//
+//                    if (newIceState == IceConnectionState.CONNECTED || newIceState == IceConnectionState.COMPLETED) {
+//                        this@RTCClient.verifyRelayOnly()
+//                    }
                 }
 
                 override fun onConnectionChange(connectionState: PeerConnection.PeerConnectionState?) {

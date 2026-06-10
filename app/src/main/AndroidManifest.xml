@@ -99,9 +99,7 @@
         <activity
             android:name=".views.ProfilePictureViewActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/MindTheClub"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity">
+            android:theme="@style/MindTheClub">
         </activity>
 
         <activity
@@ -231,8 +229,6 @@
         <activity
             android:name=".chat.ImageGalleryActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity"
             android:theme="@style/MindTheClub">
         </activity>
 

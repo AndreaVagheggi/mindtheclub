@@ -404,7 +404,6 @@ class MyProfile : BaseActivity() {
         if (!BuildConfig.ENABLE_DEBUG_TOOLS) {
             menu.findItem(R.id.bug)?.isVisible = false
             menu.findItem(R.id.delete_log)?.isVisible = false
-            menu.findItem(R.id.about)?.isVisible = false
         }
         return true
     }
