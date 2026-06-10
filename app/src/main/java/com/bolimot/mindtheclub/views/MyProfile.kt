@@ -47,6 +47,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
+import com.bolimot.mindtheclub.webrtc.RTCClient
 
 class MyProfile : BaseActivity() {
 
@@ -56,6 +57,7 @@ class MyProfile : BaseActivity() {
     private var profileChanged = false
 
     private lateinit var bluetoothSwitch: SwitchMaterial
+    private lateinit var stealthModeSwitch: SwitchMaterial
 
     private val enableBtResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -296,6 +298,12 @@ class MyProfile : BaseActivity() {
             } else {
                 BluetoothToggle.disable(this)
             }
+        }
+
+        stealthModeSwitch = findViewById(R.id.stealthModeSwitch)
+        stealthModeSwitch.isChecked = getPreference(RTCClient.PREF_STEALTH_MODE, this) == "true"
+        stealthModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
         }
 
         val profilePicContainer: FrameLayout = findViewById(R.id.profilePicContainer)

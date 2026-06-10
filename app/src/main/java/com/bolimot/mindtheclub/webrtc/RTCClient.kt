@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.emitWebRtcControlEvent
+import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.isLowEndDevice
 import com.bolimot.mindtheclub.functions.waitForInternetConnection
 import com.bolimot.mindtheclub.processor.MessageProcessor
@@ -164,6 +165,7 @@ class RTCClient private constructor(
 
     companion object {
         const val ACTION_WEBRTC_SHUTDOWN = "com.bolimot.mindtheclub.ACTION_WEBRTC_SHUTDOWN"
+        const val PREF_STEALTH_MODE = "mtc_stealth_mode_enabled"
 
         fun create(channelId: String,
                    callId: String,
@@ -937,6 +939,10 @@ class RTCClient private constructor(
             enableCpuOveruseDetection = true
             audioJitterBufferMaxPackets = 20
             audioJitterBufferFastAccelerate = true
+            if (getPreference(PREF_STEALTH_MODE, context) == "true") {
+                iceTransportsType = PeerConnection.IceTransportsType.RELAY
+                debugLine("initializePeerConnection", "Stealth mode ON — forcing RELAY-only ICE")
+            }
         }
 
         connection = peerConnectionFactory?.createPeerConnection(

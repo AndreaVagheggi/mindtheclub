@@ -49,8 +49,8 @@
                     android:id="@+id/profilePic"
                     android:contentDescription="@string/app_name"
                     android:scaleType="centerCrop"
-                    android:layout_width="210dp"
-                    android:layout_height="210dp"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
                     android:src="@drawable/peer"
                     app:shapeAppearance="@style/CircleShape"/>
 
@@ -59,8 +59,8 @@
                     android:contentDescription="@string/app_name"
                     android:layout_width="44dp"
                     android:layout_height="44dp"
-                    android:layout_marginEnd="14dp"
-                    android:layout_marginBottom="14dp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginBottom="4dp"
                     android:background="@drawable/bg_edit_icon"
                     android:src="@drawable/ic_edit"
                     android:scaleType="centerInside"
@@ -171,6 +171,30 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/bioInputLayout" />
+
+            <ImageView
+                android:id="@+id/stealthView"
+                app:layout_constraintEnd_toStartOf="@+id/stealthModeSwitch"
+                app:layout_constraintTop_toTopOf="@+id/stealthModeSwitch"
+                app:layout_constraintBottom_toBottomOf="@+id/stealthModeSwitch"
+                app:tint="@color/black"
+                android:layout_marginEnd="12dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/stealth"
+                android:contentDescription="@string/stealth_mode" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/stealthModeSwitch"
+                android:layout_width="300dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginStart="42dp"
+                android:padding="4dp"
+                android:text="@string/stealth_mode"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/bluetoothTransportSwitch" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>

@@ -57,12 +57,12 @@
     <string name="delete_club_message">Do you want to delete this Club?</string>
     <string name="share_profile">Share</string>
     <string name="share_club">Share Club</string>
+    <string name="stealth_mode">Stealth Mode</string>
     <string name="show_qr_code">Show QR code</string>
     <string name="scan_qr_code">Scan QR code</string>
     <string name="add_club">Add</string>
     <string name="cancel_club">Cancel</string>
-    <string name="share_message">Hi! I\'m using MindTheClub. Download it from the link below.\n\nOnce you\'ve installed the app, you can add me as a contact easily.\n\nJust long-press on the QR code image I sent you, choose \'Share\', and select MindTheClub from the list of apps.\n\nThis will automatically add me to your contacts in the app.</string>
-    <string name="paste_message">Invite message copied. Paste it in your chosen app if missing.</string>
+    <string name="share_message">Hi! I\'m using MindTheClub. Tap the link below — it\'ll add me to your contacts if you already have the app, or let you download it if you don\'t.</string>
     <string name="join_message">Join me on MindTheClub!</string>
     <string name="share_via">Share via…</string>
     <string name="this_is_you">This is you!</string>
