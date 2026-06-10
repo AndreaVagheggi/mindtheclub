@@ -38,9 +38,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
@@ -51,6 +48,9 @@
                     android:scaleType="centerCrop"
                     android:layout_width="160dp"
                     android:layout_height="160dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/peer"
                     app:shapeAppearance="@style/CircleShape"/>
 
@@ -62,6 +62,9 @@
                     android:layout_marginEnd="4dp"
                     android:layout_marginBottom="4dp"
                     android:background="@drawable/bg_edit_icon"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_edit"
                     android:scaleType="centerInside"
                     android:layout_gravity="bottom|end"/>
@@ -162,15 +165,32 @@
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/bluetoothTransportSwitch"
-                android:layout_width="300dp"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:layout_marginStart="42dp"
+                android:layout_marginStart="0dp"
                 android:padding="4dp"
                 android:text="@string/bluetooth_transport"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/bioInputLayout" />
+
+            <ImageView
+                android:id="@+id/bluetoothHelpIcon"
+                android:contentDescription="@string/bluetooth_transport"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:padding="2dp"
+                android:src="@drawable/help"
+                android:scaleType="centerInside"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:layout_constraintStart_toEndOf="@+id/bluetoothTransportSwitch"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/bluetoothTransportSwitch"
+                app:layout_constraintBottom_toBottomOf="@+id/bluetoothTransportSwitch" />
 
             <ImageView
                 android:id="@+id/stealthView"
@@ -186,16 +206,32 @@
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/stealthModeSwitch"
-                android:layout_width="300dp"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:layout_marginStart="42dp"
+                android:layout_marginStart="0dp"
                 android:padding="4dp"
                 android:text="@string/stealth_mode"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/bluetoothTransportSwitch" />
 
+            <ImageView
+                android:id="@+id/imageHelpIcon"
+                android:contentDescription="@string/stealth_mode"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:padding="2dp"
+                android:src="@drawable/help"
+                android:scaleType="centerInside"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:layout_constraintStart_toEndOf="@+id/stealthModeSwitch"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/stealthModeSwitch"
+                app:layout_constraintBottom_toBottomOf="@+id/stealthModeSwitch" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
 

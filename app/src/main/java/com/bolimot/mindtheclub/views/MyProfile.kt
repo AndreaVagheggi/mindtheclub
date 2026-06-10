@@ -58,6 +58,7 @@ class MyProfile : BaseActivity() {
 
     private lateinit var bluetoothSwitch: SwitchMaterial
     private lateinit var stealthModeSwitch: SwitchMaterial
+    private lateinit var imageEditIcon: ImageView
 
     private val enableBtResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -90,7 +91,7 @@ class MyProfile : BaseActivity() {
                     .into(profilePic)
             }
 
-            profilePicContainer.isClickable = true
+            imageEditIcon.isClickable = true
         } else {
             debugLine("MyProfile", "RESULT_CANCELED")
         }
@@ -306,12 +307,46 @@ class MyProfile : BaseActivity() {
             setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
         }
 
-        val profilePicContainer: FrameLayout = findViewById(R.id.profilePicContainer)
-        profilePicContainer.setOnClickListener {
+        findViewById<ImageView>(R.id.imageHelpIcon).setOnClickListener {
+            showHelpDialog(
+                getString(R.string.stealth_mode),
+                getString(R.string.stealth_mode_help)
+            )
+        }
+
+        findViewById<ImageView>(R.id.bluetoothHelpIcon).setOnClickListener {
+            showHelpDialog(
+                getString(R.string.bluetooth_transport),
+                getString(R.string.bluetooth_transport_help)
+            )
+        }
+
+        imageEditIcon = findViewById(R.id.imageEditIcon)
+        imageEditIcon.setOnClickListener {
             it.isClickable = false
             val intent = Intent(this, ImagesTab::class.java)
             getImageResult.launch(intent)
         }
+
+        profilePic.setOnClickListener {
+            val uriString = getPreference(MySelf.PICTURE_KEY, this)
+            if (!uriString.isNullOrEmpty()) {
+                val intent = Intent(this, ProfilePictureViewActivity::class.java).apply {
+                    putExtra("pictureUri", uriString)
+                    putExtra("title", getPreference("myName", this@MyProfile) ?: "")
+                }
+                startActivity(intent)
+            }
+        }
+    }
+
+    private fun showHelpDialog(title: String, message: String) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
+            .setCancelable(true)
+            .show()
     }
 
     override fun onResume() {
@@ -340,7 +375,7 @@ class MyProfile : BaseActivity() {
                 .into(profilePic)
         }
 
-        profilePicContainer.isClickable = true
+        imageEditIcon.isClickable = true
     }
 
     override fun onRequestPermissionsResult(

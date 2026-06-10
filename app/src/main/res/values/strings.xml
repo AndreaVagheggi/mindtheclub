@@ -193,4 +193,6 @@
     <string name="invite_share_other">Share with other apps</string>
     <string name="contacts_permission_needed">Contacts permission is needed to show your address book</string>
     <string name="no_sms_app">No messaging app found</string>
+    <string name="stealth_mode_help">Stealth mode forces traffic to travel through a relay (TURN). This hides your network information from the person you\'re chatting with.</string>
+    <string name="bluetooth_transport_help">When this is on, MindTheClub can deliver messages directly over Bluetooth to a nearby contact, with no internet, Wi-Fi or mobile data needed. It\'s handy when you\'re offline or out of signal. The other person must also have Bluetooth enabled and be paired with your device.</string>
 </resources>
