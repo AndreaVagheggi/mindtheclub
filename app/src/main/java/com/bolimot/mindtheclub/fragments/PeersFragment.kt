@@ -41,6 +41,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import androidx.paging.LoadState
+import com.bolimot.mindtheclub.views.InviteActivity
 
 class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDialog.BlockPeerListener {
 
@@ -207,6 +209,33 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
                 .collectLatest { pagingData: PagingData<Peer> ->
                     peersAdapter.submitData(pagingData)
                 }
+        }
+
+        val inviteFriendButton = view.findViewById<View>(R.id.inviteFriendButton)
+        val emptyListText = view.findViewById<View>(R.id.emptyListText)
+
+        inviteFriendButton.setOnClickListener {
+            val name = MySelf.name()?.trim() ?: ""
+            val userId = MySelf.userId() ?: ""
+            val bio = MySelf.bio()?.trim() ?: ""
+
+            if (listOf(name, userId).any { it.isEmpty() }) {
+                showToast("No profile to share", requireContext())
+                return@setOnClickListener
+            }
+
+            val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
+            val payload = "mtc;$name;$userId;$bio;$fingerprint"
+            startActivity(Intent(requireContext(), InviteActivity::class.java).putExtra("payload", payload))
+        }
+
+        lifecycleScope.launch {
+            peersAdapter.loadStateFlow.collectLatest { loadStates ->
+                val isEmpty = loadStates.refresh is LoadState.NotLoading && peersAdapter.itemCount == 0
+                val visibility = if (isEmpty) View.VISIBLE else View.GONE
+                inviteFriendButton.visibility = visibility
+                emptyListText.visibility = visibility
+            }
         }
 
         addContactButtonContainer.scaleX = 1f

@@ -190,6 +190,7 @@
     <string name="invite_friends">Invite friends</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Other apps</string>
+    <string name="contact_list_empty">Your contact list is empty</string>
     <string name="invite_share_other">Share with other apps</string>
     <string name="contacts_permission_needed">Contacts permission is needed to show your address book</string>
     <string name="no_sms_app">No messaging app found</string>
