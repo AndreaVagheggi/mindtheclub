@@ -34,6 +34,7 @@ import com.bolimot.mindtheclub.functions.reconcileBatchTotalNo
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlinx.coroutines.runBlocking
+import com.bolimot.mindtheclub.tools.NO_PICTURE
 
 private val batchBuildLock = ReentrantLock()
 
@@ -165,6 +166,7 @@ fun sendMessageWork(message: MessageData, context: Context, scope: CoroutineScop
         if (batchTablesExists(message.messageId)) {
             val isRemoteUri = message.uri?.lowercase()?.startsWith("http") == true
             val hasMedia = !message.uri.isNullOrEmpty() && message.uri != "null"
+                    && message.uri != NO_PICTURE
                     && message.type != Type.REACTION && !isRemoteUri
             if (hasMedia) {
                 val fileDetails = getFileDetails(contentResolver, message.uri!!.toUri())
@@ -181,7 +183,7 @@ fun sendMessageWork(message: MessageData, context: Context, scope: CoroutineScop
         if(!batchTablesExists(message.messageId)) {
             val isRemoteUri = message.uri?.lowercase()?.startsWith("http") == true
 
-            if (!message.uri.isNullOrEmpty() && message.uri != "null" && message.type != Type.REACTION && !isRemoteUri)  {
+            if (!message.uri.isNullOrEmpty() && message.uri != "null" && message.uri != NO_PICTURE && message.type != Type.REACTION && !isRemoteUri)  {
                 debugLine2("sendMediaMessage", "Sending media: ${message.uri}")
                 val uri = message.uri!!.toUri()
                 debugLine("sendMediaMessage", "Sending URI: $uri")
