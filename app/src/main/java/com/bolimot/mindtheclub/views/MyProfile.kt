@@ -447,7 +447,7 @@ class MyProfile : BaseActivity() {
                 return true
             }
             R.id.about -> {
-                if (BuildConfig.ENABLE_DEBUG_TOOLS) {
+                run {
                     val layout = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
                         gravity = android.view.Gravity.CENTER
