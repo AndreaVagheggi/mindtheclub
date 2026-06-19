@@ -1,10 +1,15 @@
 package com.bolimot.mindtheclub.views
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.viewpager2.widget.ViewPager2
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.ImagesFragmentAdapter
@@ -21,13 +26,21 @@ class ImagesTab : BaseActivity(),   ImagesGalleryFragment.OnImageSelectedListene
 
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
+    private var multipleSelection: Boolean = false
+
+    private val requestMediaPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            // Whether granted or not, build the tabs. If denied, the gallery is
+            // simply empty; the camera tab still works.
+            setupViewPager()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         ImageSelectionManager.selectedImages.clear()
 
-        val multipleSelection = intent.getBooleanExtra("multipleSelection", false)
+        multipleSelection = intent.getBooleanExtra("multipleSelection", false)
 
         setContentView(R.layout.media_tab)
 
@@ -40,13 +53,6 @@ class ImagesTab : BaseActivity(),   ImagesGalleryFragment.OnImageSelectedListene
         supportActionBar?.title = getString(R.string.images)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        viewPager.offscreenPageLimit = 2
-        viewPager.adapter = ImagesFragmentAdapter(supportFragmentManager, lifecycle, 2, multipleSelection)
-
-        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-            tab.text = if (position == 0) getString(R.string.gallery) else getString(R.string.camera)
-        }.attach()
-
         val callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 finish()
@@ -54,6 +60,36 @@ class ImagesTab : BaseActivity(),   ImagesGalleryFragment.OnImageSelectedListene
         }
 
         onBackPressedDispatcher.addCallback(this, callback)
+
+        // Media access is requested in context, here, when the picker opens —
+        // not at app startup. Build the gallery tabs once it's resolved.
+        val needed = mediaPermissions().filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+
+        if (needed.isEmpty()) {
+            setupViewPager()
+        } else {
+            requestMediaPermission.launch(needed)
+        }
+    }
+
+    private fun setupViewPager() {
+        viewPager.offscreenPageLimit = 2
+        viewPager.adapter = ImagesFragmentAdapter(supportFragmentManager, lifecycle, 2, multipleSelection)
+
+        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+            tab.text = if (position == 0) getString(R.string.gallery) else getString(R.string.camera)
+        }.attach()
+    }
+
+    /** Media permissions required to list the gallery, by Android version. */
+    private fun mediaPermissions(): List<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+        } else {
+            listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

@@ -87,3 +87,6 @@ package-lock.json
 
 # Stray log
 /log.txt
+
+# Personal Claude Code instructions (do not commit)
+CLAUDE.local.md

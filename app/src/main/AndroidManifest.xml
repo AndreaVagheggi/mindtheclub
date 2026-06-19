@@ -378,6 +378,21 @@
             android:windowSoftInputMode="adjustResize"
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
+        <activity
+            android:name=".views.OnboardingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            android:windowSoftInputMode="adjustResize"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <activity
+            android:name=".views.OnboardingPermissionsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

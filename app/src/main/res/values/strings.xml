@@ -196,4 +196,23 @@
     <string name="no_sms_app">No messaging app found</string>
     <string name="stealth_mode_help">Stealth mode forces traffic to travel through a relay (TURN). This hides your network information from the person you\'re chatting with.</string>
     <string name="bluetooth_transport_help">When this is on, MindTheClub can deliver messages directly over Bluetooth to a nearby contact, with no internet, Wi-Fi or mobile data needed. It\'s handy when you\'re offline or out of signal. The other person must also have Bluetooth enabled and be paired with your device.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome">Welcome to the Club!</string>
+    <string name="onboarding_subtitle">Private messaging, just between you and the people you choose. Pick a name to get started, you can always change it later.</string>
+    <string name="onboarding_next">Next</string>
+
+    <!-- Onboarding: permission priming -->
+    <string name="onboarding_perm_title">Before you start</string>
+    <string name="onboarding_perm_calls_title">Voice &amp; video calls</string>
+    <string name="onboarding_perm_calls_body">MindTheClub needs your microphone and camera so you can talk and see each other during calls. Granting now means calls just work, with nothing to allow mid-call.</string>
+    <string name="onboarding_perm_notif_title">Notifications</string>
+    <string name="onboarding_perm_notif_body">Allow notifications so you never miss a new message or an incoming call.</string>
+    <string name="onboarding_perm_allow">Allow access</string>
+    <string name="onboarding_perm_skip">Not now</string>
+
+    <!-- Runtime permissions -->
+    <string name="camera_permission_required">Camera permission is required to use the camera</string>
+    <string name="microphone_permission_required">Microphone permission is required for calls and video</string>
+    <string name="storage_permission_required">Access to your photos and videos is required to attach media</string>
 </resources>

@@ -1,14 +1,9 @@
 package com.bolimot.mindtheclub.start
 
-import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.TaskStackBuilder
-import androidx.core.content.ContextCompat
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import com.bolimot.mindtheclub.R
@@ -20,6 +15,7 @@ import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.views.AppTab
 import com.bolimot.mindtheclub.views.MyProfile
+import com.bolimot.mindtheclub.views.OnboardingActivity
 import com.bolimot.mindtheclub.works.AppCheckWorker
 import com.bolimot.mindtheclub.works.InboxRecoveryWorker
 import com.bolimot.mindtheclub.works.PendingRetryWorker
@@ -96,47 +92,14 @@ class MainActivity : BaseActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        val basePermissions = mutableListOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.CAMERA,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.MANAGE_OWN_CALLS,
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            basePermissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-
-        val storagePermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            listOf("android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO")
-        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-            listOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        } else {
-            listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-
-        val requiredPermissions = basePermissions + storagePermissions
-
-        val permissionsToRequest = requiredPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }.toTypedArray()
-
-        var shouldShowNotificationSettings = false
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
-                shouldShowNotificationSettings = true
-            }
-        }
-
-        if (permissionsToRequest.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSIONS_REQUEST_CODE)
-        } else if (shouldShowNotificationSettings) {
-            showToast(getString(R.string.enable_notification), this)
-            finishAffinity()
-        } else {
-            startApplication()
-        }
+        // No runtime permissions are requested at cold start. Each is requested in
+        // context, where it's actually needed:
+        //   - microphone, camera, notifications -> onboarding (OnboardingPermissionsActivity)
+        //   - photos/videos (media)             -> ImagesTab, when the picker opens
+        //   - contacts                          -> InviteActivity
+        //   - Bluetooth                         -> MyProfile (transport switch)
+        // READ_PHONE_STATE was requested historically but is not read by any code.
+        startApplication()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -173,6 +136,13 @@ class MainActivity : BaseActivity() {
 
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
             PendingRetryWorker.retryAllNow(applicationContext)
+        }
+
+        if (OnboardingActivity.shouldRun(this)) {
+            startActivity(Intent(this, OnboardingActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
+            return
         }
 
         if (getPreference(MySelf.NAME_KEY, this).isNullOrEmpty()) {
