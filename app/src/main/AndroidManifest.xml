@@ -387,7 +387,22 @@
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
         <activity
+            android:name=".views.OnboardingProfileActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            android:windowSoftInputMode="adjustResize"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <activity
             android:name=".views.OnboardingPermissionsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <activity
+            android:name=".views.OnboardingInviteActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/MindTheClub"

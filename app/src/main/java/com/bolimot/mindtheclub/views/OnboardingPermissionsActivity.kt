@@ -12,7 +12,7 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.start.BaseActivity
 
 /**
- * Onboarding step 2: combined permission-priming screen (the final step).
+ * Onboarding step 3: combined permission-priming screen.
  *
  * Explains why the app needs the microphone, camera and notifications, then fires
  * the system dialogs in sequence when the user taps "Allow access". These three
@@ -21,7 +21,8 @@ import com.bolimot.mindtheclub.start.BaseActivity
  * an incoming call. Optional permissions (contacts, media, Bluetooth) stay
  * in-context elsewhere.
  *
- * Flow: name screen -> this screen -> AppTab.
+ * If everything is already granted the screen is skipped silently.
+ * Flow: profile screen -> this screen -> invite screen.
  */
 class OnboardingPermissionsActivity : BaseActivity() {
 
@@ -29,7 +30,7 @@ class OnboardingPermissionsActivity : BaseActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             // We don't block on the outcome: whatever the user grants or denies,
             // onboarding finishes and the app opens (graceful degradation).
-            finishOnboarding()
+            goToInviteStep()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +39,7 @@ class OnboardingPermissionsActivity : BaseActivity() {
         // Nothing left to ask for? Skip the screen entirely (e.g. onboarding
         // re-runs while testing, but the permissions are already granted).
         if (missingPermissions().isEmpty()) {
-            finishOnboarding()
+            goToInviteStep()
             return
         }
 
@@ -47,14 +48,14 @@ class OnboardingPermissionsActivity : BaseActivity() {
         findViewById<View>(R.id.allowAccess).setOnClickListener {
             val toRequest = missingPermissions()
             if (toRequest.isEmpty()) {
-                finishOnboarding()
+                goToInviteStep()
             } else {
                 requestPermissions.launch(toRequest)
             }
         }
 
         findViewById<View>(R.id.skipAccess).setOnClickListener {
-            finishOnboarding()
+            goToInviteStep()
         }
     }
 
@@ -72,11 +73,9 @@ class OnboardingPermissionsActivity : BaseActivity() {
         }.toTypedArray()
     }
 
-    private fun finishOnboarding() {
-        OnboardingActivity.markCompleted(this)
-        startActivity(Intent(this, AppTab::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        })
+    private fun goToInviteStep() {
+        // Onboarding step 4 (final): encourage inviting friends, then open the app.
+        startActivity(Intent(this, OnboardingInviteActivity::class.java))
         finish()
     }
 }

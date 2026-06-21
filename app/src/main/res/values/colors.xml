@@ -46,4 +46,9 @@
     <color name="ListViewSelected">#96BCE3</color>
     <color name="ListViewHighlighted">#E39696</color>
 
+    <!-- Onboarding typography (tweak these to refine the look) -->
+    <color name="onboarding_background">#FAFAFA</color>
+    <color name="onboarding_title_text">#1A1A1A</color>
+    <color name="onboarding_body_text">#44474F</color>
+
 </resources>

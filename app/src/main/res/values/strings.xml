@@ -202,6 +202,15 @@
     <string name="onboarding_subtitle">Private messaging, just between you and the people you choose. Pick a name to get started, you can always change it later.</string>
     <string name="onboarding_next">Next</string>
 
+    <!-- Onboarding: profile (picture + bio) -->
+    <string name="onboarding_profile_title">Make it yours</string>
+    <string name="onboarding_profile_subtitle">Add a profile picture and a short bio so people recognise you. Both are optional, tap Next to skip, you can add them anytime later.</string>
+
+    <!-- Onboarding: invite friends -->
+    <string name="onboarding_invite_title">Better with friends</string>
+    <string name="onboarding_invite_subtitle">MindTheClub connects you directly with the people you invite, and no one else. Send your first invite to start chatting: it\'s the one step that gets the conversation going.</string>
+    <string name="onboarding_invite_skip">Skip for now</string>
+
     <!-- Onboarding: permission priming -->
     <string name="onboarding_perm_title">Before you start</string>
     <string name="onboarding_perm_calls_title">Voice &amp; video calls</string>

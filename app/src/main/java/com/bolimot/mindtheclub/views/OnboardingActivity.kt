@@ -22,26 +22,14 @@ class OnboardingActivity : BaseActivity() {
 
     companion object {
         /**
-         * TESTING TOGGLE.
-         *  - true  -> onboarding always runs (handy while developing: no need to
-         *             reinstall the app between tests).
-         *  - false -> production behaviour: onboarding runs only on the first launch
-         *             after a fresh install. This is detected through [COMPLETED_KEY],
-         *             which lives in shared preferences and is wiped on uninstall.
+         * Onboarding runs only when no user name has been set yet. The name is the
+         * one piece of information the app can't work without, so its absence means
+         * this is effectively a first run. Once a name exists, the app starts
+         * normally. (The name is saved on the first screen, which can't be passed
+         * without entering one.)
          */
-        const val FORCE_ONBOARDING = true
-
-        private const val COMPLETED_KEY = "onboardingCompleted"
-
-        /** Decides whether the onboarding flow should be shown on this launch. */
         fun shouldRun(context: Context): Boolean {
-            if (FORCE_ONBOARDING) return true
-            return getPreference(COMPLETED_KEY, context) != "true"
-        }
-
-        /** Marks onboarding as finished so it won't run again (production path). */
-        fun markCompleted(context: Context) {
-            setPreference(COMPLETED_KEY, "true", context)
+            return getPreference(MySelf.NAME_KEY, context).isNullOrEmpty()
         }
     }
 
@@ -100,8 +88,8 @@ class OnboardingActivity : BaseActivity() {
 
         nextButton.setOnClickListener {
             setPreference(MySelf.NAME_KEY, nameEditText.text?.toString().orEmpty().trim(), this)
-            // Onboarding step 2: the permission-priming screen.
-            startActivity(Intent(this, OnboardingPermissionsActivity::class.java))
+            // Onboarding step 2: optional profile picture and bio.
+            startActivity(Intent(this, OnboardingProfileActivity::class.java))
         }
     }
 

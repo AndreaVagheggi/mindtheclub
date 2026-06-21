@@ -11,7 +11,6 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.printAppSignature
-import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.views.AppTab
 import com.bolimot.mindtheclub.views.MyProfile
@@ -67,19 +66,32 @@ class MainActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
 
-        if (checkPlayServices()) {
-            initializeFirebaseAndAppCheck()
-        }
+        // Set up Firebase / App Check only if Play Services is ready right now. This
+        // is best-effort and must NEVER block or delay the UI — otherwise a transient
+        // Play Services state (common on the very first launch after install, while
+        // it is still updating) would strand the user on the splash screen.
+        setUpFirebaseIfAvailable()
+
+        // Always start the app, regardless of Play Services state. Token/push sync
+        // runs in the background and retries on its own; nothing here needs Play
+        // Services to show onboarding or the main screen.
+        checkAndRequestPermissions()
     }
 
-    private fun initializeFirebaseAndAppCheck() {
-        debugLine("AppCheck", "Enqueuing App Check worker.")
+    private fun setUpFirebaseIfAvailable() {
+        val apiAvailability = GoogleApiAvailability.getInstance()
+        val resultCode = apiAvailability.isGooglePlayServicesAvailable(this)
 
-        val appCheckRequest = OneTimeWorkRequest.Builder(AppCheckWorker::class.java).build()
-
-        WorkManager.getInstance(this).enqueue(appCheckRequest)
-
-        checkAndRequestPermissions()
+        if (resultCode == ConnectionResult.SUCCESS) {
+            debugLine("AppCheck", "Play Services OK — enqueuing App Check worker.")
+            val appCheckRequest = OneTimeWorkRequest.Builder(AppCheckWorker::class.java).build()
+            WorkManager.getInstance(this).enqueue(appCheckRequest)
+        } else {
+            // Not ready (e.g. still updating right after install). Don't block:
+            // Firebase Messaging retries token retrieval automatically, and App Check
+            // will be enqueued on a later launch once Play Services is available.
+            debugLine("PlayServices", "Play Services not ready (code=$resultCode); continuing without blocking.")
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -185,21 +197,4 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    private fun checkPlayServices(): Boolean {
-        val apiAvailability = GoogleApiAvailability.getInstance()
-        val resultCode = apiAvailability.isGooglePlayServicesAvailable(this)
-        if (resultCode != ConnectionResult.SUCCESS) {
-            if (apiAvailability.isUserResolvableError(resultCode)) {
-                debugLine("PlayServices", "This device does not support Play services.")
-                apiAvailability.getErrorDialog(this, resultCode, 9000)?.show()
-            } else {
-                debugLine("PlayServices", "This device is not supported.")
-                showToast("This device is not supported.", this)
-                finish()
-            }
-            return false
-        }
-        debugLine("PlayServices", "This device is supported, Play services OK!.")
-        return true
-    }
 }
