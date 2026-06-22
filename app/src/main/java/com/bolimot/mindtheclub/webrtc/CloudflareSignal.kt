@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 private const val SIGNALING_WS_BASE = "wss://mtc-signal.long-sun-7368.workers.dev/c/"
 private const val PEER_TIMEOUT_MS = 45_000L
 private const val WS_CONNECT_TIMEOUT_S = 30L
-private const val TOR_READY_TIMEOUT_MS = 60_000L
+private const val TOR_READY_TIMEOUT_MS = 15_000L
 
 @Volatile private var cachedClient: OkHttpClient? = null
 @Volatile private var cachedPort: Int? = null
@@ -308,11 +308,11 @@ suspend fun openSignal(
     val socksPort: Int? = if (initiator) {
         val port = TorManager.awaitReady(TOR_READY_TIMEOUT_MS)
         if (port == null) {
-            debugLine(tag, "Tor not ready within budget")
-            onError("Tor not ready")
-            return iceServers
+            debugLine(tag, "Tor not ready within budget — falling back to direct connection")
+            null
+        } else {
+            port
         }
-        port
     } else {
         null
     }

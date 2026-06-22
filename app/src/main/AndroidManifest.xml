@@ -153,7 +153,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="https" android:host="mindtheclub.com" android:pathPrefix="/add" />
                 <data android:scheme="https" android:host="www.mindtheclub.com" android:pathPrefix="/add" />
             </intent-filter>
         </activity>

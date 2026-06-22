@@ -87,7 +87,7 @@ fun generateClubQRCode(text: String, context: Context): Bitmap? {
 fun buildInviteLink(name: String, userId: String, bio: String, fingerprint: String): String {
     return Uri.Builder()
         .scheme("https")
-        .authority("mindtheclub.com")
+        .authority("www.mindtheclub.com")
         .appendPath("add")
         .appendQueryParameter("n", name)
         .appendQueryParameter("u", userId)
