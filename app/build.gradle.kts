@@ -3,9 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
     id("com.google.devtools.ksp")
-    id("io.sentry.android.gradle")
 }
 
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
@@ -127,7 +125,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.room:room-runtime-android:2.7.2")
-    implementation("com.google.firebase:firebase-crashlytics-buildtools:3.0.4")
     implementation("androidx.compose.foundation:foundation-android:1.8.3")
     implementation("androidx.emoji2:emoji2-bundled:1.5.0")
     implementation("androidx.exifinterface:exifinterface:1.4.1")
@@ -157,11 +154,14 @@ dependencies {
     // WEBRTC
     implementation("io.github.webrtc-sdk:android:144.7559.01")
 
+    // Provides the real Guava ListenableFuture (addListener, etc.). This was
+    // previously pulled in transitively by firebase-analytics; declared
+    // explicitly now so WorkManager / ML Kit / Play Integrity APIs resolve it.
+    implementation("com.google.guava:guava:32.1.3-android")
+
     //FIREBASE
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-messaging")
-    implementation("com.google.firebase:firebase-crashlytics")
-    implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-appcheck")
     implementation("com.google.firebase:firebase-appcheck-debug")
@@ -212,13 +212,4 @@ dependencies {
 
     // TELCO
     implementation("androidx.core:core-telecom:1.0.1")
-}
-
-sentry {
-    org.set("private-0l5")
-    projectName.set("mindtheclub")
-
-    // this will upload your source code to Sentry to show it as part of the stack traces
-    // disable if you don't want to expose your sources
-    includeSourceContext.set(true)
 }

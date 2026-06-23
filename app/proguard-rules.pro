@@ -36,7 +36,6 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.bolimot.mindtheclub.firebase.MyFirebaseMessagingService { *; }
 
--dontwarn com.google.firebase.crashlytics.buildtools.reloc.**
 -dontwarn javax.servlet.**
 -dontwarn org.ietf.jgss.**
 
@@ -116,10 +115,6 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
-
-# ===== SENTRY =====
--keep class io.sentry.** { *; }
--dontwarn io.sentry.**
 
 # ===== PRESERVE LINE NUMBERS FOR CRASH REPORTS =====
 -keepattributes SourceFile,LineNumberTable,Exceptions,EnclosingMethod

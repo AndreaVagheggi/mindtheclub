@@ -16,29 +16,37 @@ import java.util.Locale
 import com.bolimot.mindtheclub.BuildConfig
 
 fun debugLine(function: String, message: String) {
-    val msg = "$function;$message"
-    Log.d("##", msg)
-    if (BuildConfig.ENABLE_DEBUG_TOOLS) logToFileIce(msg)
+    if (BuildConfig.ENABLE_DEBUG_TOOLS) {
+        val msg = "$function;$message"
+        Log.d("##", msg)
+        logToFileIce(msg)
+    }
 }
 
 fun debugLine2(function: String, message: String) {
-    val msg = "$function;$message"
-    Log.d("##", msg)
-    if (BuildConfig.ENABLE_DEBUG_TOOLS) logToFileIce(msg)
+    if (BuildConfig.ENABLE_DEBUG_TOOLS) {
+        val msg = "$function;$message"
+        Log.d("##", msg)
+        logToFileIce(msg)
+    }
 
 }
 
 fun debugLine3(function: String, message: String) {
-    val msg = "$function;$message"
-    Log.d("##", msg)
-    if (BuildConfig.ENABLE_DEBUG_TOOLS) logToFileIce(msg)
+    if (BuildConfig.ENABLE_DEBUG_TOOLS) {
+        val msg = "$function;$message"
+        Log.d("##", msg)
+        logToFileIce(msg)
+    }
 
 }
 
 fun debugLine4(function: String, message: String) {
-    val msg = "$function;$message"
-    Log.d("##", msg)
-    if (BuildConfig.ENABLE_DEBUG_TOOLS) logToFileIce(msg)
+    if (BuildConfig.ENABLE_DEBUG_TOOLS) {
+        val msg = "$function;$message"
+        Log.d("##", msg)
+        logToFileIce(msg)
+    }
 }
 
 
