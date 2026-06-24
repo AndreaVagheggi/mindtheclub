@@ -71,7 +71,40 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
         inboxDao.deleteByContent(reactionContentKey)
 
         ProcessedMessageCache.markProcessed(messageId)
-        notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED)
+
+        // A reaction is a group-gossip message like any other type: acknowledge with the
+        // delivery doc id (so the original sender's re-dispatch path engages) and relay it
+        // onward to the remaining group members. Without this, a reaction only reached the
+        // members the sender directly fanned out to (GROUP_DISPATCH_FANOUT).
+        val deliveryId = inboxMessage.chatGroupId?.let {
+            computeDeliveryDocId(it, inboxMessage.originalSenderId ?: "", inboxMessage.date)
+        }
+        notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
+
+        if (deliveryId != null && inboxMessage.originalSenderId != null
+            && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+            notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
+        }
+
+        propagateGroupMessage(
+            MessageData(
+                fromUserId = inboxMessage.chatGroupId ?: (inboxMessage.originalSenderId ?: inboxMessage.fromUserId),
+                toUserId = MySelf.userId()!!,
+                messageId = messageId,
+                replyId = inboxMessage.replyId,
+                groupId = inboxMessage.groupId,
+                groupSize = inboxMessage.groupSize,
+                text = emoji,
+                textAttached = inboxMessage.textAttached,
+                nameAttached = inboxMessage.nameAttached,
+                uri = "",
+                type = inboxMessage.type,
+                subType = inboxMessage.subType,
+                date = inboxMessage.date,
+                chatGroupId = inboxMessage.chatGroupId,
+                originalSenderId = inboxMessage.originalSenderId
+            )
+        )
     }
 }
 

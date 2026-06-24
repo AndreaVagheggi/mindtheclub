@@ -68,6 +68,13 @@ class OnboardingPermissionsActivity : BaseActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
         }
+        // Android 9 and below: saving received photos/videos to public storage
+        // (Movies/Pictures) uses a raw File write that needs WRITE_EXTERNAL_STORAGE
+        // at runtime. From Android 10 (API 29) the save path uses MediaStore, and the
+        // permission is neither needed nor grantable (manifest caps it at maxSdkVersion=28).
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
         return perms.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }.toTypedArray()
