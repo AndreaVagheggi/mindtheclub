@@ -48,6 +48,7 @@ import org.webrtc.MediaConstraints
 import org.webrtc.MediaStream
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
+import org.webrtc.RTCStatsReport
 import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
@@ -72,6 +73,8 @@ class RTCClient private constructor(
     private var isClosing: Boolean = false
     private var isRestarting: Boolean = false
     private var reconnectingUiJob: Job? = null
+    private val relayTrackingStarted = AtomicBoolean(false)
+    private var relayUsageJob: Job? = null
 
     private var audioDeviceModule: AudioDeviceModule? = null
 
@@ -166,6 +169,9 @@ class RTCClient private constructor(
     companion object {
         const val ACTION_WEBRTC_SHUTDOWN = "com.bolimot.mindtheclub.ACTION_WEBRTC_SHUTDOWN"
         const val PREF_STEALTH_MODE = "mtc_stealth_mode_enabled"
+
+        // How often to sample WebRTC stats to meter TURN-relay usage (read-only).
+        private const val RELAY_STATS_POLL_MS = 10_000L
 
         fun create(channelId: String,
                    callId: String,
@@ -731,6 +737,8 @@ class RTCClient private constructor(
                 reconnectingUiJob?.cancel()
                 reconnectingUiJob = null
 
+                startRelayUsageTracking()
+
                 if(!onlyData) {
                     ConnectionManager.instance.mediaCallEstablished.value = true
                     callId?.let { id ->
@@ -925,6 +933,65 @@ class RTCClient private constructor(
             sendCallEventToPeer(remoteUserId, CallEvent.CONNECTION_FAILED)
             emitWebRtcControlEvent(CallEvent.CONNECTION_FAILED, remoteUserId,"Connection failed")
             cleanup()
+        }
+    }
+
+    /**
+     * Meters TURN-relayed bytes for this call and feeds them to [RelayUsageTracker].
+     * Read-only: it samples WebRTC stats on a timer and never touches signalling,
+     * media, or reconnection. Starts once per call; runs across ICE restarts since
+     * the same PeerConnection is reused. Cancelled in [cleanup].
+     */
+    private fun startRelayUsageTracking() {
+        if (!relayTrackingStarted.compareAndSet(false, true)) return
+
+        relayUsageJob = clientScope.launch {
+            // Cumulative bytes already counted per candidate-pair id, so deltas stay
+            // correct across ICE restarts (a restart nominates a new pair whose byte
+            // counters start from zero, recorded under a new id).
+            val countedPerPair = HashMap<String, Long>()
+            try {
+                while (true) {
+                    delay(RELAY_STATS_POLL_MS)
+                    val pc = connection ?: continue
+                    pc.getStats { report ->
+                        try {
+                            accumulateRelayBytes(report, countedPerPair)
+                        } catch (e: Exception) {
+                            debugLine("RelayUsage", "stats parse error: ${e.message}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                debugLine("RelayUsage", "tracking loop ended: ${e.message}")
+            }
+        }
+    }
+
+    private fun accumulateRelayBytes(report: RTCStatsReport, countedPerPair: MutableMap<String, Long>) {
+        val stats = report.statsMap
+        for ((id, s) in stats) {
+            if (s.type != "candidate-pair") continue
+            if (s.members["state"] != "succeeded") continue
+
+            val localId = s.members["localCandidateId"] as? String
+            val remoteId = s.members["remoteCandidateId"] as? String
+            val localType = localId?.let { stats[it]?.members?.get("candidateType") } as? String
+            val remoteType = remoteId?.let { stats[it]?.members?.get("candidateType") } as? String
+
+            // Count only traffic that actually used a TURN relay (our side or the peer's).
+            if (localType != "relay" && remoteType != "relay") continue
+
+            val sent = (s.members["bytesSent"] as? Number)?.toLong() ?: 0L
+            val recv = (s.members["bytesReceived"] as? Number)?.toLong() ?: 0L
+            val total = sent + recv
+
+            val already = countedPerPair[id] ?: 0L
+            val delta = total - already
+            if (delta > 0L) {
+                RelayUsageTracker.addRelayBytes(delta)
+                countedPerPair[id] = total
+            }
         }
     }
 
@@ -1574,6 +1641,9 @@ class RTCClient private constructor(
                     isClosing = forced
                     reconnectingUiJob?.cancel()
                     reconnectingUiJob = null
+
+                    relayUsageJob?.cancel()
+                    relayUsageJob = null
 
                     CoroutineScope(Dispatchers.IO).launch {
                         try {

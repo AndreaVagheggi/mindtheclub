@@ -13,6 +13,11 @@ import org.webrtc.PeerConnection
 import java.util.concurrent.TimeUnit
 
 suspend fun getIceServers(): List<PeerConnection.IceServer>? {
+    if (RelayUsageTracker.isOverCap()) {
+        debugLine("getIceServers", "Monthly relay cap reached — withholding TURN, using STUN-only")
+        return getAlternativeIceServers()
+    }
+
     var iceServers: List<PeerConnection.IceServer>?
 
     try {

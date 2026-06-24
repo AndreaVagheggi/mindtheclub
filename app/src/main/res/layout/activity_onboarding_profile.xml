@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:focusableInTouchMode="true"
+    android:background="@color/onboarding_background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/onboardingScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/profileTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="48dp"
+                android:layout_marginEnd="32dp"
+                android:gravity="center"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="-0.02"
+                android:text="@string/onboarding_profile_title"
+                android:textColor="@color/onboarding_title_text"
+                android:textSize="26sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/profileSubtitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginEnd="32dp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.3"
+                android:text="@string/onboarding_profile_subtitle"
+                android:textColor="@color/onboarding_body_text"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/profileTitle" />
+
+            <FrameLayout
+                android:id="@+id/profilePicContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/profileSubtitle">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/profilePic"
+                    android:contentDescription="@string/app_name"
+                    android:scaleType="centerCrop"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/peer"
+                    app:shapeAppearance="@style/CircleShape" />
+
+                <ImageView
+                    android:id="@+id/imageEditIcon"
+                    android:contentDescription="@string/app_name"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/bg_edit_icon"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_edit"
+                    android:scaleType="centerInside"
+                    android:layout_gravity="bottom|end" />
+
+            </FrameLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/bioInputLayout"
+                android:layout_width="300dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:layout_marginBottom="32dp"
+                android:padding="4dp"
+                app:counterEnabled="true"
+                app:counterMaxLength="110"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/profilePicContainer"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/bioEditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/bio_hint"
+                    android:imeOptions="actionDone"
+                    android:importantForAutofill="noExcludeDescendants"
+                    android:inputType="textCapSentences"
+                    android:maxLength="110"
+                    android:maxLines="1" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/nextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="@string/onboarding_next"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="@string/onboarding_next"
+        android:textAllCaps="false"
+        app:iconPadding="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
