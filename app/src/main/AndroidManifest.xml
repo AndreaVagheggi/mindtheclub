@@ -421,6 +421,16 @@
         android:name="firebase_app_check_initially_enabled"
         android:value="true" />
 
+    <!-- Sentry (crash & performance reporting). Master switch is the 'sentryEnabled'
+         Gradle property, which drives io.sentry.auto-init below: when false the SDK
+         never initializes and has no runtime effect. -->
+    <meta-data android:name="io.sentry.dsn" android:value="https://1b2b8a01a573bf0d7116aff9ef8b18c6@o4509660072509440.ingest.de.sentry.io/4509660087648336" />
+    <meta-data android:name="io.sentry.auto-init" android:value="${sentryAutoInit}" />
+    <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />
+    <meta-data android:name="io.sentry.attach-screenshot" android:value="true" />
+    <meta-data android:name="io.sentry.attach-view-hierarchy" android:value="true" />
+    <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
+
 
 </application>
 

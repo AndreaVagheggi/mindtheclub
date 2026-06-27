@@ -27,6 +27,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
+import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
 import com.bolimot.mindtheclub.functions.generateQRCode
@@ -58,6 +60,7 @@ class MyProfile : BaseActivity() {
 
     private lateinit var bluetoothSwitch: SwitchMaterial
     private lateinit var stealthModeSwitch: SwitchMaterial
+    private lateinit var autoInviteModeSwitch: SwitchMaterial
     private lateinit var imageEditIcon: ImageView
 
     private val enableBtResult =
@@ -307,10 +310,23 @@ class MyProfile : BaseActivity() {
             setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
         }
 
+        autoInviteModeSwitch = findViewById(R.id.autoInviteModeSwitch)
+        autoInviteModeSwitch.isChecked = isAutoInviteEnabled(this)
+        autoInviteModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            setPreference(PREF_AUTO_INVITE_MODE, if (isChecked) "true" else "false", this)
+        }
+
         findViewById<ImageView>(R.id.imageHelpIcon).setOnClickListener {
             showHelpDialog(
                 getString(R.string.stealth_mode),
                 getString(R.string.stealth_mode_help)
+            )
+        }
+
+        findViewById<ImageView>(R.id.autoInviteHelpIcon).setOnClickListener {
+            showHelpDialog(
+                getString(R.string.auto_invite_mode),
+                getString(R.string.auto_invite_mode_help)
             )
         }
 

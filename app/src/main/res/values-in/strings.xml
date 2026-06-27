@@ -60,6 +60,7 @@
     <string name="share_profile">Bagikan</string>
     <string name="share_club">Bagikan klub</string>
     <string name="stealth_mode">Mode siluman</string>
+    <string name="auto_invite_mode">Mode undang otomatis</string>
     <string name="show_qr_code">Tampilkan kode QR</string>
     <string name="scan_qr_code">Pindai kode QR</string>
     <string name="add_club">Tambah</string>
@@ -197,6 +198,7 @@
     <string name="no_sms_app">Tidak ada aplikasi pesan yang ditemukan</string>
     <string name="stealth_mode_help">Mode siluman memaksa lalu lintas melewati relai (TURN). Ini menyembunyikan informasi jaringan Anda dari orang yang sedang Anda ajak mengobrol.</string>
     <string name="bluetooth_transport_help">Saat aktif, MindTheClub dapat mengirim pesan langsung melalui Bluetooth ke kontak terdekat, tanpa internet, Wi-Fi, atau data seluler. Berguna saat Anda offline atau tidak ada sinyal. Orang lain juga harus mengaktifkan Bluetooth dan terhubung dengan perangkat Anda.</string>
+    <string name="auto_invite_mode_help">Saat aktif, siapa pun yang memindai kode QR Anda atau mengetuk tautan undangan Anda akan diterima secara otomatis dan langsung ditambahkan ke daftar kontak Anda sebagai tertunda. Mereka tidak lagi muncul di layar Permintaan kontak baru untuk persetujuan manual. Nonaktifkan jika Anda lebih suka meninjau dan menerima setiap permintaan sendiri.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">Selamat datang di klub!</string>

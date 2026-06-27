@@ -58,6 +58,7 @@
     <string name="share_profile">Compartir</string>
     <string name="share_club">Compartir club</string>
     <string name="stealth_mode">Modo sigiloso</string>
+    <string name="auto_invite_mode">Modo de invitación automática</string>
     <string name="show_qr_code">Mostrar código QR</string>
     <string name="scan_qr_code">Escanear código QR</string>
     <string name="add_club">Añadir</string>
@@ -195,6 +196,7 @@
     <string name="no_sms_app">No se encontró ninguna app de mensajería</string>
     <string name="stealth_mode_help">El modo sigiloso obliga al tráfico a pasar por un relé (TURN). Así se ocultan tus datos de red a la persona con la que chateas.</string>
     <string name="bluetooth_transport_help">Cuando está activado, MindTheClub puede entregar mensajes directamente por Bluetooth a un contacto cercano, sin internet, Wi-Fi ni datos móviles. Es útil cuando estás sin conexión o sin cobertura. La otra persona también debe tener el Bluetooth activado y estar vinculada con tu dispositivo.</string>
+    <string name="auto_invite_mode_help">Cuando está activado, cualquier persona que escanee tu código QR o toque tu enlace de invitación se acepta automáticamente y se añade directamente a tu lista de contactos como pendiente. Ya no aparece en la pantalla de Nuevas solicitudes de contacto para aprobación manual. Desactívalo si prefieres revisar y aceptar cada solicitud tú mismo.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">¡Bienvenido al club!</string>

@@ -58,6 +58,7 @@
     <string name="share_profile">Compartilhar</string>
     <string name="share_club">Compartilhar clube</string>
     <string name="stealth_mode">Modo furtivo</string>
+    <string name="auto_invite_mode">Modo de convite automático</string>
     <string name="show_qr_code">Mostrar QR code</string>
     <string name="scan_qr_code">Escanear QR code</string>
     <string name="add_club">Adicionar</string>
@@ -195,6 +196,7 @@
     <string name="no_sms_app">Nenhum app de mensagens encontrado</string>
     <string name="stealth_mode_help">O modo furtivo força o tráfego a passar por um relay (TURN). Isso oculta suas informações de rede da pessoa com quem você está conversando.</string>
     <string name="bluetooth_transport_help">Quando ativado, o MindTheClub pode entregar mensagens diretamente por Bluetooth a um contato próximo, sem internet, Wi-Fi ou dados móveis. É útil quando você está offline ou sem sinal. A outra pessoa também precisa estar com o Bluetooth ativado e pareada com o seu dispositivo.</string>
+    <string name="auto_invite_mode_help">Quando ativado, qualquer pessoa que ler o seu código QR ou tocar no seu link de convite é aceita automaticamente e adicionada diretamente à sua lista de contatos como pendente. Ela deixa de aparecer na tela de Novas solicitações de contato para aprovação manual. Desative se preferir revisar e aceitar cada solicitação você mesmo.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">Bem-vindo ao clube!</string>

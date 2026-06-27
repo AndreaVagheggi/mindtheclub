@@ -58,6 +58,7 @@
     <string name="share_profile">Teilen</string>
     <string name="share_club">Club teilen</string>
     <string name="stealth_mode">Tarnmodus</string>
+    <string name="auto_invite_mode">Auto-Einladungsmodus</string>
     <string name="show_qr_code">QR-Code anzeigen</string>
     <string name="scan_qr_code">QR-Code scannen</string>
     <string name="add_club">Hinzufügen</string>
@@ -195,6 +196,7 @@
     <string name="no_sms_app">Keine Messaging-App gefunden</string>
     <string name="stealth_mode_help">Der Tarnmodus leitet den Datenverkehr über einen Relay-Server (TURN). So bleiben deine Netzwerkinformationen vor deinem Gesprächspartner verborgen.</string>
     <string name="bluetooth_transport_help">Wenn dies aktiviert ist, kann MindTheClub Nachrichten direkt über Bluetooth an einen Kontakt in der Nähe senden — ganz ohne Internet, WLAN oder mobile Daten. Praktisch, wenn du offline bist oder keinen Empfang hast. Die andere Person muss ebenfalls Bluetooth aktiviert und mit deinem Gerät gekoppelt haben.</string>
+    <string name="auto_invite_mode_help">Wenn dies aktiviert ist, wird jeder, der deinen QR-Code scannt oder auf deinen Einladungslink tippt, automatisch akzeptiert und direkt als ausstehend zu deiner Kontaktliste hinzugefügt. Solche Anfragen erscheinen nicht mehr im Bildschirm „Neue Kontaktanfragen“ zur manuellen Bestätigung. Deaktiviere die Option, wenn du jede Anfrage lieber selbst prüfen und annehmen möchtest.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">Willkommen im Club!</string>

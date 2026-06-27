@@ -58,6 +58,7 @@
     <string name="share_profile">Share</string>
     <string name="share_club">Share Club</string>
     <string name="stealth_mode">Stealth Mode</string>
+    <string name="auto_invite_mode">Auto-invite mode</string>
     <string name="show_qr_code">Show QR code</string>
     <string name="scan_qr_code">Scan QR code</string>
     <string name="add_club">Add</string>
@@ -196,6 +197,7 @@
     <string name="no_sms_app">No messaging app found</string>
     <string name="stealth_mode_help">Stealth mode forces traffic to travel through a relay (TURN). This hides your network information from the person you\'re chatting with.</string>
     <string name="bluetooth_transport_help">When this is on, MindTheClub can deliver messages directly over Bluetooth to a nearby contact, with no internet, Wi-Fi or mobile data needed. It\'s handy when you\'re offline or out of signal. The other person must also have Bluetooth enabled and be paired with your device.</string>
+    <string name="auto_invite_mode_help">When this is on, anyone who scans your QR code or taps your invite link is accepted automatically and added straight to your contact list as pending. They no longer appear in the New contact requests screen for manual approval. Turn it off if you prefer to review and accept each request yourself.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">Welcome to the Club!</string>

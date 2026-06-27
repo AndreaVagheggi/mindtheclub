@@ -72,6 +72,7 @@ class RTCClient private constructor(
     private val candidateMutex = Mutex()
     private var isClosing: Boolean = false
     private var isRestarting: Boolean = false
+    private val isReopeningSignal = AtomicBoolean(false)
     private var reconnectingUiJob: Job? = null
     private val relayTrackingStarted = AtomicBoolean(false)
     private var relayUsageJob: Job? = null
@@ -804,6 +805,9 @@ class RTCClient private constructor(
                         debugLine("RTCClient", "ICE Connection failed (Receiver). Waiting for initiator's ICE restart.")
                         callId?.let { ManagedTelecom.updateWebRTCConnectionState(it, ManagedTelecom.WebRTCConnectionState.RECONNECTING) }
                         clientScope.launch {
+                            if (socket == null) {
+                                reopenSignaling()
+                            }
                             val reconnected = withTimeoutOrNull(45_000L) {
                                 isConnectedClient.filter { it }.first()
                             }
@@ -886,6 +890,14 @@ class RTCClient private constructor(
         }
         debugLine("RTCClient", "reconnectRTC: Signaling states reset for ICE Restart.")
 
+        if (socket == null) {
+            if (!reopenSignaling()) {
+                debugLine("RTCClient", "reconnectRTC: Could not reopen signalling channel, aborting attempt.")
+                isRestarting = false
+                return false
+            }
+        }
+
         sendIceRestartOffer()
 
         debugLine("RTCClient", "reconnectRTC: Waiting for ICE restart to complete...")
@@ -904,6 +916,46 @@ class RTCClient private constructor(
             return false
         }
     }
+
+    /**
+     * Re-establishes the signalling WebSocket if it was torn down mid-call (e.g. a
+     * transient WS failure). Without an open signalling channel the ICE-restart
+     * offer/answer/candidates cannot reach the peer, so reconnection silently fails.
+     * Reuses [openSignal] but with a no-op onIceServersFetched, so the existing
+     * PeerConnection is preserved — we are only restoring the channel, not
+     * renegotiating media. Only ever invoked when [socket] is null, a state that
+     * otherwise guarantees a failed reconnect, so it cannot regress the happy path.
+     */
+    private suspend fun reopenSignaling(): Boolean {
+        if (socket != null) return true
+        if (isClosing || cleanedUp) return false
+        if (!isReopeningSignal.compareAndSet(false, true)) return socket != null
+
+        return try {
+            debugLine("RTCClient", "reopenSignaling: signalling socket down, reopening channel $channelId")
+            val joined = CompletableDeferred<Boolean>()
+            openSignal(
+                channelId, remoteUserId, isInitiator,
+                onPeerJoin = { debugLine("RTCClient", "reopenSignaling: remote peer present again") },
+                onSignal = { data -> receiveSignal(data.toMutableMap()) },
+                onJoin = { sk ->
+                    socket = sk
+                    if (!joined.isCompleted) joined.complete(true)
+                    debugLine("RTCClient", "reopenSignaling: rejoined signalling channel")
+                },
+                onIceServersFetched = { /* keep existing PeerConnection; do not re-initialise */ },
+                onError = { err ->
+                    debugLine("RTCClient", "reopenSignaling: signalling error: $err")
+                    clientScope.launch { socket = closeSignal(socket) }
+                },
+                onTimeout = { debugLine("RTCClient", "reopenSignaling: timed out waiting for peer") }
+            )
+            withTimeoutOrNull(10_000L) { joined.await() } == true
+        } finally {
+            isReopeningSignal.set(false)
+        }
+    }
+
     private fun sendIceRestartOffer() {
         debugLine("RTCClient", "Sending ICE restart offer")
 

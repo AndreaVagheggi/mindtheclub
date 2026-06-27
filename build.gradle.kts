@@ -13,4 +13,8 @@ plugins {
     // All other plugins from your original file:
     id("org.jetbrains.kotlin.android") version "2.0.0" apply false // Aligned with AGP 8.4.1 for better compatibility
     id("com.google.firebase.appdistribution") version "5.1.1" apply false
+
+    // Sentry (crash & performance reporting). Applied in app/build.gradle.kts,
+    // gated by the 'sentryEnabled' Gradle property.
+    id("io.sentry.android.gradle") version "5.9.0" apply false
 }

@@ -4,11 +4,19 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
     id("com.google.devtools.ksp")
+    id("io.sentry.android.gradle")
 }
+
+// Master switch for Sentry (crash/performance reporting).
+// Flip it in gradle.properties (sentryEnabled=true/false) or per build with
+// -PsentryEnabled=false. When false:
+//   - the SDK never auto-initializes at runtime (io.sentry.auto-init in the manifest), and
+//   - no build-time symbol/source upload happens, so no Sentry auth token is needed.
+val sentryEnabled = (project.findProperty("sentryEnabled") as String? ?: "true").toBoolean()
 
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.bolimot.mindtheclub"
-    compileSdk = 35
+    compileSdk = 36
 
     ndkVersion = "28.1.13356709"
 
@@ -19,11 +27,16 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     defaultConfig {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 1000
-        versionName = "Release 1.0"
+        targetSdk = 36
+        versionCode = 1001
+        versionName = "Release 1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Exposed to code (BuildConfig.SENTRY_ENABLED) and to the manifest
+        // (io.sentry.auto-init via ${sentryAutoInit}); both driven by the flag above.
+        buildConfigField("Boolean", "SENTRY_ENABLED", sentryEnabled.toString())
+        manifestPlaceholders["sentryAutoInit"] = sentryEnabled.toString()
     }
 
     @Suppress("UnstableApiUsage")
@@ -212,4 +225,15 @@ dependencies {
 
     // TELCO
     implementation("androidx.core:core-telecom:1.0.1")
+}
+
+sentry {
+    org.set("private-0l5")
+    projectName.set("mindtheclub")
+
+    // Upload source context and the ProGuard/R8 mapping (for de-obfuscated release
+    // stack traces) only when Sentry is enabled. When disabled these are skipped,
+    // so the build needs no auth token and stays fast.
+    includeSourceContext.set(sentryEnabled)
+    autoUploadProguardMapping.set(sentryEnabled)
 }

@@ -116,6 +116,10 @@
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
 
+# ===== SENTRY =====
+-keep class io.sentry.** { *; }
+-dontwarn io.sentry.**
+
 # ===== PRESERVE LINE NUMBERS FOR CRASH REPORTS =====
 -keepattributes SourceFile,LineNumberTable,Exceptions,EnclosingMethod
 -renamesourcefileattribute SourceFile

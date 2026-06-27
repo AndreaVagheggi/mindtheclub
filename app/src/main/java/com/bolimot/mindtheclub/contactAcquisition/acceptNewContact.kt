@@ -5,6 +5,7 @@ import android.net.Uri
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.saveFirebaseImageToDisk
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.AcquisitionStatus
@@ -20,8 +21,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 
+/** Preference key controlling auto-invite mode. Default ON (only "false" disables it). */
+const val PREF_AUTO_INVITE_MODE = "mtc_auto_invite_mode_enabled"
+
+fun isAutoInviteEnabled(context: Context): Boolean =
+    getPreference(PREF_AUTO_INVITE_MODE, context) != "false"
+
 suspend fun acceptNewContact(
-    newPeerView: NewPeerView,
+    newPeerView: NewPeerView?,
     userId: String, name: String?, bio: String?, picture: Uri?,
     expectedFingerprint: String?,
     context: Context
@@ -35,7 +42,7 @@ suspend fun acceptNewContact(
 
     if (!requestDoc.exists()) {
         debugLine("acceptNewContact", "Request from $userId no longer exists, aborting")
-        newPeerView.finish()
+        newPeerView?.finish()
         return false
     }
 
@@ -49,7 +56,7 @@ suspend fun acceptNewContact(
         return false
     }
 
-    newPeerView.finish()
+    newPeerView?.finish()
 
     App.instance!!.applicationScope.launch(Dispatchers.IO) {
         try {
