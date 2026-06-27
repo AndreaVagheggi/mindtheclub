@@ -63,7 +63,7 @@
     <string name="scan_qr_code">Scan QR code</string>
     <string name="add_club">Add</string>
     <string name="cancel_club">Cancel</string>
-    <string name="share_message">Hi! I\'m using MindTheClub. Tap the link below — it\'ll add me to your contacts if you already have the app, or let you download it if you don\'t.</string>
+    <string name="share_message">Hi! I\'m using MindTheClub. Tap the link below, it\'ll add me to your contacts if you already have the app, or let you download it if you don\'t.</string>
     <string name="join_message">Join me on MindTheClub!</string>
     <string name="share_via">Share via…</string>
     <string name="this_is_you">This is you!</string>
@@ -173,7 +173,7 @@
     <string name="auto_backup_title">Android Auto Backup</string>
     <string name="auto_backup_description">When enabled, Android will automatically back up your app data to your Google Drive. This requires a Google account and uses Google\'s encryption.</string>
     <string name="enable_auto_backup">Enable Auto Backup</string>
-    <string name="auto_backup_enabled">Auto Backup is enabled — data will sync to Google Drive</string>
+    <string name="auto_backup_enabled">Auto Backup is enabled, data will sync to Google Drive</string>
     <string name="auto_backup_disabled">Auto Backup is disabled</string>
     <string name="set_backup_password">Set Backup Password</string>
     <string name="enter_backup_password">Enter Backup Password</string>
@@ -187,7 +187,7 @@
     <string name="backup_failed">Backup failed</string>
     <string name="restore_in_progress">Restoring backup…</string>
     <string name="restore_completed">Restore completed</string>
-    <string name="restore_failed">Restore failed — wrong password or corrupted file</string>
+    <string name="restore_failed">Restore failed, wrong password or corrupted file</string>
     <string name="invite_friends">Invite friends</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Other apps</string>

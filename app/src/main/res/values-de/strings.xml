@@ -63,7 +63,7 @@
     <string name="scan_qr_code">QR-Code scannen</string>
     <string name="add_club">Hinzufügen</string>
     <string name="cancel_club">Abbrechen</string>
-    <string name="share_message">Hi! Ich nutze MindTheClub. Tippe auf den Link unten — er fügt mich zu deinen Kontakten hinzu, wenn du die App schon hast, oder lässt dich die App herunterladen, wenn nicht.</string>
+    <string name="share_message">Hi! Ich nutze MindTheClub. Tippe auf den Link unten, er fügt mich zu deinen Kontakten hinzu, wenn du die App schon hast, oder lässt dich die App herunterladen, wenn nicht.</string>
     <string name="join_message">Komm zu mir auf MindTheClub!</string>
     <string name="share_via">Teilen über…</string>
     <string name="this_is_you">Das bist du!</string>
@@ -172,7 +172,7 @@
     <string name="auto_backup_title">Android Auto-Backup</string>
     <string name="auto_backup_description">Wenn aktiviert, sichert Android deine App-Daten automatisch in deinem Google Drive. Dafür sind ein Google-Konto und Googles Verschlüsselung erforderlich.</string>
     <string name="enable_auto_backup">Auto-Backup aktivieren</string>
-    <string name="auto_backup_enabled">Auto-Backup ist aktiviert — Daten werden mit Google Drive synchronisiert</string>
+    <string name="auto_backup_enabled">Auto-Backup ist aktiviert. Daten werden mit Google Drive synchronisiert</string>
     <string name="auto_backup_disabled">Auto-Backup ist deaktiviert</string>
     <string name="set_backup_password">Backup-Passwort festlegen</string>
     <string name="enter_backup_password">Backup-Passwort eingeben</string>
@@ -186,7 +186,7 @@
     <string name="backup_failed">Backup fehlgeschlagen</string>
     <string name="restore_in_progress">Backup wird wiederhergestellt…</string>
     <string name="restore_completed">Wiederherstellung abgeschlossen</string>
-    <string name="restore_failed">Wiederherstellung fehlgeschlagen — falsches Passwort oder beschädigte Datei</string>
+    <string name="restore_failed">Wiederherstellung fehlgeschlagen, falsches Passwort oder beschädigte Datei</string>
     <string name="invite_friends">Freunde einladen</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Andere Apps</string>
@@ -195,21 +195,21 @@
     <string name="contacts_permission_needed">Die Kontaktberechtigung wird benötigt, um dein Adressbuch anzuzeigen</string>
     <string name="no_sms_app">Keine Messaging-App gefunden</string>
     <string name="stealth_mode_help">Der Tarnmodus leitet den Datenverkehr über einen Relay-Server (TURN). So bleiben deine Netzwerkinformationen vor deinem Gesprächspartner verborgen.</string>
-    <string name="bluetooth_transport_help">Wenn dies aktiviert ist, kann MindTheClub Nachrichten direkt über Bluetooth an einen Kontakt in der Nähe senden — ganz ohne Internet, WLAN oder mobile Daten. Praktisch, wenn du offline bist oder keinen Empfang hast. Die andere Person muss ebenfalls Bluetooth aktiviert und mit deinem Gerät gekoppelt haben.</string>
+    <string name="bluetooth_transport_help">Wenn dies aktiviert ist, kann MindTheClub Nachrichten direkt über Bluetooth an einen Kontakt in der Nähe senden, ganz ohne Internet, WLAN oder mobile Daten. Praktisch, wenn du offline bist oder keinen Empfang hast. Die andere Person muss ebenfalls Bluetooth aktiviert und mit deinem Gerät gekoppelt haben.</string>
     <string name="auto_invite_mode_help">Wenn dies aktiviert ist, wird jeder, der deinen QR-Code scannt oder auf deinen Einladungslink tippt, automatisch akzeptiert und direkt als ausstehend zu deiner Kontaktliste hinzugefügt. Solche Anfragen erscheinen nicht mehr im Bildschirm „Neue Kontaktanfragen“ zur manuellen Bestätigung. Deaktiviere die Option, wenn du jede Anfrage lieber selbst prüfen und annehmen möchtest.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">Willkommen im Club!</string>
-    <string name="onboarding_subtitle">Private Nachrichten, nur zwischen dir und den Menschen, die du wählst. Wähle einen Namen, um zu starten — du kannst ihn später jederzeit ändern.</string>
+    <string name="onboarding_subtitle">Private Nachrichten, nur zwischen dir und den Menschen, die du wählst. Wähle einen Namen, um zu starten, du kannst ihn später jederzeit ändern.</string>
     <string name="onboarding_next">Weiter</string>
 
     <!-- Onboarding: profile (picture + bio) -->
     <string name="onboarding_profile_title">Mach es zu deinem</string>
-    <string name="onboarding_profile_subtitle">Füge ein Profilbild und eine kurze Bio hinzu, damit man dich erkennt. Beides ist optional — tippe auf Weiter zum Überspringen, du kannst sie jederzeit später hinzufügen.</string>
+    <string name="onboarding_profile_subtitle">Füge ein Profilbild und eine kurze Bio hinzu, damit man dich erkennt. Beides ist optional, tippe auf Weiter zum Überspringen, du kannst sie jederzeit später hinzufügen.</string>
 
     <!-- Onboarding: invite friends -->
     <string name="onboarding_invite_title">Besser mit Freunden</string>
-    <string name="onboarding_invite_subtitle">MindTheClub verbindet dich direkt mit den Menschen, die du einlädst — und mit niemandem sonst. Sende deine erste Einladung, um loszuchatten: Das ist der eine Schritt, der das Gespräch in Gang bringt.</string>
+    <string name="onboarding_invite_subtitle">MindTheClub verbindet dich direkt mit den Menschen, die du einlädst, und mit niemandem sonst. Sende deine erste Einladung, um loszuchatten: Das ist der eine Schritt, der das Gespräch in Gang bringt.</string>
     <string name="onboarding_invite_skip">Vorerst überspringen</string>
 
     <!-- Onboarding: permission priming -->

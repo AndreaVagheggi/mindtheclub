@@ -215,6 +215,7 @@ dependencies {
     implementation("info.guardianproject:jtorctl:0.4.5.7")
 
     // VARIOUS
+    implementation("com.android.installreferrer:installreferrer:2.2")
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

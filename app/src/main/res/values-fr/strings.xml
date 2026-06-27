@@ -63,7 +63,7 @@
     <string name="scan_qr_code">Scanner le QR code</string>
     <string name="add_club">Ajouter</string>
     <string name="cancel_club">Annuler</string>
-    <string name="share_message">Salut ! J\'utilise MindTheClub. Touchez le lien ci-dessous — il m\'ajoutera à vos contacts si vous avez déjà l\'application, ou vous permettra de la télécharger sinon.</string>
+    <string name="share_message">Salut ! J\'utilise MindTheClub. Touchez le lien ci-dessous, il m\'ajoutera à vos contacts si vous avez déjà l\'application, ou vous permettra de la télécharger sinon.</string>
     <string name="join_message">Rejoignez-moi sur MindTheClub !</string>
     <string name="share_via">Partager via…</string>
     <string name="this_is_you">C\'est vous !</string>
@@ -172,7 +172,7 @@
     <string name="auto_backup_title">Sauvegarde automatique Android</string>
     <string name="auto_backup_description">Lorsqu\'elle est activée, Android sauvegarde automatiquement les données de l\'application sur votre Google Drive. Cela nécessite un compte Google et utilise le chiffrement de Google.</string>
     <string name="enable_auto_backup">Activer la sauvegarde automatique</string>
-    <string name="auto_backup_enabled">Sauvegarde automatique activée — les données seront synchronisées sur Google Drive</string>
+    <string name="auto_backup_enabled">Sauvegarde automatique activée, les données seront synchronisées sur Google Drive</string>
     <string name="auto_backup_disabled">Sauvegarde automatique désactivée</string>
     <string name="set_backup_password">Définir le mot de passe de sauvegarde</string>
     <string name="enter_backup_password">Saisir le mot de passe de sauvegarde</string>
@@ -186,7 +186,7 @@
     <string name="backup_failed">Échec de la sauvegarde</string>
     <string name="restore_in_progress">Restauration en cours…</string>
     <string name="restore_completed">Restauration terminée</string>
-    <string name="restore_failed">Échec de la restauration — mot de passe incorrect ou fichier corrompu</string>
+    <string name="restore_failed">Échec de la restauration, mot de passe incorrect ou fichier corrompu</string>
     <string name="invite_friends">Inviter des amis</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Autres applis</string>
@@ -205,7 +205,7 @@
 
     <!-- Onboarding: profile (picture + bio) -->
     <string name="onboarding_profile_title">Personnalisez votre profil</string>
-    <string name="onboarding_profile_subtitle">Ajoutez une photo de profil et une courte bio pour qu\'on vous reconnaisse. Les deux sont facultatifs — touchez Suivant pour passer, vous pourrez les ajouter à tout moment.</string>
+    <string name="onboarding_profile_subtitle">Ajoutez une photo de profil et une courte bio pour qu\'on vous reconnaisse. Les deux sont facultatifs, touchez Suivant pour passer, vous pourrez les ajouter à tout moment.</string>
 
     <!-- Onboarding: invite friends -->
     <string name="onboarding_invite_title">Mieux à plusieurs</string>

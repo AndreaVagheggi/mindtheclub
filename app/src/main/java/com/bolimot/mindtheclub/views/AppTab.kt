@@ -30,9 +30,12 @@ import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.fragments.PeersFragment
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.functions.getPreference
+import com.bolimot.mindtheclub.functions.parseQRCode
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.wakeUpPhone
 import com.bolimot.mindtheclub.receiving.DataSyncService
@@ -235,6 +238,41 @@ class AppTab : BaseActivity() {
                     finishAndRemoveTask()
                 }
             }
+            return
+        }
+
+        if (!startedForCallOnly) {
+            maybeConsumePendingInvite()
+        }
+    }
+
+    /**
+     * Deferred-invite handoff: if the Play Install Referrer carried an inviter's
+     * profile (see captureInstallReferrerOnce), present the normal
+     * "add this contact?" dialog once onboarding is complete and the main screen is
+     * showing. One-shot — the stashed seed is cleared as soon as it is consumed.
+     */
+    private fun maybeConsumePendingInvite() {
+        // Don't collide with an invite arriving via the live deep link this same launch.
+        if (intent?.getStringExtra("sharing") != null) return
+
+        val seed = getPreference(PREF_PENDING_INVITE_SEED, this)
+        if (seed.isNullOrEmpty()) return
+
+        // Only after onboarding is complete (our own name exists).
+        if (MySelf.name().isNullOrEmpty()) return
+
+        // Consume once: clear before showing so it can never fire twice.
+        setPreference(PREF_PENDING_INVITE_SEED, "", this)
+
+        val qr = parseQRCode(seed) ?: return
+        if (qr.userId.isEmpty() || qr.userId == MySelf.userId()) return
+
+        lifecycleScope.launch {
+            acquiringNewContact(
+                qr.userId, qr.name, qr.bio, qr.fingerprint,
+                this@AppTab, supportFragmentManager
+            )
         }
     }
 

@@ -63,7 +63,7 @@
     <string name="scan_qr_code">Escanear QR code</string>
     <string name="add_club">Adicionar</string>
     <string name="cancel_club">Cancelar</string>
-    <string name="share_message">Oi! Estou usando o MindTheClub. Toque no link abaixo — ele vai me adicionar aos seus contatos se você já tiver o app, ou permitir que você baixe se ainda não tiver.</string>
+    <string name="share_message">Oi! Estou usando o MindTheClub. Toque no link abaixo, ele vai me adicionar aos seus contatos se você já tiver o app, ou permitir que você baixe se ainda não tiver.</string>
     <string name="join_message">Entre no MindTheClub comigo!</string>
     <string name="share_via">Compartilhar via…</string>
     <string name="this_is_you">Este é você!</string>
@@ -172,7 +172,7 @@
     <string name="auto_backup_title">Backup automático do Android</string>
     <string name="auto_backup_description">Quando ativado, o Android faz backup automático dos dados do app no seu Google Drive. Isso requer uma conta Google e usa a criptografia do Google.</string>
     <string name="enable_auto_backup">Ativar backup automático</string>
-    <string name="auto_backup_enabled">Backup automático ativado — os dados serão sincronizados com o Google Drive</string>
+    <string name="auto_backup_enabled">Backup automático ativado, os dados serão sincronizados com o Google Drive</string>
     <string name="auto_backup_disabled">Backup automático desativado</string>
     <string name="set_backup_password">Definir senha do backup</string>
     <string name="enter_backup_password">Inserir senha do backup</string>
@@ -186,7 +186,7 @@
     <string name="backup_failed">Falha no backup</string>
     <string name="restore_in_progress">Restaurando backup…</string>
     <string name="restore_completed">Restauração concluída</string>
-    <string name="restore_failed">Falha na restauração — senha incorreta ou arquivo corrompido</string>
+    <string name="restore_failed">Falha na restauração, senha incorreta ou arquivo corrompido</string>
     <string name="invite_friends">Convidar amigos</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Outros apps</string>
@@ -205,7 +205,7 @@
 
     <!-- Onboarding: profile (picture + bio) -->
     <string name="onboarding_profile_title">Deixe com a sua cara</string>
-    <string name="onboarding_profile_subtitle">Adicione uma foto de perfil e uma bio curta para que as pessoas reconheçam você. Ambos são opcionais — toque em Avançar para pular, você pode adicioná-los a qualquer momento.</string>
+    <string name="onboarding_profile_subtitle">Adicione uma foto de perfil e uma bio curta para que as pessoas reconheçam você. Ambos são opcionais, toque em Avançar para pular, você pode adicioná-los a qualquer momento.</string>
 
     <!-- Onboarding: invite friends -->
     <string name="onboarding_invite_title">Melhor com amigos</string>

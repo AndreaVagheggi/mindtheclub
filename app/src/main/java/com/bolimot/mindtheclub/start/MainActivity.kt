@@ -6,11 +6,16 @@ import android.os.Bundle
 import androidx.core.app.TaskStackBuilder
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
+import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
+import com.bolimot.mindtheclub.functions.captureInstallReferrerOnce
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
+import com.bolimot.mindtheclub.functions.parseInviteReferrer
 import com.bolimot.mindtheclub.functions.printAppSignature
+import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.views.AppTab
 import com.bolimot.mindtheclub.views.MyProfile
@@ -61,6 +66,32 @@ class MainActivity : BaseActivity() {
         printAppSignature(this)
 
         getParameters(intent)
+
+        // Deferred-invite handoff: if this install came from an invite link while the
+        // app wasn't installed, the Play Store carries the inviter's profile in the
+        // install referrer. Read it once now; AppTab consumes it after onboarding.
+        captureInstallReferrerOnce(this)
+
+        maybeInjectDebugReferrer(intent)
+    }
+
+    /**
+     * Debug-only: simulate a deferred-install referrer locally, with no Play Store
+     * round-trip. Stashes a pending invite seed exactly as the real referrer would,
+     * so the full post-install flow (onboarding -> "add this contact?" dialog ->
+     * acquisition) can be exercised on a sideloaded build. Never active in release.
+     *
+     * Usage (debug build; pass a real second account's invite params for a true
+     * end-to-end, or any fake n/u for just the dialog):
+     *   adb shell am start -n com.bolimot.mindtheclub/.start.MainActivity \
+     *     -e mtc_debug_referrer 'n=Mario&u=testuser123&b=Hi&f=ABCD1234'
+     */
+    private fun maybeInjectDebugReferrer(i: Intent) {
+        if (!BuildConfig.ENABLE_DEBUG_TOOLS) return
+        val raw = i.getStringExtra("mtc_debug_referrer") ?: return
+        val seed = parseInviteReferrer(raw) ?: return
+        setPreference(PREF_PENDING_INVITE_SEED, seed, this)
+        debugLine("InstallReferrer", "DEBUG injected pending invite seed: $seed")
     }
 
     override fun onResume() {

@@ -65,7 +65,7 @@
     <string name="scan_qr_code">Pindai kode QR</string>
     <string name="add_club">Tambah</string>
     <string name="cancel_club">Batal</string>
-    <string name="share_message">Hai! Saya memakai MindTheClub. Ketuk tautan di bawah — tautan ini akan menambahkan saya ke kontak Anda jika sudah punya aplikasinya, atau memungkinkan Anda mengunduhnya jika belum.</string>
+    <string name="share_message">Hai! Saya memakai MindTheClub. Ketuk tautan di bawah, tautan ini akan menambahkan saya ke kontak Anda jika sudah punya aplikasinya, atau memungkinkan Anda mengunduhnya jika belum.</string>
     <string name="join_message">Gabung dengan saya di MindTheClub!</string>
     <string name="share_via">Bagikan melalui…</string>
     <string name="this_is_you">Ini Anda!</string>
@@ -174,7 +174,7 @@
     <string name="auto_backup_title">Cadangan Otomatis Android</string>
     <string name="auto_backup_description">Jika diaktifkan, Android akan otomatis mencadangkan data aplikasi ke Google Drive Anda. Ini memerlukan akun Google dan menggunakan enkripsi Google.</string>
     <string name="enable_auto_backup">Aktifkan cadangan otomatis</string>
-    <string name="auto_backup_enabled">Cadangan otomatis aktif — data akan disinkronkan ke Google Drive</string>
+    <string name="auto_backup_enabled">Cadangan otomatis aktif, data akan disinkronkan ke Google Drive</string>
     <string name="auto_backup_disabled">Cadangan otomatis nonaktif</string>
     <string name="set_backup_password">Atur kata sandi cadangan</string>
     <string name="enter_backup_password">Masukkan kata sandi cadangan</string>
@@ -188,7 +188,7 @@
     <string name="backup_failed">Pencadangan gagal</string>
     <string name="restore_in_progress">Memulihkan cadangan…</string>
     <string name="restore_completed">Pemulihan selesai</string>
-    <string name="restore_failed">Pemulihan gagal — kata sandi salah atau berkas rusak</string>
+    <string name="restore_failed">Pemulihan gagal, kata sandi salah atau berkas rusak</string>
     <string name="invite_friends">Undang teman</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Aplikasi lain</string>
@@ -207,7 +207,7 @@
 
     <!-- Onboarding: profile (picture + bio) -->
     <string name="onboarding_profile_title">Sesuaikan milik Anda</string>
-    <string name="onboarding_profile_subtitle">Tambahkan foto profil dan bio singkat agar orang mengenali Anda. Keduanya opsional — ketuk Berikutnya untuk melewati, Anda dapat menambahkannya kapan saja.</string>
+    <string name="onboarding_profile_subtitle">Tambahkan foto profil dan bio singkat agar orang mengenali Anda. Keduanya opsional, ketuk Berikutnya untuk melewati, Anda dapat menambahkannya kapan saja.</string>
 
     <!-- Onboarding: invite friends -->
     <string name="onboarding_invite_title">Lebih seru bersama teman</string>
