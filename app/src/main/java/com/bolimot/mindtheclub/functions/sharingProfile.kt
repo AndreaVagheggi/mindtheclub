@@ -98,26 +98,27 @@ fun buildInviteLink(name: String, userId: String, bio: String, fingerprint: Stri
 }
 
 suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
-    generateQRCode(textToShare)?.let{
-        saveBitmap(it, "myQRCode.jpg", 100).let{
-            val inviteLink = parseQRCode(textToShare)?.let { qr ->
-                buildInviteLink(qr.name, qr.userId, qr.bio, qr.fingerprint)
-            } ?: getFirebaseValue("MTC_URL")
+    val inviteLink = parseQRCode(textToShare)?.let { qr ->
+        buildInviteLink(qr.name, qr.userId, qr.bio, qr.fingerprint)
+    } ?: getFirebaseValue("MTC_URL")
 
-            val text = getString(context, R.string.share_message) + "\n\n" + inviteLink
+    val text = getString(context, R.string.share_message) + "\n\n" + inviteLink
 
-            val subject = "${getPreference("myName", context)} - ${getString(context, R.string.join_message)}"
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, text)
-                putExtra(Intent.EXTRA_STREAM, it)
-                putExtra(Intent.EXTRA_SUBJECT, subject)
-                type = "image/jpeg"
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
+    val subject = "${getPreference("myName", context)} - ${getString(context, R.string.join_message)}"
 
-            val chooser = Intent.createChooser(shareIntent, getString(context, R.string.share_via))
-            context.startActivity(chooser)
-        }
+    // Plain-text share: the link is delivered intact and every receiving app unfurls
+    // it into a rich preview (the Open Graph card from the /add landing page), giving
+    // consistent results across WhatsApp, Messenger, SMS, etc. Attaching the QR image
+    // here would suppress that preview and, in apps like Messenger, cause the text and
+    // link to be dropped entirely. The QR stays available on the dedicated
+    // "Show QR code" screen for in-person scanning.
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, text)
+        putExtra(Intent.EXTRA_SUBJECT, subject)
+        type = "text/plain"
     }
+
+    val chooser = Intent.createChooser(shareIntent, getString(context, R.string.share_via))
+    context.startActivity(chooser)
 }

@@ -30,11 +30,17 @@ import java.net.Proxy
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 private const val SIGNALING_WS_BASE = "wss://mtc-signal.long-sun-7368.workers.dev/c/"
 private const val PEER_TIMEOUT_MS = 45_000L
 private const val WS_CONNECT_TIMEOUT_S = 30L
 private const val TOR_READY_TIMEOUT_MS = 15_000L
+
+// Handshake retry: a Cloudflare Durable Object can transiently 500/503 (cold start,
+// eviction, platform hiccup). Retry the WS handshake before surfacing an error.
+private const val WS_MAX_CONNECT_ATTEMPTS = 3
+private const val WS_RETRY_BASE_DELAY_MS = 2_000L
 
 @Volatile private var cachedClient: OkHttpClient? = null
 @Volatile private var cachedPort: Int? = null
@@ -96,6 +102,8 @@ class Socket(channelId: String, private val remoteUserId: String) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var ws: WebSocket? = null
+    private var wsClient: OkHttpClient? = null
+    private val connectAttempts = AtomicInteger(0)
     private var remotePublicKey: String? = null
 
     private var onSignalCb: ((Map<String, Any>) -> Unit)? = null
@@ -127,6 +135,14 @@ class Socket(channelId: String, private val remoteUserId: String) {
         this.onErrorCb = onError
         this.onTimeoutCb = onTimeout
 
+        this.wsClient = client
+        connectAttempts.set(1)
+        openWebSocket()
+    }
+
+    private fun openWebSocket() {
+        val client = wsClient ?: return
+        if (closed.get()) return
         val request = Request.Builder().url(wsUrl).build()
         ws = client.newWebSocket(request, Listener())
     }
@@ -261,6 +277,31 @@ class Socket(channelId: String, private val remoteUserId: String) {
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             if (closed.get()) return
+
+            // Handshake never completed (we never joined): treat it as transient —
+            // the signalling Worker/DO can momentarily 500/503 — and retry with
+            // backoff before giving up. Failures after a successful open keep the
+            // old behaviour (RTCClient handles mid-call recovery separately).
+            if (!joined.get()) {
+                val attempt = connectAttempts.get()
+                if (attempt < WS_MAX_CONNECT_ATTEMPTS) {
+                    connectAttempts.incrementAndGet()
+                    val backoffMs = WS_RETRY_BASE_DELAY_MS * attempt
+                    debugLine(
+                        "CloudflareSignal",
+                        "WS handshake failed (HTTP ${response?.code}, ${t.message}); " +
+                            "retry ${attempt + 1}/$WS_MAX_CONNECT_ATTEMPTS in ${backoffMs}ms"
+                    )
+                    ws = null
+                    scope.launch {
+                        delay(backoffMs)
+                        openWebSocket()
+                    }
+                    return
+                }
+                debugLine("CloudflareSignal", "WS handshake failed after $WS_MAX_CONNECT_ATTEMPTS attempts")
+            }
+
             debugLine("CloudflareSignal", "WS failure: ${t.message}")
             onErrorCb?.invoke("Signaling transport failure: ${t.message}")
         }
