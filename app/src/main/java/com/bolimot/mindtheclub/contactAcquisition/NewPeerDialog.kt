@@ -28,19 +28,29 @@ class NewPeerDialog : DialogFragment() {
 
     private val fingerprint: String? by lazy { arguments?.getString(ARG_FINGERPRINT) }
 
+    private val finishOnAccept: Boolean by lazy { arguments?.getBoolean(ARG_FINISH_ON_ACCEPT, true) ?: true }
+
     companion object {
         private const val ARG_USER_ID = "userId"
         private const val ARG_NAME = "name"
         private const val ARG_BIO = "bio"
         private const val ARG_FINGERPRINT = "fingerprint"
+        private const val ARG_FINISH_ON_ACCEPT = "finishOnAccept"
 
-        fun newInstance(userId: String, name: String, bio: String?, fingerprint: String? = null): NewPeerDialog {
+        fun newInstance(
+            userId: String,
+            name: String,
+            bio: String?,
+            fingerprint: String? = null,
+            finishOnAccept: Boolean = true
+        ): NewPeerDialog {
             return NewPeerDialog().apply {
                 arguments = Bundle().apply {
                     putString(ARG_USER_ID, userId)
                     putString(ARG_NAME, name)
                     putString(ARG_BIO, bio)
                     putString(ARG_FINGERPRINT, fingerprint)
+                    putBoolean(ARG_FINISH_ON_ACCEPT, finishOnAccept)
                 }
             }
         }
@@ -87,7 +97,15 @@ class NewPeerDialog : DialogFragment() {
                 .enqueue(workRequest)
 
             dialog.dismiss()
-            fragmentActivity.finish()
+
+            // Share/deep-link flow: the activity was opened just for this handoff —
+            // finishing returns the user to where they came from.
+            // Deferred-invite flow (install referrer): the host is the main screen —
+            // finishing would close the whole app right when the profile exchange
+            // with the inviter is about to start, so we must stay open.
+            if (finishOnAccept) {
+                fragmentActivity.finish()
+            }
         }
         builder.setNegativeButton("No") { dialog, _ ->
             dialog.dismiss()

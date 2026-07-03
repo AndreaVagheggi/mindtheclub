@@ -271,7 +271,10 @@ class AppTab : BaseActivity() {
         lifecycleScope.launch {
             acquiringNewContact(
                 qr.userId, qr.name, qr.bio, qr.fingerprint,
-                this@AppTab, supportFragmentManager
+                this@AppTab, supportFragmentManager,
+                // Host is the main screen: closing it here would kill the app right
+                // when the profile exchange with the inviter needs to run.
+                finishOnAccept = false
             )
         }
     }

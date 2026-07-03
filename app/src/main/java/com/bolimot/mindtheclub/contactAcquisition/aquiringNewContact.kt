@@ -11,7 +11,8 @@ suspend fun acquiringNewContact(userId: String,
                                 bio: String?,
                                 fingerprint: String?,
                                 context: Context,
-                                supportFragmentManager: FragmentManager) {
+                                supportFragmentManager: FragmentManager,
+                                finishOnAccept: Boolean = true) {
 
     val failureReason = when {
         userId == getPreference("myUserId", context) -> "Trying to add myself"
@@ -24,6 +25,6 @@ suspend fun acquiringNewContact(userId: String,
         return
     }
 
-    val dialog = NewPeerDialog.newInstance(userId, name, bio, fingerprint)
+    val dialog = NewPeerDialog.newInstance(userId, name, bio, fingerprint, finishOnAccept)
     dialog.show(supportFragmentManager, "confirmNewPeer")
 }

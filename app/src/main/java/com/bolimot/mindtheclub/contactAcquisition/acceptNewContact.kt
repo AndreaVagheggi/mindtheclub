@@ -77,6 +77,17 @@ suspend fun acceptNewContact(
             )
 
             if (peerViewModel.addOrUpdatePeer(newPeer)) {
+                // The verification above ran BEFORE this peer row existed, so its
+                // updatePeerPublicKey (an SQL UPDATE) affected zero rows and the
+                // verified key was silently lost. Re-run it now that the row exists,
+                // so outgoing wake-up FCMs and signalling can encrypt from the start
+                // instead of relying on the one-shot in-signal key recovery.
+                val stored = com.bolimot.mindtheclub.crypto.KeyManager
+                    .fetchAndStorePublicKeyVerified(userId, expectedFingerprint, context)
+                if (!stored) {
+                    debugLine("acceptNewContact", "Post-insert key store failed for $userId; signalling will recover it from Firestore")
+                }
+
                 peerViewModel.sendMyProfileToRemotePeer(userId)
                 removeRequestFromFirestore(userId)
 
