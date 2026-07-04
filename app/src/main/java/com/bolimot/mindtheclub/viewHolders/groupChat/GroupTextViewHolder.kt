@@ -69,10 +69,6 @@ class GroupTextViewHolder(itemView: View, private val listener: MessagesAdapter.
                     messageTextView.minWidth = 0
                 }
 
-                if (it.text.length < 7 && !subType.isNullOrEmpty()) {
-                    it.text += "                   "
-                }
-
                 if (it.text.isEmpty() && subType.isNullOrEmpty()) {
                     messageTextView.visibility = View.GONE
                 } else if (it.text.isEmpty()) {
@@ -191,29 +187,19 @@ class GroupTextViewHolder(itemView: View, private val listener: MessagesAdapter.
                 val replyContainer = itemView.findViewById<View>(R.id.reply_container)
                 replyContainer.visibility = View.VISIBLE
 
-                message?.let { msg ->
-                    val nameView = itemView.findViewById<TextView>(R.id.insert_name)
-                    val attachedView = itemView.findViewById<TextView>(R.id.insert_message)
-
-                    val nameWidth = nameView.paint.measureText(msg.nameAttached ?: "")
-                    val attachedWidth = attachedView.paint.measureText(msg.textAttached ?: "")
-                    val messageWidth = messageView.paint.measureText(msg.text)
-
-                    val maxAttachedWidth = maxOf(nameWidth, attachedWidth)
-
-                    val params = replyContainer.layoutParams
-                    if (subType == SubType.FORWARD) {
-                        params.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                        replyContainer.minimumWidth = (140 * itemView.resources.displayMetrics.density).toInt()
-                    } else if (maxAttachedWidth <= messageWidth) {
-                        params.width = ViewGroup.LayoutParams.MATCH_PARENT
-                        replyContainer.minimumWidth = 0
-                    } else {
-                        params.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                        replyContainer.minimumWidth = 0
-                    }
-                    replyContainer.layoutParams = params
-                }
+                // Always MATCH_PARENT: the wrap_content vertical LinearLayout first
+                // measures every child at its natural width, sizes the bubble to the
+                // widest one, then stretches match_parent children to that width
+                // (LinearLayout.forceUniformWidth). Whichever is wider — preview or
+                // reply text — both end up flush. No width prediction needed; the
+                // old measureText() heuristic could not account for min-widths,
+                // paddings, text sizes and wrapping, which caused the mismatches.
+                // Set explicitly (not only in XML) so recycled views from older
+                // binds can never keep a stale WRAP_CONTENT.
+                val params = replyContainer.layoutParams
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                replyContainer.minimumWidth = 0
+                replyContainer.layoutParams = params
             }
 
             val selectedColor = ContextCompat.getColor(itemView.context, R.color.mtc_transparent)

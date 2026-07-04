@@ -51,9 +51,13 @@
                 android:minWidth="68dp"
                 android:orientation="vertical">
 
+                <!-- match_parent is load-bearing: in a wrap_content vertical
+                     LinearLayout the framework stretches match_parent children
+                     to the widest sibling (forceUniformWidth), so the preview
+                     always spans the bubble regardless of which text is wider. -->
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:id="@+id/reply_container"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/rounded_out"
                     android:padding="8dp">
