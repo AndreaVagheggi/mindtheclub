@@ -68,6 +68,7 @@ object Notify {
     const val GROUP_SEEN = "groupSeen"
     const val REQUEST_PROFILE = "requestProfile"
     const val CONNECTION_BUSY = "connectionBusy"
+    const val CONTACT_REQUEST = "contactRequest"
 }
 
 const val NO_PICTURE = "//no-picture"

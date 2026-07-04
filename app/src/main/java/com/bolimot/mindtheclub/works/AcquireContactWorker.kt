@@ -9,9 +9,11 @@ import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.hasNetworkAvailable
+import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.tools.AcquisitionStatus
 import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.Location
+import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.ProfileType
 import com.bolimot.mindtheclub.contactAcquisition.clearAcquisitionStatus
 
@@ -70,6 +72,12 @@ class AcquireContactWorker(
 
             if (remoteSuccess) {
                 debugLine(tag, "Remote write successful. Worker finished.")
+
+                // Push-nudge the inviter so the request is processed even if their
+                // app is closed — same wake-up principle as normal message delivery.
+                // Queued through WorkManager (SendFcmWorker), so it survives doze
+                // and retries on failure.
+                notifyRemotePeer(userId, "", Notify.CONTACT_REQUEST)
 
                 setAcquisitionStatus(userId,
                     Location.LOCAL,

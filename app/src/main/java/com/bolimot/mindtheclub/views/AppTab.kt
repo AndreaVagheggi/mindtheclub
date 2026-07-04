@@ -24,8 +24,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.SelectPeersForForward
-import com.bolimot.mindtheclub.contactAcquisition.acceptNewContact
 import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
+import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.fragments.PeersFragment
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
@@ -409,7 +409,7 @@ class AppTab : BaseActivity() {
                 // requests are removed from Firestore, so the badge resolves to 0.
                 if (isAutoInviteEnabled(this@AppTab)) {
                     isFirstLoad = false
-                    requests.forEach { autoAcceptRequest(it) }
+                    requests.forEach { autoAcceptRequestDocument(it, this@AppTab) }
                     return@launch
                 }
 
@@ -424,40 +424,6 @@ class AppTab : BaseActivity() {
 
                 updateBadgeCount()
             }
-        }
-    }
-
-    /** Tracks requests currently being auto-accepted to avoid duplicate processing
-     *  while the snapshot listener fires repeatedly before Firestore removal lands. */
-    private val autoAcceptInFlight = java.util.Collections.synchronizedSet(HashSet<String>())
-
-    private suspend fun autoAcceptRequest(doc: com.google.firebase.firestore.DocumentSnapshot) {
-        val userId = doc.id
-        if (!autoAcceptInFlight.add(userId)) return
-
-        try {
-            // Don't downgrade an existing contact back to a new/pending request.
-            if (peerViewModel.getPeer(userId) != null) return
-
-            val isEnc = doc.getBoolean("enc") == true
-            fun unseal(v: String?): String? =
-                if (isEnc && v != null && v != com.bolimot.mindtheclub.tools.NO_PICTURE)
-                    com.bolimot.mindtheclub.crypto.KeyManager.decrypt(v)
-                else v
-
-            val name = unseal(doc.getString("name"))
-            val bio = unseal(doc.getString("bio"))
-            val picture = unseal(doc.getString("picture"))?.toUri()
-            val fingerprint = if (isEnc) unseal(doc.getString("fingerprint")) else null
-
-            val ok = acceptNewContact(null, userId, name, bio, picture, fingerprint, this@AppTab)
-            if (!ok) {
-                debugLine("AppTab", "Auto-invite accept failed for $userId")
-            }
-        } catch (e: Exception) {
-            debugLine("AppTab", "Auto-invite error for $userId: ${e.message}")
-        } finally {
-            autoAcceptInFlight.remove(userId)
         }
     }
 

@@ -2,6 +2,7 @@ package com.bolimot.mindtheclub.contactAcquisition
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerViewModel
@@ -26,6 +27,53 @@ const val PREF_AUTO_INVITE_MODE = "mtc_auto_invite_mode_enabled"
 
 fun isAutoInviteEnabled(context: Context): Boolean =
     getPreference(PREF_AUTO_INVITE_MODE, context) != "false"
+
+/** Tracks requesters currently being auto-accepted, shared across the two triggers
+ *  (AppTab requests listener and the CONTACT_REQUEST FCM handler) so the same
+ *  request can never be processed twice concurrently. */
+private val requestAcceptInFlight: MutableSet<String> =
+    java.util.Collections.synchronizedSet(HashSet())
+
+/**
+ * Processes one incoming contact-request document: unseals the encrypted payload
+ * and accepts the requester. Single source of truth for auto-invite, used by both
+ * the AppTab Firestore listener (app open) and the CONTACT_REQUEST FCM nudge
+ * (app closed/background/doze).
+ */
+suspend fun autoAcceptRequestDocument(
+    doc: com.google.firebase.firestore.DocumentSnapshot,
+    context: Context
+): Boolean {
+    val userId = doc.id
+    if (!requestAcceptInFlight.add(userId)) return false
+
+    try {
+        // Don't downgrade an existing contact back to a new/pending request.
+        if (getPeerViewModel().getPeer(userId) != null) return false
+
+        val isEnc = doc.getBoolean("enc") == true
+        fun unseal(v: String?): String? =
+            if (isEnc && v != null && v != com.bolimot.mindtheclub.tools.NO_PICTURE)
+                com.bolimot.mindtheclub.crypto.KeyManager.decrypt(v)
+            else v
+
+        val name = unseal(doc.getString("name"))
+        val bio = unseal(doc.getString("bio"))
+        val picture = unseal(doc.getString("picture"))?.toUri()
+        val fingerprint = if (isEnc) unseal(doc.getString("fingerprint")) else null
+
+        val ok = acceptNewContact(null, userId, name, bio, picture, fingerprint, context)
+        if (!ok) {
+            debugLine("autoAcceptRequest", "Auto-invite accept failed for $userId")
+        }
+        return ok
+    } catch (e: Exception) {
+        debugLine("autoAcceptRequest", "Auto-invite error for $userId: ${e.message}")
+        return false
+    } finally {
+        requestAcceptInFlight.remove(userId)
+    }
+}
 
 suspend fun acceptNewContact(
     newPeerView: NewPeerView?,

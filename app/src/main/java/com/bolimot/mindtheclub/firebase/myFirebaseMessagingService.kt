@@ -17,7 +17,9 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.crypto.KeyManager
 import org.json.JSONObject
+import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
 import com.bolimot.mindtheclub.contactAcquisition.getAcquisitionStatus
+import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.contactAcquisition.setAcquisitionStatus
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
@@ -149,7 +151,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     return@launch
                 }
 
-                if (!isRecognisedPeer(remoteUserId)) {
+                // CONTACT_REQUEST is by definition from a not-yet-recognised peer.
+                // Safe to let through: the handler acts only on a request document
+                // present in OUR OWN Firestore, with full fingerprint verification —
+                // a spoofed nudge with no matching request is a no-op.
+                if (type != Notify.CONTACT_REQUEST && !isRecognisedPeer(remoteUserId)) {
                     debugLine(tag, "Ignoring FCM from unrecognised peer: $remoteUserId")
                     return@launch
                 }
@@ -629,6 +635,33 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 debugLine(tag, "Remote peer $fromUserId is requesting my profile")
                 appScope.launch {
                     getPeerViewModel().sendMyProfileToRemotePeer(fromUserId)
+                }
+            }
+
+            Notify.CONTACT_REQUEST -> {
+                debugLine(tag, "Contact request nudge from $fromUserId")
+                appScope.launch {
+                    try {
+                        if (!isAutoInviteEnabled(applicationContext)) {
+                            debugLine(tag, "Auto-invite disabled; request will surface on next app open")
+                            return@launch
+                        }
+
+                        val doc = Firebase.firestore
+                            .collection("users").document(myUserId)
+                            .collection("requests").document(fromUserId)
+                            .get()
+                            .await()
+
+                        if (!doc.exists()) {
+                            debugLine(tag, "No pending request doc from $fromUserId (already processed?)")
+                            return@launch
+                        }
+
+                        autoAcceptRequestDocument(doc, applicationContext)
+                    } catch (e: Exception) {
+                        debugLine(tag, "Contact request handling failed: ${e.message}")
+                    }
                 }
             }
 
