@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.database.message.Message
+import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.loadBitmap
 import com.bolimot.mindtheclub.functions.makeItRound
@@ -43,10 +44,26 @@ class MessageReceivedNotification {
             val channelVersion = 8
             val channelId = "message_received_v$channelVersion"
 
-            // ── messageId dedup: skip if already shown ──
+            debugLine("MessageNotification", "show() for ${message.messageId} type=${message.type}")
+
+            // ── messageId dedup: skip if already shown. The mark is written AFTER a
+            // successful notify() (see below), so a failed/dropped attempt can retry. ──
             val shownPrefs = context.getSharedPreferences(PREFS_SHOWN_MSG, Context.MODE_PRIVATE)
-            if (shownPrefs.contains(message.messageId)) return
-            shownPrefs.edit { putBoolean(message.messageId, true) }
+            if (shownPrefs.contains(message.messageId)) {
+                debugLine("MessageNotification", "Skip: already shown ${message.messageId}")
+                return
+            }
+
+            if (!notificationManager.areNotificationsEnabled()) {
+                debugLine("MessageNotification", "BLOCKED: notifications disabled for the app (POST_NOTIFICATIONS?)")
+            }
+            notificationManager.getNotificationChannel(channelId)?.let { ch ->
+                if (ch.importance == NotificationManager.IMPORTANCE_NONE) {
+                    debugLine("MessageNotification", "BLOCKED: channel $channelId is disabled by user")
+                } else {
+                    debugLine("MessageNotification", "Channel $channelId importance=${ch.importance}")
+                }
+            } ?: debugLine("MessageNotification", "Channel $channelId does not exist yet (will be created)")
 
             val prefs = context.getSharedPreferences("notification_prefs", Context.MODE_PRIVATE)
             val lastVersion = prefs.getInt("message_channel_version", 0)
@@ -170,6 +187,18 @@ class MessageReceivedNotification {
                     val notificationId = message.fromUserId.hashCode()
                     notifIdPrefs.edit { putInt(message.fromUserId, notificationId) }
                     notificationManager.notify(notificationId, builder.build())
+
+                    // Mark as shown only after notify() was actually reached — if any
+                    // earlier step failed, a later retry must not be dedup-blocked.
+                    // Both triggers use the same notificationId, so a rare double-post
+                    // just replaces the same notification (no duplicates).
+                    shownPrefs.edit { putBoolean(message.messageId, true) }
+
+                    debugLine(
+                        "MessageNotification",
+                        "Posted id=$notificationId for ${message.messageId} " +
+                            "(appEnabled=${notificationManager.areNotificationsEnabled()})"
+                    )
                 }
             }
         }
