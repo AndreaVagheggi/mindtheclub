@@ -36,6 +36,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 fun mergeImages(uriStringList: String, messageId: String): String? {
     try {
@@ -330,22 +331,36 @@ suspend fun saveClubBitmap(qrBitmap: Bitmap?, picturePath: String?, name: String
 }
 
 
+// Longest side of any bitmap saveBitmapFromUri holds in memory when no explicit
+// resize is requested. Keeps a full-resolution camera photo (50+ MP on modern
+// phones) from ever being decoded whole, which freezes/kills low-RAM devices.
+private const val MAX_SAVED_IMAGE_DIMENSION = 2048
+
 fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int = 0): Uri? {
     uri ?: return null
     val context = App.context()
     val directory = context.filesDir
     val file = File(directory, fileName)
+    val targetSize = if (resize != 0) resize else MAX_SAVED_IMAGE_DIMENSION
 
     return try {
         var bitmap: Bitmap
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val source = ImageDecoder.createSource(context.contentResolver, uri)
-            bitmap = ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+            bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                val maxDim = max(info.size.width, info.size.height)
+                if (maxDim > targetSize) {
+                    val scale = targetSize.toFloat() / maxDim
+                    decoder.setTargetSize(
+                        (info.size.width * scale).roundToInt().coerceAtLeast(1),
+                        (info.size.height * scale).roundToInt().coerceAtLeast(1)
+                    )
+                }
             }
         } else {
-            // API 26-27: manual EXIF handling
+            // API 26-27: manual EXIF handling and subsampled decode
             val orientation = context.contentResolver.openInputStream(uri)?.use { stream ->
                 val exif = androidx.exifinterface.media.ExifInterface(stream)
                 exif.getAttributeInt(
@@ -354,15 +369,25 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
                 )
             } ?: androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
 
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, bounds)
+            } ?: return null
+
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = calculateInSampleSize(max(bounds.outWidth, bounds.outHeight), targetSize)
+            }
             bitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
+                BitmapFactory.decodeStream(stream, null, options)
             } ?: return null
 
             bitmap = applyExifOrientation(bitmap, orientation)
         }
 
-        if (resize != 0) {
-            bitmap = resizeBitmap(bitmap, resize)
+        // Exact-size pass: the decode above only guarantees an upper bound
+        // (inSampleSize halves in powers of two). Never upscales.
+        if (max(bitmap.width, bitmap.height) > targetSize) {
+            bitmap = resizeBitmap(bitmap, targetSize)
         }
 
         FileOutputStream(file).use { out ->
@@ -375,7 +400,20 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
     } catch (e: IOException) {
         debugLine("saveBitmapFromUri", "Error saving image: ${e.message}")
         null
+    } catch (e: OutOfMemoryError) {
+        debugLine("saveBitmapFromUri", "Out of memory saving image: ${e.message}")
+        null
     }
+}
+
+// Largest power-of-two sample size that still decodes at or above [target] on the
+// longest side, so the exact-size pass afterwards only ever scales down.
+private fun calculateInSampleSize(largestDimension: Int, target: Int): Int {
+    var inSampleSize = 1
+    while (largestDimension / (inSampleSize * 2) >= target) {
+        inSampleSize *= 2
+    }
+    return inSampleSize
 }
 
 fun applyExifOrientation(bitmap: Bitmap, orientation: Int): Bitmap {

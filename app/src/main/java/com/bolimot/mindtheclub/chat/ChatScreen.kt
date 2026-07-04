@@ -1901,20 +1901,26 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         val previewFileName = fileName + "preview.jpg"
                         fileName += ".jpg"
 
-                        val imageUri: Uri? = saveBitmapFromUri(receivedUris[0], fileName, 100)
-                        saveBitmapFromUri(receivedUris[0], previewFileName, 50)
+                        // Decode + save off the main thread (a full-resolution photo
+                        // freezes low-RAM devices), then open SendImage.
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val imageUri: Uri? = saveBitmapFromUri(receivedUris[0], fileName, 100)
+                            saveBitmapFromUri(receivedUris[0], previewFileName, 50)
 
-                        val userIdList: List<String> = listOf(remoteUserId)
-                        val peerPicturePathList: List<String> = listOf(peerPicturePath)
+                            val userIdList: List<String> = listOf(remoteUserId)
+                            val peerPicturePathList: List<String> = listOf(peerPicturePath)
 
-                        val intent = Intent(this, SendImage::class.java).apply {
-                            putExtra("imagePath", imageUri.toString())
-                            putExtra("peerPicturePath", peerPicturePathList.joinToString(","))
-                            putExtra("userId", userIdList.joinToString(","))
-                            pendingCaptionText?.let { putExtra("caption", it) }
+                            withContext(Dispatchers.Main) {
+                                val intent = Intent(this@ChatScreen, SendImage::class.java).apply {
+                                    putExtra("imagePath", imageUri.toString())
+                                    putExtra("peerPicturePath", peerPicturePathList.joinToString(","))
+                                    putExtra("userId", userIdList.joinToString(","))
+                                    pendingCaptionText?.let { putExtra("caption", it) }
+                                }
+                                startActivity(intent)
+                                pendingCaptionText?.let { editText.text?.clear(); pendingCaptionText = null }
+                            }
                         }
-                        startActivity(intent)
-                        pendingCaptionText?.let { editText.text?.clear(); pendingCaptionText = null }
                     } else {
                         val intent = Intent(this, SendImages::class.java).apply {
                             putExtra("uriList", receivedUris.joinToString(",") { it.toString() })

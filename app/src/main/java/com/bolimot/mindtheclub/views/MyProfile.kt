@@ -25,6 +25,7 @@ import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
@@ -50,6 +51,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.bolimot.mindtheclub.webrtc.RTCClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MyProfile : BaseActivity() {
 
@@ -77,21 +82,41 @@ class MyProfile : BaseActivity() {
         if (result.resultCode == RESULT_OK) {
             val imageUri: Uri? = result.data?.data
 
-            imageUri?.let {
-                val fileName = "${System.currentTimeMillis()}_pic.jpg"
-                val newUri = saveBitmapFromUri(it, fileName, 100)
-                val newMiniUri = saveBitmapFromUri(it, "mini_$fileName", 100, 200)
-
-                setPreference(MySelf.PICTURE_KEY, newUri.toString(), this)
-                setPreference(MySelf.PICTURE_KEY_MINI, newMiniUri.toString(), this)
-
-                profileChanged = true
-
-                debugLine("MyProfile", "RESULT_OK: $newUri")
-
+            imageUri?.let { uri ->
+                // Show the pick right away; Glide decodes off the main thread.
                 Glide.with(this)
-                    .load(it)
+                    .load(uri)
                     .into(profilePic)
+
+                val fileName = "${System.currentTimeMillis()}_pic.jpg"
+                lifecycleScope.launch(Dispatchers.IO) {
+                    // NonCancellable: the picture must be persisted even if the
+                    // user leaves the screen while the save is still running.
+                    val newUri = withContext(NonCancellable) {
+                        val saved = saveBitmapFromUri(uri, fileName, 100)
+                        val savedMini = saveBitmapFromUri(uri, "mini_$fileName", 100, 200)
+
+                        if (saved != null && savedMini != null) {
+                            setPreference(MySelf.PICTURE_KEY, saved.toString(), this@MyProfile)
+                            setPreference(MySelf.PICTURE_KEY_MINI, savedMini.toString(), this@MyProfile)
+                            profileChanged = true
+                        }
+                        saved
+                    }
+
+                    debugLine("MyProfile", "RESULT_OK: $newUri")
+
+                    // onResume may have reloaded the previous picture meanwhile:
+                    // put the freshly saved one back once it is on disk.
+                    withContext(Dispatchers.Main) {
+                        if (newUri != null && !isDestroyed) {
+                            Glide.with(this@MyProfile)
+                                .load(newUri)
+                                .signature(ObjectKey(System.currentTimeMillis()))
+                                .into(profilePic)
+                        }
+                    }
+                }
             }
 
             imageEditIcon.isClickable = true
