@@ -225,4 +225,20 @@
     <string name="camera_permission_required">A permissão de câmera é necessária para usar a câmera</string>
     <string name="microphone_permission_required">A permissão de microfone é necessária para chamadas e vídeo</string>
     <string name="storage_permission_required">O acesso às suas fotos e vídeos é necessário para anexar mídia</string>
+
+    <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
+    <string name="notif_banner_text">As notificações estão desativadas — você não será avisado quando chegarem novas mensagens.</string>
+    <string name="notif_banner_enable">Ativar</string>
+    <string name="permissions_title">Permissões do aplicativo</string>
+    <string name="perm_notifications">Notificações</string>
+    <string name="perm_camera">Câmera</string>
+    <string name="perm_microphone">Microfone</string>
+    <string name="perm_media">Fotos e vídeos</string>
+    <string name="perm_contacts">Contatos</string>
+    <string name="perm_bluetooth">Bluetooth</string>
+    <string name="perm_status_ok">Permitido</string>
+    <string name="perm_status_off">Desativado — toque para corrigir</string>
+    <string name="perm_call_needs_mic">O acesso ao microfone é necessário para fazer chamadas. Ative-o nas Configurações.</string>
+    <string name="perm_call_needs_camera">O acesso à câmera e ao microfone é necessário para chamadas de vídeo. Ative-os nas Configurações.</string>
+    <string name="open_settings">Abrir Configurações</string>
 </resources>

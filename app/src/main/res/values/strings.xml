@@ -226,4 +226,20 @@
     <string name="camera_permission_required">Camera permission is required to use the camera</string>
     <string name="microphone_permission_required">Microphone permission is required for calls and video</string>
     <string name="storage_permission_required">Access to your photos and videos is required to attach media</string>
+
+    <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
+    <string name="notif_banner_text">Notifications are off — you won\'t be alerted when new messages arrive.</string>
+    <string name="notif_banner_enable">Enable</string>
+    <string name="permissions_title">App permissions</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_camera">Camera</string>
+    <string name="perm_microphone">Microphone</string>
+    <string name="perm_media">Photos and videos</string>
+    <string name="perm_contacts">Contacts</string>
+    <string name="perm_bluetooth">Bluetooth</string>
+    <string name="perm_status_ok">Allowed</string>
+    <string name="perm_status_off">Off — tap to fix</string>
+    <string name="perm_call_needs_mic">Microphone access is needed to make calls. Please enable it in Settings.</string>
+    <string name="perm_call_needs_camera">Camera and microphone access are needed for video calls. Please enable them in Settings.</string>
+    <string name="open_settings">Open Settings</string>
 </resources>

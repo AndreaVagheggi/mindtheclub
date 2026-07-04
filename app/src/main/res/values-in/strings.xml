@@ -227,4 +227,20 @@
     <string name="camera_permission_required">Izin kamera diperlukan untuk menggunakan kamera</string>
     <string name="microphone_permission_required">Izin mikrofon diperlukan untuk panggilan dan video</string>
     <string name="storage_permission_required">Akses ke foto dan video Anda diperlukan untuk melampirkan media</string>
+
+    <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
+    <string name="notif_banner_text">Notifikasi nonaktif — Anda tidak akan diberi tahu saat pesan baru masuk.</string>
+    <string name="notif_banner_enable">Aktifkan</string>
+    <string name="permissions_title">Izin aplikasi</string>
+    <string name="perm_notifications">Notifikasi</string>
+    <string name="perm_camera">Kamera</string>
+    <string name="perm_microphone">Mikrofon</string>
+    <string name="perm_media">Foto dan video</string>
+    <string name="perm_contacts">Kontak</string>
+    <string name="perm_bluetooth">Bluetooth</string>
+    <string name="perm_status_ok">Diizinkan</string>
+    <string name="perm_status_off">Nonaktif — ketuk untuk memperbaiki</string>
+    <string name="perm_call_needs_mic">Akses mikrofon diperlukan untuk panggilan. Aktifkan di Setelan.</string>
+    <string name="perm_call_needs_camera">Akses kamera dan mikrofon diperlukan untuk panggilan video. Aktifkan di Setelan.</string>
+    <string name="open_settings">Buka Setelan</string>
 </resources>

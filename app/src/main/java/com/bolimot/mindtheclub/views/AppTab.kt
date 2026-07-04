@@ -29,12 +29,16 @@ import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.fragments.PeersFragment
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
-import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.NOTIF_BANNER_SNOOZE_MS
+import com.bolimot.mindtheclub.functions.PREF_NOTIF_BANNER_SNOOZE_UNTIL
 import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
+import com.bolimot.mindtheclub.functions.areNotificationsEnabled
+import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
+import com.bolimot.mindtheclub.functions.openNotificationSettings
 import com.bolimot.mindtheclub.functions.parseQRCode
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.wakeUpPhone
@@ -243,6 +247,37 @@ class AppTab : BaseActivity() {
 
         if (!startedForCallOnly) {
             maybeConsumePendingInvite()
+        }
+
+        updateNotificationsBanner()
+    }
+
+    /**
+     * Notifications-off nudge: visible only while system notifications are
+     * disabled for the app (accidental deny during onboarding leaves the user
+     * silently missing every message — nothing else in the app reveals it).
+     * Dismiss snoozes it for 30 days; it disappears on its own the moment
+     * notifications are enabled.
+     */
+    private fun updateNotificationsBanner() {
+        val banner = findViewById<View>(R.id.notificationsBanner) ?: return
+
+        val snoozeUntil = getPreference(PREF_NOTIF_BANNER_SNOOZE_UNTIL, this)?.toLongOrNull() ?: 0L
+        val show = !areNotificationsEnabled(this) && System.currentTimeMillis() > snoozeUntil
+
+        banner.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+
+        findViewById<View>(R.id.notifBannerFix).setOnClickListener {
+            openNotificationSettings(this)
+        }
+        findViewById<View>(R.id.notifBannerDismiss).setOnClickListener {
+            setPreference(
+                PREF_NOTIF_BANNER_SNOOZE_UNTIL,
+                (System.currentTimeMillis() + NOTIF_BANNER_SNOOZE_MS).toString(),
+                this
+            )
+            banner.visibility = View.GONE
         }
     }
 

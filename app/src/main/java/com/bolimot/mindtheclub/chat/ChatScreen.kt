@@ -80,6 +80,7 @@ import com.bolimot.mindtheclub.functions.buildMultiImagePreview
 import com.bolimot.mindtheclub.functions.copyUri
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.emptyString
+import com.bolimot.mindtheclub.functions.ensureCallPermissions
 import com.bolimot.mindtheclub.functions.extractUrl
 import com.bolimot.mindtheclub.functions.fetchWebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
@@ -1277,7 +1278,12 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             R.id.phone_call -> {
                 debugLine("ChatScreen", "Initiating Audio call")
 
-                startCall(this, remoteUserId, false)
+                // Guard: with the microphone denied the call would start "deaf".
+                // ensureCallPermissions launches the recovery (request or settings
+                // dialog); the user taps the call button again after granting.
+                if (ensureCallPermissions(this, isVideo = false)) {
+                    startCall(this, remoteUserId, false)
+                }
 
                 true
             }
@@ -1290,7 +1296,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             R.id.video_call -> {
                 debugLine("ChatScreen", "Initiating Video call")
 
-                startCall(this, remoteUserId, true)
+                if (ensureCallPermissions(this, isVideo = true)) {
+                    startCall(this, remoteUserId, true)
+                }
 
                 true
             }

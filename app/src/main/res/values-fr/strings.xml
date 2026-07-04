@@ -225,4 +225,20 @@
     <string name="camera_permission_required">L\'autorisation d\'accès à la caméra est requise pour utiliser la caméra</string>
     <string name="microphone_permission_required">L\'autorisation d\'accès au micro est requise pour les appels et la vidéo</string>
     <string name="storage_permission_required">L\'accès à vos photos et vidéos est requis pour joindre des médias</string>
+
+    <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
+    <string name="notif_banner_text">Les notifications sont désactivées — vous ne serez pas averti à l\'arrivée de nouveaux messages.</string>
+    <string name="notif_banner_enable">Activer</string>
+    <string name="permissions_title">Autorisations de l\'application</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_camera">Caméra</string>
+    <string name="perm_microphone">Microphone</string>
+    <string name="perm_media">Photos et vidéos</string>
+    <string name="perm_contacts">Contacts</string>
+    <string name="perm_bluetooth">Bluetooth</string>
+    <string name="perm_status_ok">Autorisé</string>
+    <string name="perm_status_off">Désactivé — touchez pour corriger</string>
+    <string name="perm_call_needs_mic">L\'accès au microphone est nécessaire pour les appels. Veuillez l\'activer dans les Réglages.</string>
+    <string name="perm_call_needs_camera">L\'accès à la caméra et au microphone est nécessaire pour les appels vidéo. Veuillez les activer dans les Réglages.</string>
+    <string name="open_settings">Ouvrir les réglages</string>
 </resources>
