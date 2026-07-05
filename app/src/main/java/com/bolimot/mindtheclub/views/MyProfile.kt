@@ -30,14 +30,8 @@ import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
-import com.bolimot.mindtheclub.functions.REQ_FIX_PERMISSIONS
-import com.bolimot.mindtheclub.functions.areNotificationsEnabled
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
-import com.bolimot.mindtheclub.functions.hasPermission
-import com.bolimot.mindtheclub.functions.mediaPermission
-import com.bolimot.mindtheclub.functions.openNotificationSettings
-import com.bolimot.mindtheclub.functions.requestOrOpenSettings
 import com.bolimot.mindtheclub.functions.generateQRCode
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
@@ -423,70 +417,6 @@ class MyProfile : BaseActivity() {
         }
 
         imageEditIcon.isClickable = true
-
-        refreshPermissionRows()
-    }
-
-    /**
-     * "App permissions" recovery section: live status of every permission the app
-     * uses, with a tap-to-fix on denied ones (in-app request while Android still
-     * allows the dialog, otherwise deep link to system settings). This is the
-     * always-available way to undo an accidental "Don't allow" from onboarding.
-     */
-    private fun refreshPermissionRows() {
-        val container = findViewById<LinearLayout>(R.id.permissionsContainer) ?: return
-        container.removeAllViews()
-
-        data class PermRow(val label: String, val granted: Boolean, val fix: () -> Unit)
-
-        val rows = mutableListOf(
-            PermRow(
-                getString(R.string.perm_notifications),
-                areNotificationsEnabled(this)
-            ) { openNotificationSettings(this) },
-            PermRow(
-                getString(R.string.perm_microphone),
-                hasPermission(this, android.Manifest.permission.RECORD_AUDIO)
-            ) { requestOrOpenSettings(this, android.Manifest.permission.RECORD_AUDIO) },
-            PermRow(
-                getString(R.string.perm_camera),
-                hasPermission(this, android.Manifest.permission.CAMERA)
-            ) { requestOrOpenSettings(this, android.Manifest.permission.CAMERA) },
-            PermRow(
-                getString(R.string.perm_media),
-                hasPermission(this, mediaPermission())
-            ) { requestOrOpenSettings(this, mediaPermission()) },
-            PermRow(
-                getString(R.string.perm_contacts),
-                hasPermission(this, android.Manifest.permission.READ_CONTACTS)
-            ) { requestOrOpenSettings(this, android.Manifest.permission.READ_CONTACTS) },
-        )
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            rows.add(
-                PermRow(
-                    getString(R.string.perm_bluetooth),
-                    hasPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT)
-                ) { requestOrOpenSettings(this, android.Manifest.permission.BLUETOOTH_CONNECT) }
-            )
-        }
-
-        for (row in rows) {
-            val view = TextView(this).apply {
-                val status = if (row.granted) getString(R.string.perm_status_ok)
-                             else getString(R.string.perm_status_off)
-                text = "${row.label}:  $status"
-                textSize = 14f
-                setTextColor(if (row.granted) Color.parseColor("#2E7D32") else Color.parseColor("#C62828"))
-                setPadding(0, 14, 0, 14)
-                if (!row.granted) {
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { row.fix() }
-                }
-            }
-            container.addView(view)
-        }
     }
 
     override fun onRequestPermissionsResult(
@@ -495,11 +425,6 @@ class MyProfile : BaseActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        if (requestCode == REQ_FIX_PERMISSIONS) {
-            refreshPermissionRows()
-            return
-        }
 
         if (requestCode == BluetoothToggle.PERMISSIONS_REQUEST_CODE) {
             val granted = BluetoothToggle.onPermissionsResult(requestCode, grantResults)
