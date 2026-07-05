@@ -59,9 +59,9 @@
     <string name="share_club">Compartir club</string>
     <string name="stealth_mode">Modo sigiloso</string>
     <string name="auto_invite_mode">Modo de invitación automática</string>
-    <string name="show_qr_code">Mostrar código QR</string>
-    <string name="scan_qr_code">Escanear código QR</string>
-    <string name="share_qr_code">Compartir código QR</string>
+    <string name="show_qr_code">Mostrar QR</string>
+    <string name="scan_qr_code">Escanear QR</string>
+    <string name="share_qr_code">Compartir QR</string>
     <string name="add_club">Añadir</string>
     <string name="cancel_club">Cancelar</string>
     <string name="share_message">¡Hola! Estoy usando MindTheClub. Toca el enlace de abajo, me añadirá a tus contactos si ya tienes la app, o te permitirá descargarla si aún no la tienes.</string>
