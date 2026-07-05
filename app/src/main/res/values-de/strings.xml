@@ -241,4 +241,21 @@
     <string name="perm_call_needs_mic">Für Anrufe wird Zugriff auf das Mikrofon benötigt. Bitte in den Einstellungen aktivieren.</string>
     <string name="perm_call_needs_camera">Für Videoanrufe wird Zugriff auf Kamera und Mikrofon benötigt. Bitte in den Einstellungen aktivieren.</string>
     <string name="open_settings">Einstellungen öffnen</string>
+
+    <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
+    <string name="notif_banner_text">Benachrichtigungen sind deaktiviert — du wirst bei neuen Nachrichten nicht benachrichtigt.</string>
+    <string name="notif_banner_enable">Aktivieren</string>
+    <string name="permissions_title">App-Berechtigungen</string>
+    <string name="perm_notifications">Benachrichtigungen</string>
+    <string name="perm_camera">Kamera</string>
+    <string name="perm_microphone">Mikrofon</string>
+    <string name="perm_media">Fotos und Videos</string>
+    <string name="perm_contacts">Kontakte</string>
+    <string name="perm_bluetooth">Bluetooth</string>
+    <string name="perm_status_ok">Erlaubt</string>
+    <string name="perm_status_off">Aus — zum Beheben tippen</string>
+    <string name="perm_call_needs_mic">Für Anrufe wird Zugriff auf das Mikrofon benötigt. Bitte in den Einstellungen aktivieren.</string>
+    <string name="perm_call_needs_camera">Für Videoanrufe wird Zugriff auf Kamera und Mikrofon benötigt. Bitte in den Einstellungen aktivieren.</string>
+    <string name="open_settings">Einstellungen öffnen</string>
+    <string name="invite_share_other_apps">Freunde über andere Apps einladen</string>
 </resources>

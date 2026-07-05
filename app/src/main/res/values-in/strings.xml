@@ -243,4 +243,5 @@
     <string name="perm_call_needs_mic">Akses mikrofon diperlukan untuk panggilan. Aktifkan di Setelan.</string>
     <string name="perm_call_needs_camera">Akses kamera dan mikrofon diperlukan untuk panggilan video. Aktifkan di Setelan.</string>
     <string name="open_settings">Buka Setelan</string>
+    <string name="invite_share_other_apps">Undang teman lewat aplikasi lain</string>
 </resources>

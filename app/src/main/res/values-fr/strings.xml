@@ -241,4 +241,5 @@
     <string name="perm_call_needs_mic">L\'accès au microphone est nécessaire pour les appels. Veuillez l\'activer dans les Réglages.</string>
     <string name="perm_call_needs_camera">L\'accès à la caméra et au microphone est nécessaire pour les appels vidéo. Veuillez les activer dans les Réglages.</string>
     <string name="open_settings">Ouvrir les réglages</string>
+    <string name="invite_share_other_apps">Inviter des amis via d\'autres applis</string>
 </resources>

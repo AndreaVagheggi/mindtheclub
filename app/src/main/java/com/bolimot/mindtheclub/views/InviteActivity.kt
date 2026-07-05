@@ -21,7 +21,7 @@ import android.net.Uri
 import androidx.appcompat.app.AlertDialog
 import com.bolimot.mindtheclub.functions.buildInviteLink
 import com.bolimot.mindtheclub.functions.parseQRCode
-import android.view.Menu
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class InviteActivity : BaseActivity() {
 
@@ -50,6 +50,22 @@ class InviteActivity : BaseActivity() {
         contactsRecyclerView = findViewById(R.id.contactsRecyclerView)
         contactsRecyclerView.layoutManager = LinearLayoutManager(this)
         contactsRecyclerView.adapter = contactsAdapter
+
+        // Single-item bottom bar: BottomNavigationView pre-selects the first item,
+        // so a tap on it fires the RESELECTED listener, not the selected one.
+        // Wire both so the action always runs.
+        val bottomNavigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        val shareAction = {
+            lifecycleScope.launch {
+                shareMyProfile(payload, this@InviteActivity, contactsRecyclerView)
+            }
+        }
+        bottomNavigation.setOnItemSelectedListener { item ->
+            if (item.itemId == R.id.action_share_other) { shareAction(); true } else false
+        }
+        bottomNavigation.setOnItemReselectedListener { item ->
+            if (item.itemId == R.id.action_share_other) shareAction()
+        }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { finish() }
@@ -108,20 +124,9 @@ class InviteActivity : BaseActivity() {
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.invite_menu, menu)
-        return true
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> { finish(); return true }
-            R.id.action_share_other -> {
-                lifecycleScope.launch {
-                    shareMyProfile(payload, this@InviteActivity, contactsRecyclerView)
-                }
-                return true
-            }
         }
         return super.onOptionsItemSelected(item)
     }

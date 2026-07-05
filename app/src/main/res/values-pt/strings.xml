@@ -241,4 +241,5 @@
     <string name="perm_call_needs_mic">O acesso ao microfone é necessário para fazer chamadas. Ative-o nas Configurações.</string>
     <string name="perm_call_needs_camera">O acesso à câmera e ao microfone é necessário para chamadas de vídeo. Ative-os nas Configurações.</string>
     <string name="open_settings">Abrir Configurações</string>
+    <string name="invite_share_other_apps">Convidar amigos por outros apps</string>
 </resources>

@@ -242,4 +242,5 @@
     <string name="perm_call_needs_mic">Microphone access is needed to make calls. Please enable it in Settings.</string>
     <string name="perm_call_needs_camera">Camera and microphone access are needed for video calls. Please enable them in Settings.</string>
     <string name="open_settings">Open Settings</string>
+    <string name="invite_share_other_apps">Invite friends using other Apps</string>
 </resources>

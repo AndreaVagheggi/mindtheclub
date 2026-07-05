@@ -1,9 +1,0 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-    <item
-        android:id="@+id/action_share_other"
-        android:icon="@drawable/share"
-        android:iconTint="@color/icons"
-        android:title="@string/invite_share_other"
-        app:showAsAction="always" />
-</menu>
