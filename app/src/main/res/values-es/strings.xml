@@ -242,20 +242,5 @@
     <string name="perm_call_needs_camera">Se necesita acceso a la cámara y al micrófono para las videollamadas. Actívalos en Ajustes.</string>
     <string name="open_settings">Abrir Ajustes</string>
 
-    <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
-    <string name="notif_banner_text">Las notificaciones están desactivadas — no se te avisará cuando lleguen mensajes.</string>
-    <string name="notif_banner_enable">Activar</string>
-    <string name="permissions_title">Permisos de la aplicación</string>
-    <string name="perm_notifications">Notificaciones</string>
-    <string name="perm_camera">Cámara</string>
-    <string name="perm_microphone">Micrófono</string>
-    <string name="perm_media">Fotos y vídeos</string>
-    <string name="perm_contacts">Contactos</string>
-    <string name="perm_bluetooth">Bluetooth</string>
-    <string name="perm_status_ok">Permitido</string>
-    <string name="perm_status_off">Desactivado — toca para corregir</string>
-    <string name="perm_call_needs_mic">Se necesita acceso al micrófono para hacer llamadas. Actívalo en Ajustes.</string>
-    <string name="perm_call_needs_camera">Se necesita acceso a la cámara y al micrófono para las videollamadas. Actívalos en Ajustes.</string>
-    <string name="open_settings">Abrir Ajustes</string>
     <string name="invite_share_other_apps">Invitar amigos con otras apps</string>
 </resources>
