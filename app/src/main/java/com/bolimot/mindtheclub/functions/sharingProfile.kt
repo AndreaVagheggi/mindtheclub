@@ -122,3 +122,19 @@ suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
     val chooser = Intent.createChooser(shareIntent, getString(context, R.string.share_via))
     context.startActivity(chooser)
 }
+
+fun shareMyQRCode(payload: String, context: Context) {
+    val qrUri = saveBitmap(generateQRCode(payload), "myQRCode.jpg", 100) ?: return
+
+    // Image-only share: attaching text alongside the picture makes several apps
+    // (Messenger, some SMS clients) drop one of the two, so the QR travels alone.
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "image/jpeg"
+        putExtra(Intent.EXTRA_STREAM, qrUri)
+        putExtra(Intent.EXTRA_SUBJECT, "${getPreference("myName", context)} - ${getString(context, R.string.join_message)}")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+
+    val chooser = Intent.createChooser(shareIntent, getString(context, R.string.share_via))
+    context.startActivity(chooser)
+}

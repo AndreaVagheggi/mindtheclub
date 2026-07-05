@@ -39,6 +39,7 @@ import com.bolimot.mindtheclub.functions.keypadIsOpen
 import com.bolimot.mindtheclub.functions.saveBitmap
 import com.bolimot.mindtheclub.functions.saveBitmapFromUri
 import com.bolimot.mindtheclub.functions.setPreference
+import com.bolimot.mindtheclub.functions.shareMyQRCode
 import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
@@ -230,6 +231,20 @@ class MyProfile : BaseActivity() {
                 R.id.scan_qr_code -> {
                     val intent = Intent(this, ScanQRCode::class.java)
                     startActivity(intent)
+                    true
+                }
+                R.id.share_qr_code -> {
+                    val name = nameEditText.text.toString().trim()
+                    val userId = MySelf.userId() ?: ""
+                    val bio = bioEditText.text.toString().trim()
+
+                    if (listOf(name, userId).any { it.isEmpty() }) {
+                        showToast("No QR code to share", this)
+                        return@setOnItemSelectedListener false
+                    }
+
+                    val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
+                    shareMyQRCode("mtc;$name;$userId;$bio;$fingerprint", this)
                     true
                 }
                 R.id.send_debug_log -> {

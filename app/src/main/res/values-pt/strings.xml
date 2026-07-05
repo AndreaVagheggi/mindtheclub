@@ -61,6 +61,7 @@
     <string name="auto_invite_mode">Modo de convite automático</string>
     <string name="show_qr_code">Mostrar QR code</string>
     <string name="scan_qr_code">Escanear QR code</string>
+    <string name="share_qr_code">Compartilhar QR code</string>
     <string name="add_club">Adicionar</string>
     <string name="cancel_club">Cancelar</string>
     <string name="share_message">Oi! Estou usando o MindTheClub. Toque no link abaixo, ele vai me adicionar aos seus contatos se você já tiver o app, ou permitir que você baixe se ainda não tiver.</string>

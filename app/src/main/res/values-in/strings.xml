@@ -63,6 +63,7 @@
     <string name="auto_invite_mode">Mode undang otomatis</string>
     <string name="show_qr_code">Tampilkan kode QR</string>
     <string name="scan_qr_code">Pindai kode QR</string>
+    <string name="share_qr_code">Bagikan kode QR</string>
     <string name="add_club">Tambah</string>
     <string name="cancel_club">Batal</string>
     <string name="share_message">Hai! Saya memakai MindTheClub. Ketuk tautan di bawah, tautan ini akan menambahkan saya ke kontak Anda jika sudah punya aplikasinya, atau memungkinkan Anda mengunduhnya jika belum.</string>

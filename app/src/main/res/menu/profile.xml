@@ -15,6 +15,12 @@
         app:showAsAction="ifRoom"/>
 
     <item
+        android:id="@+id/share_qr_code"
+        android:title="@string/share_qr_code"
+        android:icon="@drawable/share"
+        app:showAsAction="ifRoom"/>
+
+    <item
         android:id="@+id/send_debug_log"
         android:title="@string/black_list"
         android:icon="@drawable/block"

@@ -21,7 +21,6 @@ import android.net.Uri
 import androidx.appcompat.app.AlertDialog
 import com.bolimot.mindtheclub.functions.buildInviteLink
 import com.bolimot.mindtheclub.functions.parseQRCode
-import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class InviteActivity : BaseActivity() {
 
@@ -51,20 +50,10 @@ class InviteActivity : BaseActivity() {
         contactsRecyclerView.layoutManager = LinearLayoutManager(this)
         contactsRecyclerView.adapter = contactsAdapter
 
-        // Single-item bottom bar: BottomNavigationView pre-selects the first item,
-        // so a tap on it fires the RESELECTED listener, not the selected one.
-        // Wire both so the action always runs.
-        val bottomNavigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-        val shareAction = {
+        findViewById<android.view.View>(R.id.invite_share_bar).setOnClickListener {
             lifecycleScope.launch {
                 shareMyProfile(payload, this@InviteActivity, contactsRecyclerView)
             }
-        }
-        bottomNavigation.setOnItemSelectedListener { item ->
-            if (item.itemId == R.id.action_share_other) { shareAction(); true } else false
-        }
-        bottomNavigation.setOnItemReselectedListener { item ->
-            if (item.itemId == R.id.action_share_other) shareAction()
         }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
