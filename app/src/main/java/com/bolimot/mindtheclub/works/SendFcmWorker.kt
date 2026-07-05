@@ -22,6 +22,11 @@ class SendFcmWorker(
         val collapseKey = inputData.getString("collapseKey") ?: return Result.failure()
 
         try {
+            // Note: these go out at FCM priority "high" with the DEFAULT (long) TTL —
+            // exactly right for recovery/control messages. Do NOT mark them "instant":
+            // in this system instant means a 15-second TTL (real-time semantics for
+            // call wake-ups), which would make a recovery nudge to an offline device
+            // silently expire instead of waiting for it to come back.
             val result = fcmSendWork(userId, content, information, collapseKey)
             debugLine("SendFcmWorker", "FCM Send Result: $result")
 

@@ -44,11 +44,12 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
-            <LinearLayout
+            <com.bolimot.mindtheclub.customViews.BubbleColumnLayout
                 android:id="@+id/card_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:minWidth="68dp"
+                android:maxWidth="260dp"
                 android:orientation="vertical">
 
                 <androidx.constraintlayout.widget.ConstraintLayout
@@ -93,7 +94,14 @@
                     android:padding="4dp"
                     android:textSize="16sp" />
 
-                <RelativeLayout
+                <!-- FrameLayout on purpose: it is the only stock container that
+                     measures HONESTLY under BubbleColumnLayout (wraps to its widest
+                     child). RelativeLayout with alignParentEnd and LinearLayout
+                     with layout_weight both report the FULL available width when
+                     wrap-measured, inflating every bubble to the max. When this
+                     row is stretched, layout_gravity puts the timestamp at the
+                     right edge. -->
+                <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
@@ -101,26 +109,25 @@
                         android:id="@+id/forwarded"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_gravity="start|center_vertical"
                         android:layout_marginStart="2dp"
+                        android:layout_marginEnd="4dp"
                         android:text="@string/forwarded"
                         android:textColor="@color/mtc_opaque"
                         android:textSize="11sp"
-                        android:visibility="gone"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true" />
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/time_stamp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_gravity="end|center_vertical"
                         android:layout_marginEnd="2dp"
                         android:textColor="@color/mtc_opaque"
-                        android:textSize="11sp"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true" />
-                </RelativeLayout>
+                        android:textSize="11sp" />
+                </FrameLayout>
 
-            </LinearLayout>
+            </com.bolimot.mindtheclub.customViews.BubbleColumnLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <TextView

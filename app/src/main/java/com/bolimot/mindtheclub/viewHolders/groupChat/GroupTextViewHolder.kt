@@ -58,7 +58,9 @@ class GroupTextViewHolder(itemView: View, private val listener: MessagesAdapter.
                 messageTextView.maxWidth = maxBubbleWidth
 
                 textAttached.layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                textAttached.maxWidth = maxBubbleWidth
+                // Reply box has 8dp padding per side: cap the inner text so the
+                // padded preview can never push the bubble past its 260dp cap.
+                textAttached.maxWidth = maxBubbleWidth - (16 * itemView.resources.displayMetrics.density).toInt()
 
                 reaction = itemView.findViewById(R.id.emoji)
                 reaction.text = it.reaction

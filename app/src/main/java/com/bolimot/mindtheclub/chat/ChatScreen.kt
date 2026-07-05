@@ -1494,8 +1494,10 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                             .into(findViewById(R.id.chat_imageAttached))
                     }
                     it.type == Type.AUDIO -> {
-                        val audioText = "<${this@ChatScreen.getString(R.string.audio)}>"
-                        findViewById<TextView>(R.id.chat_textAttached).text = audioText
+                        // Assign the VARIABLE, not just the compose-bar view: textAttached
+                        // is what gets saved locally and sent to the peer. (The view is
+                        // set from the variable further below anyway.)
+                        textAttached = "<${this@ChatScreen.getString(R.string.audio)}>"
                         findViewById<ImageView>(R.id.chat_imageAttached).visibility = View.GONE
                     }
                     it.type == Type.WEB -> {
