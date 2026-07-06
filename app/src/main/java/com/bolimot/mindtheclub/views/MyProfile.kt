@@ -218,7 +218,7 @@ class MyProfile : BaseActivity() {
                     val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
                     // The QR encodes the invite link (not the raw "mtc;" payload) so that
                     // third-party scanners open the same install/add-contact flow as the link.
-                    val qrCode = saveBitmap(generateQRCode(buildInviteLink(name, userId, bio, fingerprint)),"myQRCode.jpg", 100)
+                    val qrCode = saveBitmap(generateQRCode(buildInviteLink(name, userId, bio, fingerprint), this),"myQRCode.jpg", 100)
 
                     qrCode?.let {
                         val qrCodePath = it.toString()

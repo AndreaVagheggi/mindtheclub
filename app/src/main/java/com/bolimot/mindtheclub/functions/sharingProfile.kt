@@ -7,7 +7,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
-import android.view.View
 import androidx.core.content.ContextCompat.getString
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
@@ -20,21 +19,43 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import java.util.EnumMap
 
-fun generateQRCode(text: String): Bitmap? {
+fun generateQRCode(text: String, context: Context): Bitmap? {
     val width = 500
     val height = 500
 
     try {
-        val qrCodeWriter = QRCodeWriter()
-        val bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height)
+        // Error correction H (30% redundancy) keeps the QR scannable with the
+        // logo covering its centre.
+        val hints = EnumMap<EncodeHintType, Any>(EncodeHintType::class.java)
+        hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.H
+        hints[EncodeHintType.MARGIN] = 1
 
-        val bitmap = createBitmap(width, height, Bitmap.Config.RGB_565)
+        val qrCodeWriter = QRCodeWriter()
+        val bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height, hints)
+
+        val qrBitmap = createBitmap(width, height)
         for (x in 0 until width) {
             for (y in 0 until height) {
-                bitmap[x, y] = if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
+                qrBitmap[x, y] = if (bitMatrix[x, y]) Color.BLACK else Color.WHITE
             }
         }
-        return bitmap
+
+        val logo = BitmapFactory.decodeResource(context.resources, R.drawable.mtc_logo_icon)
+
+        val logoSize = width / 5
+        val scaledLogo = logo.scale(logoSize, logoSize, false)
+
+        val combinedBitmap = createBitmap(width, height)
+        val canvas = Canvas(combinedBitmap)
+
+        canvas.drawBitmap(qrBitmap, 0f, 0f, null)
+
+        val xPos = (width - scaledLogo.width) / 2f
+        val yPos = (height - scaledLogo.height) / 2f
+
+        canvas.drawBitmap(scaledLogo, xPos, yPos, null)
+
+        return combinedBitmap
     }
     catch(e: Exception) {
         debugLine("generateQRCode", "Exception: ${e.message}")
@@ -97,7 +118,7 @@ fun buildInviteLink(name: String, userId: String, bio: String, fingerprint: Stri
         .toString()
 }
 
-suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
+suspend fun shareMyProfile(textToShare: String, context: Context) {
     val inviteLink = parseQRCode(textToShare)?.let { qr ->
         buildInviteLink(qr.name, qr.userId, qr.bio, qr.fingerprint)
     } ?: getFirebaseValue("MTC_URL")
@@ -130,7 +151,7 @@ fun shareMyQRCode(payload: String, context: Context) {
         buildInviteLink(qr.name, qr.userId, qr.bio, qr.fingerprint)
     } ?: return
 
-    val qrUri = saveBitmap(generateQRCode(inviteLink), "myQRCode.jpg", 100) ?: return
+    val qrUri = saveBitmap(generateQRCode(inviteLink, context), "myQRCode.jpg", 100) ?: return
 
     // Image-only share: attaching text alongside the picture makes several apps
     // (Messenger, some SMS clients) drop one of the two, so the QR travels alone.

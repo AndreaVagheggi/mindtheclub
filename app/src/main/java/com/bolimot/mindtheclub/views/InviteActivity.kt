@@ -52,7 +52,7 @@ class InviteActivity : BaseActivity() {
 
         findViewById<android.view.View>(R.id.invite_share_bar).setOnClickListener {
             lifecycleScope.launch {
-                shareMyProfile(payload, this@InviteActivity, contactsRecyclerView)
+                shareMyProfile(payload, this@InviteActivity)
             }
         }
 
