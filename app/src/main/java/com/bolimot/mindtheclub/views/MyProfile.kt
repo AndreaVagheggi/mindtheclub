@@ -247,10 +247,6 @@ class MyProfile : BaseActivity() {
                     shareMyQRCode("mtc;$name;$userId;$bio;$fingerprint", this)
                     true
                 }
-                R.id.send_debug_log -> {
-                    startActivity(Intent(this, BlackListActivity::class.java))
-                    true
-                }
                 else -> false
             }
         }
@@ -478,6 +474,10 @@ class MyProfile : BaseActivity() {
             }
             R.id.backup_restore -> {
                 startActivity(Intent(this, BackupRestoreActivity::class.java))
+                return true
+            }
+            R.id.black_list -> {
+                startActivity(Intent(this, BlackListActivity::class.java))
                 return true
             }
             R.id.delete_log -> {

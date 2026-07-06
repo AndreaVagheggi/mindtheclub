@@ -20,10 +20,5 @@
         android:icon="@drawable/share"
         app:showAsAction="ifRoom"/>
 
-    <item
-        android:id="@+id/send_debug_log"
-        android:title="@string/black_list"
-        android:icon="@drawable/block"
-        app:showAsAction="ifRoom"/>
 
 </menu>

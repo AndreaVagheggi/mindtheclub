@@ -14,6 +14,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/black_list"
+        android:title="@string/black_list"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/about"
         android:title="@string/about"
         app:showAsAction="never" />
