@@ -100,6 +100,11 @@
     <string name="sent">Envoyé</string>
     <string name="delivered">Distribué</string>
     <string name="seen">Vu</string>
+    <string name="cancelled">Annulé</string>
+    <string name="cancel_send_confirm">Voulez-vous vraiment annuler cet envoi ?</string>
+    <string name="cancel_transfer_confirm">Voulez-vous vraiment annuler le transfert ?</string>
+    <string name="yes">Oui</string>
+    <string name="no">Non</string>
     <string name="missed_call">Appel manqué</string>
     <string name="today">Aujourd\'hui</string>
     <string name="now">Maintenant</string>

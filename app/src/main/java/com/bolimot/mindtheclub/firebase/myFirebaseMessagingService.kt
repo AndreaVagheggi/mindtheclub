@@ -24,6 +24,7 @@ import com.bolimot.mindtheclub.contactAcquisition.setAcquisitionStatus
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.message.Message
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.appIsForeground
 import com.bolimot.mindtheclub.functions.batchTablesExists
@@ -48,6 +49,7 @@ import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.handleGroupDeliveryConfirmation
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.reSendMessage
+import com.bolimot.mindtheclub.sending.receiveTransferCancelled
 import com.bolimot.mindtheclub.sending.sendMessageId
 import com.bolimot.mindtheclub.sending.sendSingleMessage
 import com.bolimot.mindtheclub.start.App
@@ -274,6 +276,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         val msgId = parts[0]
                         val chatGroupId = parts.getOrNull(1)
 
+                        if (CancelledTransferRegistry.isCancelled(applicationContext, msgId)) {
+                            debugLine(tag, "Transfer $msgId was cancelled, ignoring pending")
+                            return@launch
+                        }
+
                         val existingMessage = getMessageRepository(App.context()).getMessage(msgId)
                         if (existingMessage != null && existingMessage.status != Status.RECEIVING) {
                             debugLine(tag, "Message $msgId already received, sending allReceived to $fromUserId")
@@ -323,6 +330,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 debugLine(tag, "I am sending a message: $channelId to requester $fromUserId")
                 channelId?.let { msgId ->
                     appScope.launch {
+                        if (CancelledTransferRegistry.isCancelled(applicationContext, msgId)) {
+                            debugLine(tag, "Transfer $msgId was cancelled, ignoring sendMe")
+                            return@launch
+                        }
                         if (batchTablesExists(msgId)) {
                             debugLine(tag, "Batch tables exist for $msgId, dispatching to $fromUserId")
                             submitDispatchWorker(msgId, fromUserId, applicationContext)
@@ -695,10 +706,27 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 }
             }
 
+            Notify.CANCEL_TRANSFER -> {
+                debugLine(tag, "Transfer cancelled by $fromUserId: $channelId")
+                channelId?.let { msgId ->
+                    appScope.launch {
+                        try {
+                            receiveTransferCancelled(fromUserId, msgId, applicationContext)
+                        } catch (ex: Exception) {
+                            debugLine(tag, "Exception on cancelTransfer: ${ex.message}")
+                        }
+                    }
+                }
+            }
+
             Notify.COMPLETED -> {
                 debugLine(tag, "This message has been sent to me: $channelId")
                 channelId?.let {
                     appScope.launch {
+                        if (CancelledTransferRegistry.isCancelled(applicationContext, it)) {
+                            debugLine(tag, "Transfer $it was cancelled, ignoring completed")
+                            return@launch
+                        }
                         val messageStatus = checkIfMessageIsCompleted(it)
                         when {
                             // SOAK CHANGE, 01/03, removed sending all received

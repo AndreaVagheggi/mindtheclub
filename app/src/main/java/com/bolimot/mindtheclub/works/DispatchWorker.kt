@@ -10,10 +10,13 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.dataModels.RTCClientResult
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.deleteBatchTables
 import com.bolimot.mindtheclub.functions.debugLine2
+import com.bolimot.mindtheclub.sending.DispatchResult
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.dispatchMessage
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -84,6 +87,13 @@ class DispatchWorker(
 
         val messageDate = inputData.getLong("messageDate", 0L)
 
+        if (CancelledTransferRegistry.isCancelled(applicationContext, messageId)) {
+            debugLine("DispatchWorker", "Transfer $messageId was cancelled, dropping dispatch")
+            deleteBatchTables(messageId)
+            PendingMessageTracker.remove(applicationContext, messageId, toUserId)
+            return Result.success()
+        }
+
         val globalCycleKey = "globalCycle_${messageId}_${toUserId}"
         val globalCycleTimeKey = "globalCycleTime_${messageId}_${toUserId}"
         val firstCycleTime = sharedPreferences.getLong(globalCycleTimeKey, 0L)
@@ -130,7 +140,17 @@ class DispatchWorker(
 
         debugLine2("doWork", "internalState: $internalState, attemptCount: $attemptCount")
 
-        val result = dispatchMessage(messageId, toUserId, applicationContext, chatGroupId, originalSenderId, messageDate)
+        // dispatchMessage carries @RequiresPermission(BLUETOOTH_CONNECT) because its
+        // transport may route via Bluetooth, but it must run regardless: without the
+        // permission TransportRouter falls back to WebRTC and the Bluetooth layer
+        // guards its own calls. Handling SecurityException here satisfies the
+        // permission contract without gating the dispatch.
+        val result = try {
+            dispatchMessage(messageId, toUserId, applicationContext, chatGroupId, originalSenderId, messageDate)
+        } catch (se: SecurityException) {
+            debugLine("DispatchWorker", "BLUETOOTH_CONNECT denied during dispatch: ${se.message}")
+            DispatchResult(RTCClientResult.RTCClientGeneralFailure, 0)
+        }
 
         when (result.clientResult) {
             RTCClientResult.RTCClientNotConnected -> {

@@ -102,6 +102,11 @@
     <string name="sent">Terkirim</string>
     <string name="delivered">Tersampaikan</string>
     <string name="seen">Dilihat</string>
+    <string name="cancelled">Dibatalkan</string>
+    <string name="cancel_send_confirm">Yakin ingin membatalkan pengiriman ini?</string>
+    <string name="cancel_transfer_confirm">Yakin ingin membatalkan transfer ini?</string>
+    <string name="yes">Ya</string>
+    <string name="no">Tidak</string>
     <string name="missed_call">Panggilan tak terjawab</string>
     <string name="today">Hari ini</string>
     <string name="now">Sekarang</string>

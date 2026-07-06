@@ -100,6 +100,11 @@
     <string name="sent">Gesendet</string>
     <string name="delivered">Zugestellt</string>
     <string name="seen">Gelesen</string>
+    <string name="cancelled">Abgebrochen</string>
+    <string name="cancel_send_confirm">Möchten Sie diesen Sendevorgang wirklich abbrechen?</string>
+    <string name="cancel_transfer_confirm">Möchten Sie die Übertragung wirklich abbrechen?</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nein</string>
     <string name="missed_call">Verpasster Anruf</string>
     <string name="today">Heute</string>
     <string name="now">Jetzt</string>

@@ -101,6 +101,11 @@
     <string name="sent">Sent</string>
     <string name="delivered">Delivered</string>
     <string name="seen">Seen</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="cancel_send_confirm">Are you sure you want to cancel this send?</string>
+    <string name="cancel_transfer_confirm">Are you sure you want to cancel the transfer?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
     <string name="missed_call">Missed call</string>
     <string name="today">Today</string>
     <string name="now">Now</string>

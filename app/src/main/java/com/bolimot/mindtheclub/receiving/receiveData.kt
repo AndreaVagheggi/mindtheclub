@@ -5,6 +5,7 @@ import com.bolimot.mindtheclub.database.inbox.Inbox
 import com.bolimot.mindtheclub.database.inbox.InboxDao
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.outbox.Outbox
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
@@ -33,6 +34,11 @@ suspend fun receiveData(remoteUserId: String,
     }
 
     val message = jsonParser.decodeFromString<Outbox>(receivedMessage)
+
+    if (CancelledTransferRegistry.isCancelled(App.context(), message.messageId)) {
+        debugLine("receiveData", "Transfer ${message.messageId} was cancelled, dropping chunk ${message.sequenceNo}")
+        return
+    }
 
     val newMessage = Inbox(
         uid = 0,

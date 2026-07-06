@@ -47,6 +47,7 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -98,6 +99,8 @@ import com.bolimot.mindtheclub.functions.toImage
 import com.bolimot.mindtheclub.functions.typeHasImageAttached
 import com.bolimot.mindtheclub.functions.vectorToBitmap
 import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
+import com.bolimot.mindtheclub.sending.cancelIncomingTransfer
+import com.bolimot.mindtheclub.sending.cancelOutgoingSend
 import com.bolimot.mindtheclub.sending.forwardAudio
 import com.bolimot.mindtheclub.sending.forwardText
 import com.bolimot.mindtheclub.sending.forwardWeb
@@ -1622,9 +1625,50 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     }
 
     override fun onSwipeToDismissPlaceholder(message: Message) {
-        lifecycleScope.launch {
-            messageViewModel.deleteMessages(listOf(message))
+        if (message.chatGroupId != null) {
+            // Group transfers travel by gossip and cannot be revoked with a single
+            // FCM: keep the original local-only dismiss for them.
+            lifecycleScope.launch {
+                messageViewModel.deleteMessages(listOf(message))
+            }
+            return
         }
+
+        AlertDialog.Builder(this)
+            .setMessage(R.string.cancel_transfer_confirm)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                lifecycleScope.launch {
+                    val current = messageViewModel.getMessage(message.messageId)
+                    if (current == null || current.status != Status.RECEIVING) {
+                        // Completed while the dialog was open: delivery wins.
+                        return@launch
+                    }
+                    cancelIncomingTransfer(current, this@ChatScreen)
+                }
+            }
+            .setNegativeButton(R.string.no, null)
+            .show()
+    }
+
+    override fun onSwipeToCancelSend(message: Message) {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.cancel_send_confirm)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                lifecycleScope.launch {
+                    val current = messageViewModel.getMessage(message.messageId) ?: return@launch
+                    if (current.status != getString(R.string.sending)
+                        && current.status != getString(R.string.sent)) {
+                        // Status changed while the dialog was open: delivery wins.
+                        if (current.status == getString(R.string.delivered) || current.status == Notify.SEEN) {
+                            showToast(getString(R.string.delivered), this@ChatScreen)
+                        }
+                        return@launch
+                    }
+                    cancelOutgoingSend(current, this@ChatScreen)
+                }
+            }
+            .setNegativeButton(R.string.no, null)
+            .show()
     }
 
     override fun onViewProfileClick(message: Message) {

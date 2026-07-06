@@ -15,6 +15,10 @@ import java.util.concurrent.TimeUnit
 
 private const val TAG_PREFIX_MSG = "_msg:"
 
+// Tag shared by every DispatchWorker request for this message; used by
+// cancelTransfer to revoke all of them at once.
+fun dispatchMessageTag(messageId: String): String = "$TAG_PREFIX_MSG$messageId"
+
 fun contentTag(
     messageId: String,
     toUserId: String,
@@ -40,7 +44,7 @@ fun submitDispatchWorker(messageId: String, toUserId: String, context: Context, 
 
     val dispatchRequestBuilder = OneTimeWorkRequestBuilder<DispatchWorker>()
         .setInputData(inputData)
-        .addTag("$TAG_PREFIX_MSG$messageId")
+        .addTag(dispatchMessageTag(messageId))
         .addTag(contentTag(messageId, toUserId, chatGroupId, originalSenderId, messageDate))
         .setBackoffCriteria(
             BackoffPolicy.LINEAR,

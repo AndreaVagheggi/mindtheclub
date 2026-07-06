@@ -62,6 +62,7 @@ class MessagesAdapter(private val listener: OnItemClickListener,
         fun isAnyMessageSelected(): Boolean
         fun onSwipeToReply(message: Message)
         fun onSwipeToDismissPlaceholder(message: Message)
+        fun onSwipeToCancelSend(message: Message)
         fun onViewProfileClick(message: Message)
         fun onAddContactClick(message: Message)
     }
@@ -608,6 +609,18 @@ class MessagesAdapter(private val listener: OnItemClickListener,
 
     class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
+    // An outgoing 1:1 message can be withdrawn while still Sending…/Sent, i.e. until
+    // the receiver confirms it (Delivered/Seen). Group messages are excluded: they
+    // spread by gossip and cannot be revoked with a single FCM.
+    private fun isCancellableSend(message: Message?, context: Context): Boolean {
+        if (message == null) return false
+        if (message.chatGroupId != null) return false
+        if (message.fromUserId != MySelf.userId()) return false
+        if (message.type == Type.PROFILE) return false
+        return message.status == context.getString(R.string.sending) ||
+                message.status == context.getString(R.string.sent)
+    }
+
     fun attachSwipeToReply(recyclerView: RecyclerView) {
         val swipeCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
 
@@ -674,8 +687,9 @@ class MessagesAdapter(private val listener: OnItemClickListener,
                     val position = viewHolder.bindingAdapterPosition
                     val message = if (position != RecyclerView.NO_POSITION) getItem(position) else null
                     val isReceiving = message?.status == Status.RECEIVING
+                    val isCancellable = isCancellableSend(message, recyclerView.context)
 
-                    val iconRes = if (isReceiving) R.drawable.ic_dismiss else R.drawable.reply_chat
+                    val iconRes = if (isReceiving || isCancellable) R.drawable.ic_dismiss else R.drawable.reply_chat
 
                     val icon = ContextCompat.getDrawable(
                         recyclerView.context,
@@ -704,6 +718,8 @@ class MessagesAdapter(private val listener: OnItemClickListener,
                         if (message != null) {
                             if (message.status == Status.RECEIVING) {
                                 listener.onSwipeToDismissPlaceholder(message)
+                            } else if (isCancellableSend(message, viewHolder.itemView.context)) {
+                                listener.onSwipeToCancelSend(message)
                             } else {
                                 listener.onSwipeToReply(message)
                             }

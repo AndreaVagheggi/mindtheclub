@@ -69,6 +69,7 @@ object Notify {
     const val REQUEST_PROFILE = "requestProfile"
     const val CONNECTION_BUSY = "connectionBusy"
     const val CONTACT_REQUEST = "contactRequest"
+    const val CANCEL_TRANSFER = "cancelTransfer"
 }
 
 const val NO_PICTURE = "//no-picture"

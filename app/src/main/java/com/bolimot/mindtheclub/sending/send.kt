@@ -12,6 +12,7 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.AppDatabase
 import com.bolimot.mindtheclub.database.outbox.Outbox
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.debugLine2
@@ -80,6 +81,11 @@ private fun deferredSendMessage(context: Context, message: MessageData) {
 }
 
 fun reSendMessage(userId: String, messageId: String, missingItems: List<Int>, context: Context){
+    if (CancelledTransferRegistry.isCancelled(context, messageId)) {
+        debugLine("reSend", "Transfer $messageId was cancelled, ignoring resend request")
+        deleteBatchTables(messageId)
+        return
+    }
     if(setMessageToNotSent(messageId, missingItems, context)) {
         if (hasNetworkAvailable(App.context())
             || runBlocking { hasBluetoothPathTo(userId, App.context()) }
@@ -157,6 +163,12 @@ fun setMessageToNotSent(messageId: String, missingItems: List<Int>, context: Con
 }
 
 fun sendMessageWork(message: MessageData, context: Context, scope: CoroutineScope): Boolean {
+    if (CancelledTransferRegistry.isCancelled(context, message.messageId)) {
+        debugLine("sendMediaMessage", "Transfer ${message.messageId} was cancelled, aborting build")
+        deleteBatchTables(message.messageId)
+        return true
+    }
+
     val contentResolver = context.contentResolver
     val chunkSize = 100000
     val maxChunksPerTable = 100
