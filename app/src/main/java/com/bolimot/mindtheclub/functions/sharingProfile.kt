@@ -124,7 +124,13 @@ suspend fun shareMyProfile(textToShare: String, context: Context, view: View) {
 }
 
 fun shareMyQRCode(payload: String, context: Context) {
-    val qrUri = saveBitmap(generateQRCode(payload), "myQRCode.jpg", 100) ?: return
+    // The QR encodes the invite link so a third-party scanner triggers the same
+    // install/add-contact flow as tapping the link; the in-app scanner parses it too.
+    val inviteLink = parseQRCode(payload)?.let { qr ->
+        buildInviteLink(qr.name, qr.userId, qr.bio, qr.fingerprint)
+    } ?: return
+
+    val qrUri = saveBitmap(generateQRCode(inviteLink), "myQRCode.jpg", 100) ?: return
 
     // Image-only share: attaching text alongside the picture makes several apps
     // (Messenger, some SMS clients) drop one of the two, so the QR travels alone.

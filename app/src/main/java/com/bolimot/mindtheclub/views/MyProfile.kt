@@ -30,6 +30,7 @@ import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
+import com.bolimot.mindtheclub.functions.buildInviteLink
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
 import com.bolimot.mindtheclub.functions.generateQRCode
@@ -215,7 +216,9 @@ class MyProfile : BaseActivity() {
                     }
 
                     val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
-                    val qrCode = saveBitmap(generateQRCode("mtc;$name;$userId;$bio;$fingerprint"),"myQRCode.jpg", 100)
+                    // The QR encodes the invite link (not the raw "mtc;" payload) so that
+                    // third-party scanners open the same install/add-contact flow as the link.
+                    val qrCode = saveBitmap(generateQRCode(buildInviteLink(name, userId, bio, fingerprint)),"myQRCode.jpg", 100)
 
                     qrCode?.let {
                         val qrCodePath = it.toString()

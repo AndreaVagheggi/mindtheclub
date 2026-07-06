@@ -1,10 +1,24 @@
 package com.bolimot.mindtheclub.functions
 
+import androidx.core.net.toUri
 import com.bolimot.mindtheclub.tools.QRClubCodeData
 import com.bolimot.mindtheclub.tools.QRCodeData
 
 fun parseQRCode(qr: String?): QRCodeData? {
     if(qr.isNullOrEmpty()) return null
+
+    // Invite-link form: https://www.mindtheclub.com/add?n=..&u=..&b=..&f=..
+    // The QR codes carry this link so that third-party scanners fall into the
+    // same install/add-contact flow as tapping the link; legacy "mtc;" QR codes
+    // are still accepted below.
+    if (qr.startsWith("https://") || qr.startsWith("http://")) {
+        val uri = qr.toUri()
+        val name = uri.getQueryParameter("n")
+        val userId = uri.getQueryParameter("u")
+        if (name.isNullOrEmpty() || userId.isNullOrEmpty()) return null
+
+        return QRCodeData(name, userId, uri.getQueryParameter("b") ?: "", uri.getQueryParameter("f") ?: "")
+    }
 
     val parts = qr.split(";")
 
