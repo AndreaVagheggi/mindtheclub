@@ -26,12 +26,21 @@ interface MessageDao{
     )
 
     @Query("""
-    SELECT * FROM Message 
-    WHERE (fromUserId = :myUserId AND toUserId = :remoteUserId) 
+    SELECT * FROM Message
+    WHERE (fromUserId = :myUserId AND toUserId = :remoteUserId)
        OR (fromUserId = :remoteUserId AND toUserId = :myUserId)
      ORDER BY date DESC
     """)
     fun getMessagesPagingSource(myUserId: String, remoteUserId: String): PagingSource<Int, Message>
+
+    @Query("""
+    SELECT * FROM Message
+    WHERE (fromUserId = :myUserId AND toUserId = :remoteUserId)
+       OR (fromUserId = :remoteUserId AND toUserId = :myUserId)
+     ORDER BY date DESC
+     LIMIT :limit
+    """)
+    suspend fun getRecentMessages(myUserId: String, remoteUserId: String, limit: Int): List<Message>
 
     @Query("""
     SELECT COUNT(*) FROM Message

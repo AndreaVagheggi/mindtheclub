@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.start.BaseActivity
@@ -62,7 +63,8 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
             peerViewModel.peers
                 .map { pagingData: PagingData<Peer> ->
                     pagingData.filter { peer: Peer ->
-                        peer.userId !in excludedUserIds && !peer.userId.startsWith("group") && peer.status == Contact.ACTIVE
+                        peer.userId !in excludedUserIds && !peer.userId.startsWith("group")
+                                && !AiAssistant.isAssistant(peer.userId) && peer.status == Contact.ACTIVE
                     }
                 }
                 .collectLatest { filteredPagingData: PagingData<Peer> ->

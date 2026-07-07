@@ -250,4 +250,17 @@
     <string name="perm_call_needs_camera">Camera and microphone access are needed for video calls. Please enable them in Settings.</string>
     <string name="open_settings">Open Settings</string>
     <string name="invite_share_other_apps">Invite friends using other Apps</string>
+
+    <!-- AI Assistant -->
+    <string name="assistant_name">MTC Assistant</string>
+    <string name="assistant_bio">AI assistant — messages in this chat are processed by an AI model, not peer-to-peer</string>
+    <string name="assistant_welcome">Hi! I\'m the MTC Assistant. You can ask me anything while your friends join MindTheClub. Unlike every other chat in this app, my replies come from an AI model in the cloud — nothing here is peer-to-peer. Your other conversations stay fully private, as always.</string>
+    <string name="assistant_disclosure_title">Before you chat with the Assistant</string>
+    <string name="assistant_disclosure_text">Messages in this chat are sent to an AI model in the cloud to generate replies. This chat is NOT peer-to-peer and NOT end-to-end encrypted.\n\nAll your other conversations remain private and peer-to-peer, as always.\n\nDon\'t share sensitive personal information in this chat.</string>
+    <string name="assistant_disclosure_accept">I understand</string>
+    <string name="assistant_text_only">I can only read text messages. Please write me something!</string>
+    <string name="assistant_limit_user">You\'ve reached today\'s message limit for the Assistant. Come back tomorrow!</string>
+    <string name="assistant_limit_global">The Assistant is taking a break for today. Please try again tomorrow!</string>
+    <string name="assistant_error_network">I couldn\'t be reached — please check your connection and try again.</string>
+    <string name="assistant_error_generic">Something went wrong on my side. Please try again in a moment.</string>
 </resources>

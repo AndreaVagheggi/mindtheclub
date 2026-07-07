@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
@@ -196,6 +197,7 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val activePeerIds = repository.getActivePeerUserIds()
+                    .filterNot { AiAssistant.isAssistant(it) }
                 debugLine("broadcastProfile", "Broadcasting profile update to ${activePeerIds.size} peers")
                 for (userId in activePeerIds) {
                     sendMyProfileToRemotePeer(userId)

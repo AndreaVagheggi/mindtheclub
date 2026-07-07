@@ -23,6 +23,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.chat.SelectPeersForForward
 import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
 import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
@@ -117,6 +118,7 @@ class AppTab : BaseActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         CoroutineScope(Dispatchers.IO).launch {
+            AiAssistant.ensureSeeded(this@AppTab)
             remoteUserId = getPeerDao(this@AppTab).getFirstPeer()?.userId
         }
 

@@ -251,4 +251,17 @@
     <string name="perm_call_needs_camera">Akses kamera dan mikrofon diperlukan untuk panggilan video. Aktifkan di Setelan.</string>
     <string name="open_settings">Buka Setelan</string>
     <string name="invite_share_other_apps">Undang teman lewat aplikasi lain</string>
+
+    <!-- AI Assistant -->
+    <string name="assistant_name">Asisten MTC</string>
+    <string name="assistant_bio">Asisten AI — pesan di chat ini diproses oleh model AI, bukan peer-to-peer</string>
+    <string name="assistant_welcome">Hai! Saya Asisten MTC. Kamu bisa bertanya apa saja sambil menunggu teman-temanmu bergabung ke MindTheClub. Berbeda dengan semua chat lain di aplikasi ini, jawaban saya berasal dari model AI di cloud — tidak ada yang peer-to-peer di sini. Percakapanmu yang lain tetap sepenuhnya privat, seperti biasa.</string>
+    <string name="assistant_disclosure_title">Sebelum mengobrol dengan Asisten</string>
+    <string name="assistant_disclosure_text">Pesan di chat ini dikirim ke model AI di cloud untuk menghasilkan balasan. Chat ini BUKAN peer-to-peer dan TIDAK terenkripsi end-to-end.\n\nSemua percakapanmu yang lain tetap privat dan peer-to-peer, seperti biasa.\n\nJangan bagikan informasi pribadi yang sensitif di chat ini.</string>
+    <string name="assistant_disclosure_accept">Saya mengerti</string>
+    <string name="assistant_text_only">Saya hanya bisa membaca pesan teks. Tulis sesuatu untuk saya!</string>
+    <string name="assistant_limit_user">Kamu sudah mencapai batas pesan hari ini untuk Asisten. Kembali lagi besok!</string>
+    <string name="assistant_limit_global">Asisten sedang istirahat hari ini. Silakan coba lagi besok!</string>
+    <string name="assistant_error_network">Saya tidak dapat dihubungi — periksa koneksimu dan coba lagi.</string>
+    <string name="assistant_error_generic">Ada yang salah di pihak saya. Coba lagi sebentar lagi.</string>
 </resources>

@@ -249,4 +249,17 @@
     <string name="perm_call_needs_camera">O acesso à câmera e ao microfone é necessário para chamadas de vídeo. Ative-os nas Configurações.</string>
     <string name="open_settings">Abrir Configurações</string>
     <string name="invite_share_other_apps">Convidar amigos por outros apps</string>
+
+    <!-- AI Assistant -->
+    <string name="assistant_name">Assistente MTC</string>
+    <string name="assistant_bio">Assistente de IA — as mensagens deste chat são processadas por um modelo de IA, não são peer-to-peer</string>
+    <string name="assistant_welcome">Olá! Sou o Assistente MTC. Você pode me perguntar qualquer coisa enquanto seus amigos entram no MindTheClub. Diferente de qualquer outro chat deste app, minhas respostas vêm de um modelo de IA na nuvem — nada aqui é peer-to-peer. Suas outras conversas continuam totalmente privadas, como sempre.</string>
+    <string name="assistant_disclosure_title">Antes de conversar com o Assistente</string>
+    <string name="assistant_disclosure_text">As mensagens deste chat são enviadas a um modelo de IA na nuvem para gerar respostas. Este chat NÃO é peer-to-peer e NÃO é criptografado de ponta a ponta.\n\nTodas as suas outras conversas continuam privadas e peer-to-peer, como sempre.\n\nNão compartilhe informações pessoais sensíveis neste chat.</string>
+    <string name="assistant_disclosure_accept">Entendi</string>
+    <string name="assistant_text_only">Só consigo ler mensagens de texto. Escreva algo para mim!</string>
+    <string name="assistant_limit_user">Você atingiu o limite de mensagens de hoje para o Assistente. Volte amanhã!</string>
+    <string name="assistant_limit_global">O Assistente está descansando por hoje. Tente novamente amanhã!</string>
+    <string name="assistant_error_network">Não foi possível me contatar — verifique sua conexão e tente novamente.</string>
+    <string name="assistant_error_generic">Algo deu errado do meu lado. Tente novamente em instantes.</string>
 </resources>

@@ -77,6 +77,7 @@ import com.bolimot.mindtheclub.customViews.RichEditText
 import com.bolimot.mindtheclub.customViews.SlideUpItemAnimator
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.functions.buildMultiImagePreview
 import com.bolimot.mindtheclub.functions.copyUri
 import com.bolimot.mindtheclub.functions.debugLine
@@ -87,12 +88,14 @@ import com.bolimot.mindtheclub.functions.fetchWebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.getReactionViewModel
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.loadBitmap
 import com.bolimot.mindtheclub.functions.safeUrl
 import com.bolimot.mindtheclub.functions.saveBitmapFromUri
+import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.functions.startBlinkingAnimation
 import com.bolimot.mindtheclub.functions.toImage
@@ -233,6 +236,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     private val typingWatchdogMs = 8000L
     private var webPreviewDismissed = false
     private var pendingCaptionText: String? = null
+    private var isAssistantChat = false
 
     private fun listenToRemoteCallEvents(){
         val intentFilter = IntentFilter()
@@ -293,12 +297,14 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         if (visible) {
             keyboardIsVisible = true
             // attach stays visible — camera hides (WhatsApp behaviour)
-            camera.visibility = ImageButton.INVISIBLE
+            if (!isAssistantChat) camera.visibility = ImageButton.INVISIBLE
         } else {
             keyboardIsVisible = false
-            camera.visibility = ImageButton.VISIBLE
-            if (editText.text.isNullOrEmpty()) {
-                microphone.visibility = ImageButton.VISIBLE
+            if (!isAssistantChat) {
+                camera.visibility = ImageButton.VISIBLE
+                if (editText.text.isNullOrEmpty()) {
+                    microphone.visibility = ImageButton.VISIBLE
+                }
             }
             editText.setRichContentEnabled(true)
         }
@@ -342,6 +348,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
             targetMessageId = intent?.getStringExtra("targetMessageId")
         }
+
+        isAssistantChat = AiAssistant.isAssistant(remoteUserId)
 
         text = intent?.getStringExtra("text") ?: emptyString()
         val bio = intent?.getStringExtra("bio")
@@ -461,6 +469,14 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         attachFile = findViewById(R.id.attach_file)
         attachContact = findViewById(R.id.attach_contact)
 
+        if (isAssistantChat) {
+            // The assistant only understands text: no attachments, no voice notes.
+            attach.visibility = ImageButton.GONE
+            camera.visibility = ImageButton.GONE
+            microphone.visibility = ImageButton.GONE
+            showAssistantDisclosureIfNeeded()
+        }
+
         val richContentListener = object : RichEditText.OnRichContentListener {
             override fun onRichContentInserted(content: ContentInfoCompat): ContentInfoCompat? {
                 handlePasteContent(content)
@@ -558,7 +574,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (s.isNullOrEmpty()) {
                     sendButton.visibility = ImageButton.INVISIBLE
-                    microphone.visibility = ImageButton.VISIBLE
+                    if (!isAssistantChat) microphone.visibility = ImageButton.VISIBLE
 
                     stopTyping()
                 } else {
@@ -599,10 +615,12 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 } else {
                     keyboardIsVisible = false
 
-                    camera.visibility = ImageButton.VISIBLE
+                    if (!isAssistantChat) {
+                        camera.visibility = ImageButton.VISIBLE
 
-                    if (editText.text.isNullOrEmpty()) {
-                        microphone.visibility = ImageButton.VISIBLE
+                        if (editText.text.isNullOrEmpty()) {
+                            microphone.visibility = ImageButton.VISIBLE
+                        }
                     }
                     editText.setRichContentEnabled(true)
                 }
@@ -930,6 +948,22 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         }
     }
 
+    private fun showAssistantDisclosureIfNeeded() {
+        if (getPreference(AiAssistant.DISCLOSURE_ACCEPTED_KEY, this) == "true") return
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.assistant_disclosure_title)
+            .setMessage(R.string.assistant_disclosure_text)
+            .setCancelable(false)
+            .setPositiveButton(R.string.assistant_disclosure_accept) { _, _ ->
+                setPreference(AiAssistant.DISCLOSURE_ACCEPTED_KEY, "true", this)
+            }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                finish()
+            }
+            .show()
+    }
+
     override fun onDestroy() {
         typingTimer?.cancel()
         handler.removeCallbacksAndMessages(null)
@@ -1195,6 +1229,11 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             menu?.findItem(R.id.phone_call)?.isVisible = false
             menu?.findItem(R.id.video_call)?.isVisible = false
             menu?.findItem(R.id.calendar)?.isVisible = !isToggledMenu
+        }
+
+        if (isAssistantChat) {
+            menu?.findItem(R.id.phone_call)?.isVisible = false
+            menu?.findItem(R.id.video_call)?.isVisible = false
         }
 
         menu?.findItem(R.id.action_search)?.isVisible = !isToggledMenu

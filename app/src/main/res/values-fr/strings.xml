@@ -249,4 +249,17 @@
     <string name="perm_call_needs_camera">L\'accès à la caméra et au microphone est nécessaire pour les appels vidéo. Veuillez les activer dans les Réglages.</string>
     <string name="open_settings">Ouvrir les réglages</string>
     <string name="invite_share_other_apps">Inviter des amis via d\'autres applis</string>
+
+    <!-- AI Assistant -->
+    <string name="assistant_name">Assistant MTC</string>
+    <string name="assistant_bio">Assistant IA — les messages de cette discussion sont traités par un modèle d\'IA, pas en pair-à-pair</string>
+    <string name="assistant_welcome">Bonjour ! Je suis l\'Assistant MTC. Tu peux tout me demander pendant que tes amis rejoignent MindTheClub. Contrairement à toutes les autres discussions de cette appli, mes réponses viennent d\'un modèle d\'IA dans le cloud — rien ici n\'est en pair-à-pair. Tes autres conversations restent totalement privées, comme toujours.</string>
+    <string name="assistant_disclosure_title">Avant de discuter avec l\'Assistant</string>
+    <string name="assistant_disclosure_text">Les messages de cette discussion sont envoyés à un modèle d\'IA dans le cloud pour générer les réponses. Cette discussion n\'est PAS en pair-à-pair et n\'est PAS chiffrée de bout en bout.\n\nToutes tes autres conversations restent privées et en pair-à-pair, comme toujours.\n\nNe partage pas d\'informations personnelles sensibles dans cette discussion.</string>
+    <string name="assistant_disclosure_accept">J\'ai compris</string>
+    <string name="assistant_text_only">Je ne peux lire que des messages texte. Écris-moi quelque chose !</string>
+    <string name="assistant_limit_user">Tu as atteint la limite de messages du jour pour l\'Assistant. Reviens demain !</string>
+    <string name="assistant_limit_global">L\'Assistant fait une pause pour aujourd\'hui. Réessaie demain !</string>
+    <string name="assistant_error_network">Impossible de me joindre — vérifie ta connexion et réessaie.</string>
+    <string name="assistant_error_generic">Quelque chose s\'est mal passé de mon côté. Réessaie dans un instant.</string>
 </resources>

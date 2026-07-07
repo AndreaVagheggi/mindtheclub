@@ -250,4 +250,17 @@
     <string name="open_settings">Abrir Ajustes</string>
 
     <string name="invite_share_other_apps">Invitar amigos con otras apps</string>
+
+    <!-- AI Assistant -->
+    <string name="assistant_name">Asistente MTC</string>
+    <string name="assistant_bio">Asistente de IA — los mensajes de este chat los procesa un modelo de IA, no son peer-to-peer</string>
+    <string name="assistant_welcome">¡Hola! Soy el Asistente MTC. Puedes preguntarme lo que quieras mientras tus amigos se unen a MindTheClub. A diferencia de cualquier otro chat de esta app, mis respuestas vienen de un modelo de IA en la nube — aquí nada es peer-to-peer. Tus demás conversaciones siguen siendo totalmente privadas, como siempre.</string>
+    <string name="assistant_disclosure_title">Antes de chatear con el Asistente</string>
+    <string name="assistant_disclosure_text">Los mensajes de este chat se envían a un modelo de IA en la nube para generar respuestas. Este chat NO es peer-to-peer y NO está cifrado de extremo a extremo.\n\nTodas tus demás conversaciones siguen siendo privadas y peer-to-peer, como siempre.\n\nNo compartas información personal sensible en este chat.</string>
+    <string name="assistant_disclosure_accept">Entendido</string>
+    <string name="assistant_text_only">Solo puedo leer mensajes de texto. ¡Escríbeme algo!</string>
+    <string name="assistant_limit_user">Has alcanzado el límite de mensajes de hoy para el Asistente. ¡Vuelve mañana!</string>
+    <string name="assistant_limit_global">El Asistente se toma un descanso por hoy. ¡Inténtalo de nuevo mañana!</string>
+    <string name="assistant_error_network">No se me pudo contactar — comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="assistant_error_generic">Algo salió mal por mi parte. Inténtalo de nuevo en un momento.</string>
 </resources>
