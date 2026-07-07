@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.peer.Peer
@@ -231,7 +232,11 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
         lifecycleScope.launch {
             peersAdapter.loadStateFlow.collectLatest { loadStates ->
-                val isEmpty = loadStates.refresh is LoadState.NotLoading && peersAdapter.itemCount == 0
+                // Clubby is not a real contact: the list counts as empty until
+                // the user has at least one actual peer.
+                val hasRealContact = peersAdapter.snapshot().items
+                    .any { !AiAssistant.isAssistant(it.userId) }
+                val isEmpty = loadStates.refresh is LoadState.NotLoading && !hasRealContact
                 val visibility = if (isEmpty) View.VISIBLE else View.GONE
                 inviteFriendButton.visibility = visibility
                 emptyListText.visibility = visibility
