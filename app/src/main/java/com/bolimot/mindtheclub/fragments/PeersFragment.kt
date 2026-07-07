@@ -111,15 +111,18 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
      */
     private fun refreshClubbyRow() {
         val row = clubbyRow ?: return
+        val divider = view?.findViewById<View>(R.id.clubbyDivider)
 
         viewLifecycleOwner.lifecycleScope.launch {
             val peer = viewModel.getPeer(AiAssistant.USER_ID)
 
             if (peer == null || peer.privateId.startsWith("blocked")) {
                 row.visibility = View.GONE
+                divider?.visibility = View.GONE
                 return@launch
             }
             row.visibility = View.VISIBLE
+            divider?.visibility = View.VISIBLE
 
             row.findViewById<TextView>(R.id.name).apply {
                 text = peer.name
