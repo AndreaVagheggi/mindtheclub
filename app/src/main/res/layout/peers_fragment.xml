@@ -8,6 +8,18 @@
     android:background="@android:color/transparent"
     android:clickable="true">
 
+    <!-- Clubby (AI assistant) pinned above the scrollable contact list -->
+    <include
+        android:id="@+id/clubbyRow"
+        layout="@layout/peer_item"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/contactList"
         android:layout_width="0dp"
@@ -21,7 +33,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/clubbyRow"
         app:layout_constraintVertical_bias="0.0" />
 
     <FrameLayout
