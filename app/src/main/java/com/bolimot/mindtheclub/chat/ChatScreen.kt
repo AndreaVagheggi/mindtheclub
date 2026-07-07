@@ -834,6 +834,16 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                     messageViewModel.sendSeenNotificationForUnseenMessages(remoteUserId = remoteUserId)
                 }
 
+                if (isAssistantChat) {
+                    // The user just asked and is waiting for the answer. The typing
+                    // indicator removal and the reply insert land back-to-back here
+                    // (unlike P2P, where FCM spaces them out), which can leave
+                    // isAtBottom false and swallow the observer's auto-scroll.
+                    isAtBottom = true
+                    recyclerView.postDelayed({ scrollToBottom() }, 300)
+                    return@let
+                }
+
                 if (recyclerView.canScrollVertically(1)) {
                     setGotoBottomFAB(Status.HIGHLIGHT)
                 }
