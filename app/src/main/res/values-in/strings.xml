@@ -152,6 +152,7 @@
     <string name="reconnecting">Menghubungkan ulang…</string>
     <string name="contacts_header">Kontak</string>
     <string name="about">Tentang</string>
+    <string name="options">Opsi</string>
     <string name="version">Versi</string>
     <string name="messages_header">Pesan</string>
     <string name="dates">Cari berdasarkan tanggal</string>

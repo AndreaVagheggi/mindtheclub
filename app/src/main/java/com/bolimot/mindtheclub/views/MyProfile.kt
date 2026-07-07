@@ -28,8 +28,6 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
-import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
-import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.functions.buildInviteLink
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
@@ -52,7 +50,6 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
-import com.bolimot.mindtheclub.webrtc.RTCClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -66,8 +63,6 @@ class MyProfile : BaseActivity() {
     private var profileChanged = false
 
     private lateinit var bluetoothSwitch: SwitchMaterial
-    private lateinit var stealthModeSwitch: SwitchMaterial
-    private lateinit var autoInviteModeSwitch: SwitchMaterial
     private lateinit var imageEditIcon: ImageView
 
     private val enableBtResult =
@@ -343,32 +338,6 @@ class MyProfile : BaseActivity() {
             }
         }
 
-        stealthModeSwitch = findViewById(R.id.stealthModeSwitch)
-        stealthModeSwitch.isChecked = getPreference(RTCClient.PREF_STEALTH_MODE, this) == "true"
-        stealthModeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
-        }
-
-        autoInviteModeSwitch = findViewById(R.id.autoInviteModeSwitch)
-        autoInviteModeSwitch.isChecked = isAutoInviteEnabled(this)
-        autoInviteModeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            setPreference(PREF_AUTO_INVITE_MODE, if (isChecked) "true" else "false", this)
-        }
-
-        findViewById<ImageView>(R.id.imageHelpIcon).setOnClickListener {
-            showHelpDialog(
-                getString(R.string.stealth_mode),
-                getString(R.string.stealth_mode_help)
-            )
-        }
-
-        findViewById<ImageView>(R.id.autoInviteHelpIcon).setOnClickListener {
-            showHelpDialog(
-                getString(R.string.auto_invite_mode),
-                getString(R.string.auto_invite_mode_help)
-            )
-        }
-
         findViewById<ImageView>(R.id.bluetoothHelpIcon).setOnClickListener {
             showHelpDialog(
                 getString(R.string.bluetooth_transport),
@@ -481,6 +450,10 @@ class MyProfile : BaseActivity() {
             }
             R.id.black_list -> {
                 startActivity(Intent(this, BlackListActivity::class.java))
+                return true
+            }
+            R.id.options -> {
+                startActivity(Intent(this, OptionsActivity::class.java))
                 return true
             }
             R.id.delete_log -> {

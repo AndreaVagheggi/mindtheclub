@@ -24,6 +24,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/options"
+        android:title="@string/options"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/delete_log"
         android:title="Delete Log"
         app:showAsAction="never" />

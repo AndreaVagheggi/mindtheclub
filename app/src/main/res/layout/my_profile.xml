@@ -37,7 +37,7 @@
                 android:id="@+id/profilePicContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="16dp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
@@ -46,8 +46,8 @@
                     android:id="@+id/profilePic"
                     android:contentDescription="@string/app_name"
                     android:scaleType="centerCrop"
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackgroundBorderless"
@@ -192,87 +192,6 @@
                 app:layout_constraintTop_toTopOf="@+id/bluetoothTransportSwitch"
                 app:layout_constraintBottom_toBottomOf="@+id/bluetoothTransportSwitch" />
 
-            <ImageView
-                android:id="@+id/stealthView"
-                app:layout_constraintEnd_toStartOf="@+id/stealthModeSwitch"
-                app:layout_constraintTop_toTopOf="@+id/stealthModeSwitch"
-                app:layout_constraintBottom_toBottomOf="@+id/stealthModeSwitch"
-                app:tint="@color/black"
-                android:layout_marginEnd="12dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/stealth"
-                android:contentDescription="@string/stealth_mode" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/stealthModeSwitch"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:layout_marginStart="0dp"
-                android:padding="4dp"
-                android:text="@string/stealth_mode"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/bluetoothTransportSwitch" />
-
-            <ImageView
-                android:id="@+id/imageHelpIcon"
-                android:contentDescription="@string/stealth_mode"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                app:layout_constraintStart_toEndOf="@+id/stealthModeSwitch"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/stealthModeSwitch"
-                app:layout_constraintBottom_toBottomOf="@+id/stealthModeSwitch" />
-
-            <ImageView
-                android:id="@+id/autoInviteView"
-                app:layout_constraintEnd_toStartOf="@+id/autoInviteModeSwitch"
-                app:layout_constraintTop_toTopOf="@+id/autoInviteModeSwitch"
-                app:layout_constraintBottom_toBottomOf="@+id/autoInviteModeSwitch"
-                app:tint="@color/black"
-                android:layout_marginEnd="12dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/invite_friend"
-                android:contentDescription="@string/auto_invite_mode" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/autoInviteModeSwitch"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:layout_marginStart="0dp"
-                android:padding="4dp"
-                android:text="@string/auto_invite_mode"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/stealthModeSwitch" />
-
-            <ImageView
-                android:id="@+id/autoInviteHelpIcon"
-                android:contentDescription="@string/auto_invite_mode"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                app:layout_constraintStart_toEndOf="@+id/autoInviteModeSwitch"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/autoInviteModeSwitch"
-                app:layout_constraintBottom_toBottomOf="@+id/autoInviteModeSwitch" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
 

@@ -122,6 +122,13 @@
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
         <activity
+            android:name=".views.OptionsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <activity
             android:name=".views.IncomingCall"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"

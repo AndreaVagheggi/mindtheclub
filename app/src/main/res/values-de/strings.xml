@@ -150,6 +150,7 @@
     <string name="reconnecting">Neu verbinden…</string>
     <string name="contacts_header">Kontakte</string>
     <string name="about">Über</string>
+    <string name="options">Optionen</string>
     <string name="version">Version</string>
     <string name="messages_header">Nachrichten</string>
     <string name="dates">Nach Datum suchen</string>
