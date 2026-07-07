@@ -252,9 +252,9 @@
     <string name="invite_share_other_apps">Freunde über andere Apps einladen</string>
 
     <!-- AI Assistant -->
-    <string name="assistant_name">MTC-Assistent</string>
+    <string name="assistant_name">Clubby</string>
     <string name="assistant_bio">KI-Assistent — Nachrichten in diesem Chat werden von einem KI-Modell verarbeitet, nicht Peer-to-Peer</string>
-    <string name="assistant_welcome">Hallo! Ich bin der MTC-Assistent. Du kannst mich alles fragen, während deine Freunde MindTheClub beitreten. Anders als in jedem anderen Chat dieser App kommen meine Antworten von einem KI-Modell in der Cloud — hier ist nichts Peer-to-Peer. Deine anderen Unterhaltungen bleiben wie immer vollständig privat.</string>
+    <string name="assistant_welcome">Hallo! Ich bin Clubby, dein MTC-Assistent. Du kannst mich alles fragen, während deine Freunde MindTheClub beitreten. Anders als in jedem anderen Chat dieser App kommen meine Antworten von einem KI-Modell in der Cloud — hier ist nichts Peer-to-Peer. Deine anderen Unterhaltungen bleiben wie immer vollständig privat.</string>
     <string name="assistant_disclosure_title">Bevor du mit dem Assistenten chattest</string>
     <string name="assistant_disclosure_text">Nachrichten in diesem Chat werden an ein KI-Modell in der Cloud gesendet, um Antworten zu erzeugen. Dieser Chat ist NICHT Peer-to-Peer und NICHT Ende-zu-Ende-verschlüsselt.\n\nAlle deine anderen Unterhaltungen bleiben wie immer privat und Peer-to-Peer.\n\nTeile in diesem Chat keine sensiblen persönlichen Daten.</string>
     <string name="assistant_disclosure_accept">Verstanden</string>

@@ -3,14 +3,20 @@ package com.bolimot.mindtheclub.viewHolders.peers
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bumptech.glide.Glide
 import androidx.core.net.toUri
 
 abstract class PeersBaseViewHolder(itemView: View, private val listener: PeersAdapter.OnItemClickListener) : RecyclerView.ViewHolder(itemView) {
+    // Captured before any bind: holders are recycled, so the assistant's blue
+    // name must be reset to the layout default for every other peer.
+    private val nameDefaultColors = itemView.findViewById<TextView>(R.id.name).textColors
+
     fun baseBind(peer: Peer?) {
         val imageView = itemView.findViewById<ImageView>(R.id.peerImage)
 
@@ -45,7 +51,13 @@ abstract class PeersBaseViewHolder(itemView: View, private val listener: PeersAd
             }
         }
 
-        itemView.findViewById<TextView>(R.id.name).text = peer?.name
+        val nameView = itemView.findViewById<TextView>(R.id.name)
+        nameView.text = peer?.name
+        if (AiAssistant.isAssistant(peer?.userId)) {
+            nameView.setTextColor(ContextCompat.getColor(itemView.context, R.color.assistant_name))
+        } else {
+            nameView.setTextColor(nameDefaultColors)
+        }
 
         itemView.setOnClickListener {
             peer?.let { it1 -> listener.onItemClick(it1) }

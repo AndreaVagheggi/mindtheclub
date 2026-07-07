@@ -46,6 +46,9 @@
     <color name="ListViewSelected">#96BCE3</color>
     <color name="ListViewHighlighted">#E39696</color>
 
+    <!-- AI Assistant (Clubby) name in the chat list -->
+    <color name="assistant_name">#1E88E5</color>
+
     <!-- Onboarding typography (tweak these to refine the look) -->
     <color name="onboarding_background">#FAFAFA</color>
     <color name="onboarding_title_text">#1A1A1A</color>
