@@ -253,6 +253,8 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
+    <string name="show_clubby">Show Clubby</string>
+    <string name="show_clubby_help">Clubby is the built-in AI assistant. When this is off, Clubby disappears from your contact list and from search results. Your conversation is kept and comes back as soon as you turn it on again.</string>
     <string name="assistant_bio">AI assistant — messages in this chat are processed by an AI model, not peer-to-peer</string>
     <string name="assistant_welcome">Hi! I\'m Clubby, your MTC assistant. You can ask me anything while your friends join MindTheClub. Unlike every other chat in this app, my replies come from an AI model in the cloud — nothing here is peer-to-peer. Your other conversations stay fully private, as always.</string>
     <string name="assistant_disclosure_title">Before you chat with the Assistant</string>

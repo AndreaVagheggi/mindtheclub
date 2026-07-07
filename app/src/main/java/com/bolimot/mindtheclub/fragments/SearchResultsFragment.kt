@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.SearchItem
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.adapters.SearchResultsAdapter
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
@@ -92,8 +93,11 @@ class SearchResultsFragment : Fragment() {
 
         val items = mutableListOf<SearchItem>()
 
+        val clubbyHidden = !AiAssistant.isVisible(context)
+
         // --- Contacts section ---
         val matchingPeers = peerDao.searchPeers(query)
+            .filterNot { clubbyHidden && AiAssistant.isAssistant(it.userId) }
         if (matchingPeers.isNotEmpty()) {
             items.add(SearchItem.SectionHeader(getString(R.string.contacts_header)))
             matchingPeers.forEach { peer ->
@@ -103,6 +107,8 @@ class SearchResultsFragment : Fragment() {
 
         // --- Messages section ---
         val matchingMessages = messageDao.searchMessages(query)
+            .filterNot { clubbyHidden &&
+                    (AiAssistant.isAssistant(it.fromUserId) || AiAssistant.isAssistant(it.toUserId)) }
         if (matchingMessages.isNotEmpty()) {
             items.add(SearchItem.SectionHeader(getString(R.string.messages_header)))
 

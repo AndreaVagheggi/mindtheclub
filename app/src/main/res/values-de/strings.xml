@@ -253,6 +253,8 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
+    <string name="show_clubby">Clubby anzeigen</string>
+    <string name="show_clubby_help">Clubby ist der eingebaute KI-Assistent. Wenn diese Option aus ist, verschwindet Clubby aus deiner Kontaktliste und aus den Suchergebnissen. Deine Unterhaltung bleibt erhalten und ist wieder da, sobald du die Option erneut einschaltest.</string>
     <string name="assistant_bio">KI-Assistent — Nachrichten in diesem Chat werden von einem KI-Modell verarbeitet, nicht Peer-to-Peer</string>
     <string name="assistant_welcome">Hallo! Ich bin Clubby, dein MTC-Assistent. Du kannst mich alles fragen, während deine Freunde MindTheClub beitreten. Anders als in jedem anderen Chat dieser App kommen meine Antworten von einem KI-Modell in der Cloud — hier ist nichts Peer-to-Peer. Deine anderen Unterhaltungen bleiben wie immer vollständig privat.</string>
     <string name="assistant_disclosure_title">Bevor du mit dem Assistenten chattest</string>

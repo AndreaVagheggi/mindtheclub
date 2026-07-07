@@ -254,6 +254,8 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
+    <string name="show_clubby">Tampilkan Clubby</string>
+    <string name="show_clubby_help">Clubby adalah asisten AI bawaan. Saat opsi ini mati, Clubby hilang dari daftar kontak dan hasil pencarian. Percakapanmu tetap tersimpan dan kembali begitu kamu menyalakannya lagi.</string>
     <string name="assistant_bio">Asisten AI — pesan di chat ini diproses oleh model AI, bukan peer-to-peer</string>
     <string name="assistant_welcome">Hai! Saya Clubby, asisten MTC-mu. Kamu bisa bertanya apa saja sambil menunggu teman-temanmu bergabung ke MindTheClub. Berbeda dengan semua chat lain di aplikasi ini, jawaban saya berasal dari model AI di cloud — tidak ada yang peer-to-peer di sini. Percakapanmu yang lain tetap sepenuhnya privat, seperti biasa.</string>
     <string name="assistant_disclosure_title">Sebelum mengobrol dengan Asisten</string>

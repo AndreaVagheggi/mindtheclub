@@ -252,6 +252,8 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
+    <string name="show_clubby">Afficher Clubby</string>
+    <string name="show_clubby_help">Clubby est l\'assistant IA intégré. Quand cette option est désactivée, Clubby disparaît de ta liste de contacts et des résultats de recherche. Ta conversation est conservée et revient dès que tu la réactives.</string>
     <string name="assistant_bio">Assistant IA — les messages de cette discussion sont traités par un modèle d\'IA, pas en pair-à-pair</string>
     <string name="assistant_welcome">Bonjour ! Je suis Clubby, ton assistant MTC. Tu peux tout me demander pendant que tes amis rejoignent MindTheClub. Contrairement à toutes les autres discussions de cette appli, mes réponses viennent d\'un modèle d\'IA dans le cloud — rien ici n\'est en pair-à-pair. Tes autres conversations restent totalement privées, comme toujours.</string>
     <string name="assistant_disclosure_title">Avant de discuter avec l\'Assistant</string>

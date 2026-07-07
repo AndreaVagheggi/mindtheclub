@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
+import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.start.BaseActivity
@@ -65,6 +66,7 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
                 .map { pagingData: PagingData<Peer> ->
                     pagingData.filter { peer: Peer ->
                         peer.userId != excludedUserId && peer.status == Contact.ACTIVE
+                                && (!AiAssistant.isAssistant(peer.userId) || AiAssistant.isVisible(this@SelectPeersForForward))
                     }
                 }
                 .collectLatest { filteredPagingData: PagingData<Peer> ->

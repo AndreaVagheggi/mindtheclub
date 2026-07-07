@@ -116,7 +116,8 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         viewLifecycleOwner.lifecycleScope.launch {
             val peer = viewModel.getPeer(AiAssistant.USER_ID)
 
-            if (peer == null || peer.privateId.startsWith("blocked")) {
+            if (peer == null || peer.privateId.startsWith("blocked")
+                || !AiAssistant.isVisible(requireContext())) {
                 row.visibility = View.GONE
                 divider?.visibility = View.GONE
                 return@launch
