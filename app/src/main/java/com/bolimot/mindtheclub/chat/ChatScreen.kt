@@ -70,6 +70,8 @@ import com.bolimot.mindtheclub.adapters.DateNavigatorAdapter
 import com.bolimot.mindtheclub.adapters.MessagesAdapter
 import com.bolimot.mindtheclub.adapters.TypingIndicatorAdapter
 import com.bolimot.mindtheclub.contactAcquisition.NewPeerDialog
+import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
+import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.customViews.AccessibleImageButton
 import com.bolimot.mindtheclub.customViews.CustomLinearLayoutManager
 import com.bolimot.mindtheclub.customViews.MyCustomRecyclerView
@@ -1737,9 +1739,26 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
     override fun onAddContactClick(message: Message) {
         val peer = Json.decodeFromString<Peer>(message.text)
-        val dialog = NewPeerDialog.newInstance(peer.userId, peer.name, peer.bio)
 
-        dialog.show(supportFragmentManager, "confirmNewPeer")
+        // The shared contact carries the peer's public key as attested by the
+        // mutual friend: derive the fingerprint from it so the standard verified
+        // acquisition flow (AcquireContactWorker) can succeed. Without one the
+        // worker refuses to store the key and the request never completes.
+        val fingerprint = peer.publicKey
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { KeyManager.fingerprintOf(it) }
+
+        lifecycleScope.launch {
+            acquiringNewContact(
+                userId = peer.userId,
+                name = peer.name,
+                bio = peer.bio,
+                fingerprint = fingerprint,
+                context = this@ChatScreen,
+                supportFragmentManager = supportFragmentManager,
+                finishOnAccept = false
+            )
+        }
     }
 
     override fun onItemLongClick(

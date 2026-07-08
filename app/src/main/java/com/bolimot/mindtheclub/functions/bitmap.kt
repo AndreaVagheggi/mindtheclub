@@ -369,17 +369,37 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
                 )
             } ?: androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
 
+            // NOTE: decodeStream() intentionally returns null when inJustDecodeBounds
+            // is set — it only fills [bounds]. The stream-null check must therefore
+            // be separate; an elvis on the whole expression would always bail out.
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.contentResolver.openInputStream(uri)?.use { stream ->
+            val boundsStream = context.contentResolver.openInputStream(uri)
+            if (boundsStream == null) {
+                debugLine("saveBitmapFromUri", "openInputStream returned null (bounds pass) for $uri")
+                return null
+            }
+            boundsStream.use { stream ->
                 BitmapFactory.decodeStream(stream, null, bounds)
-            } ?: return null
+            }
+
+            debugLine(
+                "saveBitmapFromUri",
+                "bounds: ${bounds.outWidth}x${bounds.outHeight} mime=${bounds.outMimeType} uri=$uri"
+            )
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                debugLine("saveBitmapFromUri", "Image not decodable on this API level (bounds failed)")
+                return null
+            }
 
             val options = BitmapFactory.Options().apply {
                 inSampleSize = calculateInSampleSize(max(bounds.outWidth, bounds.outHeight), targetSize)
             }
             bitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, options)
-            } ?: return null
+            } ?: run {
+                debugLine("saveBitmapFromUri", "decodeStream returned null (full pass), inSampleSize=${options.inSampleSize}")
+                return null
+            }
 
             bitmap = applyExifOrientation(bitmap, orientation)
         }
@@ -397,8 +417,10 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
 
         val authority = "${context.packageName}.provider"
         FileProvider.getUriForFile(context, authority, file)
-    } catch (e: IOException) {
-        debugLine("saveBitmapFromUri", "Error saving image: ${e.message}")
+    } catch (e: Exception) {
+        // Broad on purpose: SecurityException / IllegalArgumentException etc. must
+        // surface as a logged failure, never as a silent one (or a crash).
+        debugLine("saveBitmapFromUri", "Error saving image: ${e.javaClass.simpleName}: ${e.message}")
         null
     } catch (e: OutOfMemoryError) {
         debugLine("saveBitmapFromUri", "Out of memory saving image: ${e.message}")
