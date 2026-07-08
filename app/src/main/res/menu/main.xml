@@ -7,21 +7,14 @@
         android:title="@string/search"
         android:icon="@drawable/ic_search"
         android:enabled="true"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
 
     <item
         android:id="@+id/action_new_contacts"
         android:title="@string/add_contact"
         android:icon="@drawable/add_contact"
         android:enabled="true"
-        app:showAsAction="ifRoom"/>
-
-    <item
-        android:id="@+id/action_profile"
-        android:title="@string/profile"
-        android:icon="@drawable/profile"
-        android:enabled="true"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
 
     <item
         android:id="@+id/action_options"

@@ -367,14 +367,6 @@ class AppTab : BaseActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.action_profile -> {
-                debugLine("onOptionsItemSelected", "Option selected: ${item.itemId}")
-                val intent = Intent(this, MyProfile::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                startActivity(intent)
-                return true
-            }
             R.id.action_search -> {
                 val searchEditText = findViewById<EditText>(R.id.searchEditText)
                 if (isSearchOpen) {
