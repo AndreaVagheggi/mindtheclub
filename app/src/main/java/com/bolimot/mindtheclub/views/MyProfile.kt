@@ -151,7 +151,6 @@ class MyProfile : BaseActivity() {
         profilePicContainer = findViewById(R.id.profilePicContainer)
         rootView = findViewById(R.id.nestedContainer)
 
-        val fab = findViewById<View>(R.id.shareClub)
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_navigation)
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         val nameEditText: TextInputEditText = findViewById(R.id.nameEditText)
@@ -167,21 +166,6 @@ class MyProfile : BaseActivity() {
             bottomNavigationView.updatePadding(bottom = bars.bottom)
 
             insets
-        }
-
-        fab.setOnClickListener {
-            val name = nameEditText.text.toString().trim()
-            val userId = MySelf.userId() ?: ""
-            val bio = bioEditText.text.toString().trim()
-
-            if (listOf(name, userId).any { it.isEmpty() }) {
-                showToast("No profile to share", this@MyProfile)
-                return@setOnClickListener
-            }
-
-            val fingerprint = com.bolimot.mindtheclub.crypto.KeyManager.getMyPublicKeyFingerprint() ?: ""
-            val payload = "mtc;$name;$userId;$bio;$fingerprint"
-            startActivity(Intent(this@MyProfile, InviteActivity::class.java).putExtra("payload", payload))
         }
 
         bottomNavigationView.setOnItemSelectedListener { item ->
@@ -238,11 +222,8 @@ class MyProfile : BaseActivity() {
         rootView.viewTreeObserver.addOnGlobalLayoutListener {
             if (keypadIsOpen(rootView)) {
                 bottomNavigationView.visibility = View.INVISIBLE
-                fab.visibility = View.INVISIBLE
-
             } else {
                 bottomNavigationView.visibility = View.VISIBLE
-                fab.visibility = View.VISIBLE
             }
         }
 
