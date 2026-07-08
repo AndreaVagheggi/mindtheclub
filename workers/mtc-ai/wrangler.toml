@@ -1,0 +1,12 @@
+name = "mtc-ai"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+[ai]
+binding = "AI"
+
+# Create with:  npx wrangler kv namespace create AI_KV
+# then paste the generated id below before deploying.
+[[kv_namespaces]]
+binding = "AI_KV"
+id = "b60053bb7e7f4c439be9f4f3a3eba686"
