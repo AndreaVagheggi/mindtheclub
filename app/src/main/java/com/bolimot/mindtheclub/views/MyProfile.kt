@@ -1,7 +1,6 @@
 package com.bolimot.mindtheclub.views
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -42,13 +41,11 @@ import com.bolimot.mindtheclub.functions.shareMyQRCode
 import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
-import com.bolimot.mindtheclub.transport.BluetoothToggle
 import com.bumptech.glide.Glide
 import com.bumptech.glide.signature.ObjectKey
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -62,18 +59,7 @@ class MyProfile : BaseActivity() {
     private lateinit var rootView: View
     private var profileChanged = false
 
-    private lateinit var bluetoothSwitch: SwitchMaterial
     private lateinit var imageEditIcon: ImageView
-
-    private val enableBtResult =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                BluetoothToggle.enable(this)
-                bluetoothSwitch.isChecked = true
-            } else {
-                bluetoothSwitch.isChecked = false
-            }
-        }
 
     private val getImageResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -323,28 +309,6 @@ class MyProfile : BaseActivity() {
 
         onBackPressedDispatcher.addCallback(this, callback)
 
-        bluetoothSwitch = findViewById(R.id.bluetoothTransportSwitch)
-        bluetoothSwitch.isChecked = BluetoothToggle.isEnabled(this) && BluetoothToggle.isAdapterOn(this)
-        bluetoothSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                when (BluetoothToggle.enable(this)) {
-                    BluetoothToggle.EnableStep.NEEDS_ADAPTER ->
-                        enableBtResult.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                    BluetoothToggle.EnableStep.AWAITING_PERMISSIONS -> { /* finished in onRequestPermissionsResult */ }
-                    BluetoothToggle.EnableStep.STARTED -> { /* fully on */ }
-                }
-            } else {
-                BluetoothToggle.disable(this)
-            }
-        }
-
-        findViewById<ImageView>(R.id.bluetoothHelpIcon).setOnClickListener {
-            showHelpDialog(
-                getString(R.string.bluetooth_transport),
-                getString(R.string.bluetooth_transport_help)
-            )
-        }
-
         imageEditIcon = findViewById(R.id.imageEditIcon)
         imageEditIcon.setOnClickListener {
             it.isClickable = false
@@ -362,15 +326,6 @@ class MyProfile : BaseActivity() {
                 startActivity(intent)
             }
         }
-    }
-
-    private fun showHelpDialog(title: String, message: String) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
-            .setCancelable(true)
-            .show()
     }
 
     override fun onResume() {
@@ -402,28 +357,6 @@ class MyProfile : BaseActivity() {
         imageEditIcon.isClickable = true
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        if (requestCode == BluetoothToggle.PERMISSIONS_REQUEST_CODE) {
-            val granted = BluetoothToggle.onPermissionsResult(requestCode, grantResults)
-            if (granted) {
-                // Permissions granted — now check the adapter and prompt/start as needed.
-                when (BluetoothToggle.enable(this)) {
-                    BluetoothToggle.EnableStep.NEEDS_ADAPTER ->
-                        enableBtResult.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                    else -> bluetoothSwitch.isChecked = BluetoothToggle.isEnabled(this)
-                }
-            } else {
-                bluetoothSwitch.isChecked = false
-            }
-        }
-    }
-
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.my_profile_toolbar, menu)
         if (!BuildConfig.ENABLE_DEBUG_TOOLS) {
@@ -450,10 +383,6 @@ class MyProfile : BaseActivity() {
             }
             R.id.black_list -> {
                 startActivity(Intent(this, BlackListActivity::class.java))
-                return true
-            }
-            R.id.options -> {
-                startActivity(Intent(this, OptionsActivity::class.java))
                 return true
             }
             R.id.delete_log -> {

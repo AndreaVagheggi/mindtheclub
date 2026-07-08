@@ -384,6 +384,13 @@ class AppTab : BaseActivity() {
                 }
                 return true
             }
+            R.id.action_options -> {
+                val intent = Intent(this, OptionsActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                startActivity(intent)
+                return true
+            }
             R.id.action_new_contacts -> {
                 val intent = Intent(this, NewPeersActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -409,6 +416,7 @@ class AppTab : BaseActivity() {
         menuInflater.inflate(R.menu.main, menu)
 
         menu?.findItem(R.id.action_search)?.icon?.setTint(android.graphics.Color.WHITE)
+        menu?.findItem(R.id.action_options)?.icon?.setTint(android.graphics.Color.WHITE)
 
         if (newContactBadge == null) {
             newContactBadge = BadgeDrawable.create(this)
