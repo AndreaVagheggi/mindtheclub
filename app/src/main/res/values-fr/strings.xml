@@ -268,4 +268,5 @@
     <!-- Note to myself -->
     <string name="note_to_self">Note à moi-même</string>
     <string name="note_to_self_bio">Ton espace privé — notes, photos et fichiers, stockés uniquement sur ce téléphone</string>
+    <string name="show_note_to_self_help">« Note à moi-même » est ton espace privé : une discussion avec toi-même pour tes notes, photos et fichiers, stockés uniquement sur ce téléphone. Quand cette option est désactivée, elle disparaît de ta liste de contacts et des résultats de recherche. Tes notes sont conservées et reviennent dès que tu la réactives.</string>
 </resources>

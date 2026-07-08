@@ -23,9 +23,15 @@ import kotlinx.coroutines.launch
 object NoteToSelf {
 
     const val USER_ID = "mtc-note-to-self"
+    const val SHOW_NOTE_TO_SELF_KEY = "showNoteToSelfOption"
     private const val TAG = "NoteToSelf"
 
     fun isNoteToSelf(userId: String?): Boolean = userId == USER_ID
+
+    /** "Note to myself" option (OptionsActivity), on by default. Hides the pinned
+     *  row, forward selection and search entries — the notes stay intact. */
+    fun isVisible(context: Context): Boolean =
+        getPreference(SHOW_NOTE_TO_SELF_KEY, context) != "false"
 
     /**
      * Creates the pinned peer once, and keeps its name (locale changes) and

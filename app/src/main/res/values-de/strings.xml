@@ -269,4 +269,5 @@
     <!-- Note to myself -->
     <string name="note_to_self">Notiz an mich</string>
     <string name="note_to_self_bio">Dein privater Bereich — Notizen, Fotos und Dateien, nur auf diesem Telefon gespeichert</string>
+    <string name="show_note_to_self_help">„Notiz an mich" ist dein privater Bereich: ein Chat mit dir selbst für Notizen, Fotos und Dateien, nur auf diesem Telefon gespeichert. Wenn diese Option aus ist, verschwindet er aus deiner Kontaktliste und aus den Suchergebnissen. Deine Notizen bleiben erhalten und sind wieder da, sobald du die Option erneut einschaltest.</string>
 </resources>

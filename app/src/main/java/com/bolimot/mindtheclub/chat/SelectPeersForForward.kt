@@ -15,6 +15,7 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
 import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.Contact
@@ -67,6 +68,7 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
                     pagingData.filter { peer: Peer ->
                         peer.userId != excludedUserId && peer.status == Contact.ACTIVE
                                 && (!AiAssistant.isAssistant(peer.userId) || AiAssistant.isVisible(this@SelectPeersForForward))
+                                && (!NoteToSelf.isNoteToSelf(peer.userId) || NoteToSelf.isVisible(this@SelectPeersForForward))
                     }
                 }
                 .collectLatest { filteredPagingData: PagingData<Peer> ->

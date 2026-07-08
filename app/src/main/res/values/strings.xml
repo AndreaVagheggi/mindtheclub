@@ -269,4 +269,5 @@
     <!-- Note to myself -->
     <string name="note_to_self">Note to myself</string>
     <string name="note_to_self_bio">Your private space — notes, photos and files, stored only on this phone</string>
+    <string name="show_note_to_self_help">Note to myself is your private space: a chat with yourself for notes, photos and files, stored only on this phone. When this is off, it disappears from your contact list and from search results. Your notes are kept and come back as soon as you turn it on again.</string>
 </resources>

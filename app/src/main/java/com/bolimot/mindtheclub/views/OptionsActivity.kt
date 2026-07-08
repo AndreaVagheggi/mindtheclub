@@ -12,6 +12,7 @@ import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.showToast
@@ -65,6 +66,12 @@ class OptionsActivity : BaseActivity() {
             setPreference(AiAssistant.SHOW_CLUBBY_KEY, if (isChecked) "true" else "false", this)
         }
 
+        val showNoteToSelfSwitch: SwitchMaterial = findViewById(R.id.showNoteToSelfSwitch)
+        showNoteToSelfSwitch.isChecked = NoteToSelf.isVisible(this)
+        showNoteToSelfSwitch.setOnCheckedChangeListener { _, isChecked ->
+            setPreference(NoteToSelf.SHOW_NOTE_TO_SELF_KEY, if (isChecked) "true" else "false", this)
+        }
+
         bluetoothSwitch = findViewById(R.id.bluetoothTransportSwitch)
         bluetoothSwitch.isChecked = BluetoothToggle.isEnabled(this) && BluetoothToggle.isAdapterOn(this)
         bluetoothSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -98,6 +105,13 @@ class OptionsActivity : BaseActivity() {
             showHelpDialog(
                 getString(R.string.show_clubby),
                 getString(R.string.show_clubby_help)
+            )
+        }
+
+        findViewById<ImageView>(R.id.showNoteToSelfHelpIcon).setOnClickListener {
+            showHelpDialog(
+                getString(R.string.note_to_self),
+                getString(R.string.show_note_to_self_help)
             )
         }
 

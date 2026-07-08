@@ -124,7 +124,7 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
                 !it.privateId.startsWith("blocked") && AiAssistant.isVisible(requireContext())
             }
             val notePeer = viewModel.getPeer(NoteToSelf.USER_ID)?.takeIf {
-                !it.privateId.startsWith("blocked")
+                !it.privateId.startsWith("blocked") && NoteToSelf.isVisible(requireContext())
             }
 
             clubby?.let { bindPinnedRow(it, clubbyPeer, highlightName = true) }

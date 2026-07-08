@@ -270,4 +270,5 @@
     <!-- Note to myself -->
     <string name="note_to_self">Catatan untuk saya</string>
     <string name="note_to_self_bio">Ruang pribadimu — catatan, foto, dan file, disimpan hanya di ponsel ini</string>
+    <string name="show_note_to_self_help">"Catatan untuk saya" adalah ruang pribadimu: chat dengan dirimu sendiri untuk catatan, foto, dan file, disimpan hanya di ponsel ini. Saat opsi ini mati, chat ini hilang dari daftar kontak dan hasil pencarian. Catatanmu tetap tersimpan dan kembali begitu kamu menyalakannya lagi.</string>
 </resources>

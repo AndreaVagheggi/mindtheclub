@@ -268,4 +268,5 @@
     <!-- Note to myself -->
     <string name="note_to_self">Nota para mim</string>
     <string name="note_to_self_bio">Seu espaço privado — notas, fotos e arquivos, guardados apenas neste telefone</string>
+    <string name="show_note_to_self_help">"Nota para mim" é o seu espaço privado: um chat com você mesmo para notas, fotos e arquivos, guardados apenas neste telefone. Quando esta opção está desativada, ele desaparece da sua lista de contatos e dos resultados de busca. Suas notas são mantidas e voltam assim que você ativar a opção novamente.</string>
 </resources>

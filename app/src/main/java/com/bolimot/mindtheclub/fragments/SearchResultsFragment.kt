@@ -18,6 +18,7 @@ import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.tools.MySelf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -94,10 +95,12 @@ class SearchResultsFragment : Fragment() {
         val items = mutableListOf<SearchItem>()
 
         val clubbyHidden = !AiAssistant.isVisible(context)
+        val noteToSelfHidden = !NoteToSelf.isVisible(context)
 
         // --- Contacts section ---
         val matchingPeers = peerDao.searchPeers(query)
             .filterNot { clubbyHidden && AiAssistant.isAssistant(it.userId) }
+            .filterNot { noteToSelfHidden && NoteToSelf.isNoteToSelf(it.userId) }
         if (matchingPeers.isNotEmpty()) {
             items.add(SearchItem.SectionHeader(getString(R.string.contacts_header)))
             matchingPeers.forEach { peer ->
@@ -109,6 +112,8 @@ class SearchResultsFragment : Fragment() {
         val matchingMessages = messageDao.searchMessages(query)
             .filterNot { clubbyHidden &&
                     (AiAssistant.isAssistant(it.fromUserId) || AiAssistant.isAssistant(it.toUserId)) }
+            .filterNot { noteToSelfHidden &&
+                    (NoteToSelf.isNoteToSelf(it.fromUserId) || NoteToSelf.isNoteToSelf(it.toUserId)) }
         if (matchingMessages.isNotEmpty()) {
             items.add(SearchItem.SectionHeader(getString(R.string.messages_header)))
 
