@@ -8,7 +8,7 @@
     android:background="@android:color/transparent"
     android:clickable="true">
 
-    <!-- Clubby (AI assistant) pinned above the scrollable contact list -->
+    <!-- Clubby (AI assistant) and Note-to-myself pinned above the scrollable contact list -->
     <include
         android:id="@+id/clubbyRow"
         layout="@layout/peer_item"
@@ -19,6 +19,17 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <include
+        android:id="@+id/noteToSelfRow"
+        layout="@layout/peer_item"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/clubbyRow" />
 
     <View
         android:id="@+id/clubbyDivider"
@@ -31,7 +42,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/clubbyRow" />
+        app:layout_constraintTop_toBottomOf="@+id/noteToSelfRow" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/contactList"

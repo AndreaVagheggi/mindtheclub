@@ -148,7 +148,7 @@
     <string name="connected_and_ready">Connected</string>
     <string name="bug">Bug</string>
     <string name="checking">Checking for eventual pending messages</string>
-    <string name="reconnecting">Reconnecting...</string>
+    <string name="reconnecting">Reconnecting…</string>
     <string name="contacts_header">Contacts</string>
     <string name="about">About</string>
     <string name="options">Options</string>
@@ -265,4 +265,8 @@
     <string name="assistant_limit_global">The Assistant is taking a break for today. Please try again tomorrow!</string>
     <string name="assistant_error_network">I couldn\'t be reached — please check your connection and try again.</string>
     <string name="assistant_error_generic">Something went wrong on my side. Please try again in a moment.</string>
+
+    <!-- Note to myself -->
+    <string name="note_to_self">Note to myself</string>
+    <string name="note_to_self_bio">Your private space — notes, photos and files, stored only on this phone</string>
 </resources>

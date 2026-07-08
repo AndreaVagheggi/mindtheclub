@@ -27,6 +27,7 @@ import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.database.peer.PeerRepository
 import com.bolimot.mindtheclub.dialogs.BlockPeerDialog
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.applyNavigationBarPadding
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getMessageRepository
@@ -38,6 +39,7 @@ import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.tools.NO_PICTURE
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.viewModel.PeerViewModel
 import com.bolimot.mindtheclub.viewModel.PeerViewModelFactory
@@ -61,6 +63,7 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
     private var isTransparent = false
     private var clubbyRow: View? = null
+    private var noteToSelfRow: View? = null
 
     override fun onItemClick(peer: Peer) {
         debugLine("onItemClick", "Peer clicked")
@@ -100,73 +103,90 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
         peersAdapter.notifyDataSetChanged()
 
-        refreshClubbyRow()
+        refreshPinnedRows()
 
         syncGroupPictures()
     }
 
     /**
-     * Clubby is pinned above the scrollable list, so its row is bound manually
-     * (mirroring PeersActiveViewHolder): avatar, blue name, last message, badge.
+     * Clubby and Note-to-myself are pinned above the scrollable list, so their
+     * rows are bound manually (mirroring PeersActiveViewHolder): avatar, name,
+     * last message, badge. The divider shows while either row is visible.
      */
-    private fun refreshClubbyRow() {
-        val row = clubbyRow ?: return
+    private fun refreshPinnedRows() {
+        val clubby = clubbyRow
+        val noteRow = noteToSelfRow
         val divider = view?.findViewById<View>(R.id.clubbyDivider)
+        if (clubby == null && noteRow == null) return
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val peer = viewModel.getPeer(AiAssistant.USER_ID)
-
-            if (peer == null || peer.privateId.startsWith("blocked")
-                || !AiAssistant.isVisible(requireContext())) {
-                row.visibility = View.GONE
-                divider?.visibility = View.GONE
-                return@launch
+            val clubbyPeer = viewModel.getPeer(AiAssistant.USER_ID)?.takeIf {
+                !it.privateId.startsWith("blocked") && AiAssistant.isVisible(requireContext())
             }
-            row.visibility = View.VISIBLE
-            divider?.visibility = View.VISIBLE
-
-            row.findViewById<TextView>(R.id.name).apply {
-                text = peer.name
-                setTextColor(ContextCompat.getColor(requireContext(), R.color.assistant_name))
+            val notePeer = viewModel.getPeer(NoteToSelf.USER_ID)?.takeIf {
+                !it.privateId.startsWith("blocked")
             }
 
-            val imageView = row.findViewById<ImageView>(R.id.peerImage)
-            peer.picture?.let { pictureUri ->
-                val file = java.io.File(pictureUri.toUri().path ?: "")
-                val signature = com.bumptech.glide.signature.ObjectKey(file.lastModified())
-                Glide.with(this@PeersFragment)
-                    .load(pictureUri)
-                    .signature(signature)
-                    .placeholder(imageView.drawable)
-                    .error(R.drawable.peer)
-                    .into(imageView)
-            } ?: Glide.with(this@PeersFragment).load(R.drawable.peer).into(imageView)
+            clubby?.let { bindPinnedRow(it, clubbyPeer, highlightName = true) }
+            noteRow?.let { bindPinnedRow(it, notePeer, highlightName = false) }
 
-            val lastMessageData = withContext(Dispatchers.IO) {
-                getMessageRepository(requireContext()).getLastMessageData(peer.userId)
-            }
-            row.findViewById<TextView>(R.id.lastMessage).text = lastMessageData?.first
-            row.findViewById<TextView>(R.id.lastMessageDate).text = lastMessageData?.second
+            divider?.visibility =
+                if (clubbyPeer != null || notePeer != null) View.VISIBLE else View.GONE
+        }
+    }
 
-            val unreadCount = MessageReceivedNotification.getUnreadCount(requireContext(), peer.userId)
-            val badge = row.findViewById<TextView>(R.id.unreadBadge)
-            if (unreadCount > 0) {
-                badge.text = if (unreadCount > 99) "99+" else unreadCount.toString()
-                badge.visibility = View.VISIBLE
-            } else {
-                badge.visibility = View.GONE
-            }
+    private suspend fun bindPinnedRow(row: View, peer: Peer?, highlightName: Boolean) {
+        if (peer == null) {
+            row.visibility = View.GONE
+            return
+        }
+        row.visibility = View.VISIBLE
 
-            row.setOnClickListener {
-                // Direct open: never part of multi-select / group creation.
-                val intent = Intent(requireContext(), ChatScreen::class.java).apply {
-                    putExtra("userId", peer.userId)
-                    putExtra("name", peer.name)
-                    putExtra("bio", peer.bio)
-                    putExtra("picture", peer.picture)
-                }
-                startActivity(intent)
+        val nameView = row.findViewById<TextView>(R.id.name)
+        nameView.text = peer.name
+        if (highlightName) {
+            nameView.setTextColor(ContextCompat.getColor(requireContext(), R.color.assistant_name))
+        }
+
+        val imageView = row.findViewById<ImageView>(R.id.peerImage)
+        val pictureUri = peer.picture?.takeIf { it.isNotEmpty() && it != NO_PICTURE }
+        if (pictureUri != null) {
+            val file = java.io.File(pictureUri.toUri().path ?: "")
+            val signature = com.bumptech.glide.signature.ObjectKey(file.lastModified())
+            Glide.with(this@PeersFragment)
+                .load(pictureUri)
+                .signature(signature)
+                .placeholder(imageView.drawable)
+                .error(R.drawable.peer)
+                .into(imageView)
+        } else {
+            Glide.with(this@PeersFragment).load(R.drawable.peer).into(imageView)
+        }
+
+        val lastMessageData = withContext(Dispatchers.IO) {
+            getMessageRepository(requireContext()).getLastMessageData(peer.userId)
+        }
+        row.findViewById<TextView>(R.id.lastMessage).text = lastMessageData?.first
+        row.findViewById<TextView>(R.id.lastMessageDate).text = lastMessageData?.second
+
+        val unreadCount = MessageReceivedNotification.getUnreadCount(requireContext(), peer.userId)
+        val badge = row.findViewById<TextView>(R.id.unreadBadge)
+        if (unreadCount > 0) {
+            badge.text = if (unreadCount > 99) "99+" else unreadCount.toString()
+            badge.visibility = View.VISIBLE
+        } else {
+            badge.visibility = View.GONE
+        }
+
+        row.setOnClickListener {
+            // Direct open: never part of multi-select / group creation.
+            val intent = Intent(requireContext(), ChatScreen::class.java).apply {
+                putExtra("userId", peer.userId)
+                putExtra("name", peer.name)
+                putExtra("bio", peer.bio)
+                putExtra("picture", peer.picture)
             }
+            startActivity(intent)
         }
     }
 
@@ -282,12 +302,15 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         viewModel = ViewModelProvider(this, factory)[PeerViewModel::class.java]
 
         clubbyRow = view.findViewById(R.id.clubbyRow)
+        noteToSelfRow = view.findViewById(R.id.noteToSelfRow)
 
         lifecycleScope.launch {
             viewModel.peers
                 .collectLatest { pagingData: PagingData<Peer> ->
-                    // Clubby lives in the pinned row above the list, not in it.
-                    peersAdapter.submitData(pagingData.filter { !AiAssistant.isAssistant(it.userId) })
+                    // Clubby and Note-to-myself live in the pinned rows above the list, not in it.
+                    peersAdapter.submitData(pagingData.filter {
+                        !AiAssistant.isAssistant(it.userId) && !NoteToSelf.isNoteToSelf(it.userId)
+                    })
                 }
         }
 
@@ -311,16 +334,16 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
         lifecycleScope.launch {
             peersAdapter.loadStateFlow.collectLatest { loadStates ->
-                // Clubby is filtered out of the adapter, so an empty adapter means
-                // no real contacts — exactly when the empty state should show.
+                // The pinned pseudo-peers are filtered out of the adapter, so an empty
+                // adapter means no real contacts — exactly when the empty state should show.
                 val isEmpty = loadStates.refresh is LoadState.NotLoading && peersAdapter.itemCount == 0
                 val visibility = if (isEmpty) View.VISIBLE else View.GONE
                 inviteFriendButton.visibility = visibility
                 emptyListText.visibility = visibility
 
-                // Peer-table changes (new AI message bumps lastMessageAt) land here
-                // too — keep the pinned row's preview in sync.
-                refreshClubbyRow()
+                // Peer-table changes (a new message bumps lastMessageAt) land here
+                // too — keep the pinned rows' previews in sync.
+                refreshPinnedRows()
             }
         }
 

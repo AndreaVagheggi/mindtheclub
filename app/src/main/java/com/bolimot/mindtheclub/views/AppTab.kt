@@ -31,6 +31,7 @@ import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.fragments.PeersFragment
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
 import com.bolimot.mindtheclub.functions.NOTIF_BANNER_SNOOZE_MS
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.PREF_NOTIF_BANNER_SNOOZE_UNTIL
 import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
 import com.bolimot.mindtheclub.functions.areNotificationsEnabled
@@ -119,6 +120,7 @@ class AppTab : BaseActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             AiAssistant.ensureSeeded(this@AppTab)
+            NoteToSelf.ensureSeeded(this@AppTab)
             remoteUserId = getPeerDao(this@AppTab).getFirstPeer()?.userId
         }
 

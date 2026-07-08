@@ -11,6 +11,7 @@ import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.database.peer.PeerRepository
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getMessageViewModel
@@ -197,7 +198,7 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val activePeerIds = repository.getActivePeerUserIds()
-                    .filterNot { AiAssistant.isAssistant(it) }
+                    .filterNot { AiAssistant.isAssistant(it) || NoteToSelf.isNoteToSelf(it) }
                 debugLine("broadcastProfile", "Broadcasting profile update to ${activePeerIds.size} peers")
                 for (userId in activePeerIds) {
                     sendMyProfileToRemotePeer(userId)

@@ -86,6 +86,7 @@ import com.bolimot.mindtheclub.functions.ensureCallPermissions
 import com.bolimot.mindtheclub.functions.extractUrl
 import com.bolimot.mindtheclub.functions.fetchWebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
@@ -1241,7 +1242,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             menu?.findItem(R.id.calendar)?.isVisible = !isToggledMenu
         }
 
-        if (isAssistantChat) {
+        if (isAssistantChat || NoteToSelf.isNoteToSelf(remoteUserId)) {
             menu?.findItem(R.id.phone_call)?.isVisible = false
             menu?.findItem(R.id.video_call)?.isVisible = false
         }

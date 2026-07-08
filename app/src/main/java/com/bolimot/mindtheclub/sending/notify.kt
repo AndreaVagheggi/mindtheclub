@@ -6,6 +6,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.workDataOf
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
@@ -22,8 +23,9 @@ fun notifyRemotePeer(userId: String, messageId: String, information: String, mis
     val content: String = missingItems?.let { "$messageId#$it" } ?: messageId
 
     if(userId.startsWith("group")) return
-    // The AI assistant is not a real peer: no FCM token, nothing to notify.
+    // Local pseudo-peers (AI assistant, note-to-self): no FCM token, nothing to notify.
     if(AiAssistant.isAssistant(userId)) return
+    if(NoteToSelf.isNoteToSelf(userId)) return
 
     val inputData = workDataOf(
         "userId" to userId,

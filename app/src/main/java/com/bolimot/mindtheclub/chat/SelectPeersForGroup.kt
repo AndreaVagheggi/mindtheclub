@@ -15,6 +15,7 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
 import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.Contact
@@ -64,7 +65,8 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
                 .map { pagingData: PagingData<Peer> ->
                     pagingData.filter { peer: Peer ->
                         peer.userId !in excludedUserIds && !peer.userId.startsWith("group")
-                                && !AiAssistant.isAssistant(peer.userId) && peer.status == Contact.ACTIVE
+                                && !AiAssistant.isAssistant(peer.userId)
+                                && !NoteToSelf.isNoteToSelf(peer.userId) && peer.status == Contact.ACTIVE
                     }
                 }
                 .collectLatest { filteredPagingData: PagingData<Peer> ->

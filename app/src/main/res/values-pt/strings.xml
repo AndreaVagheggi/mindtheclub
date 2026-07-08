@@ -264,4 +264,8 @@
     <string name="assistant_limit_global">O Assistente está descansando por hoje. Tente novamente amanhã!</string>
     <string name="assistant_error_network">Não foi possível me contatar — verifique sua conexão e tente novamente.</string>
     <string name="assistant_error_generic">Algo deu errado do meu lado. Tente novamente em instantes.</string>
+
+    <!-- Note to myself -->
+    <string name="note_to_self">Nota para mim</string>
+    <string name="note_to_self_bio">Seu espaço privado — notas, fotos e arquivos, guardados apenas neste telefone</string>
 </resources>

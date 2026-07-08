@@ -265,4 +265,8 @@
     <string name="assistant_limit_global">Der Assistent macht heute Pause. Bitte versuche es morgen erneut!</string>
     <string name="assistant_error_network">Ich war nicht erreichbar — bitte prüfe deine Verbindung und versuche es erneut.</string>
     <string name="assistant_error_generic">Bei mir ist etwas schiefgelaufen. Bitte versuche es gleich noch einmal.</string>
+
+    <!-- Note to myself -->
+    <string name="note_to_self">Notiz an mich</string>
+    <string name="note_to_self_bio">Dein privater Bereich — Notizen, Fotos und Dateien, nur auf diesem Telefon gespeichert</string>
 </resources>

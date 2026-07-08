@@ -14,6 +14,7 @@ import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.AppDatabase
 import com.bolimot.mindtheclub.database.outbox.Outbox
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.debugLine2
@@ -43,6 +44,10 @@ private val batchBuildLock = ReentrantLock()
 fun sendMessage(message: MessageData) {
     if(AiAssistant.isAssistant(message.toUserId)){
         AiAssistant.handleOutgoing(message)
+        return
+    }
+    if(NoteToSelf.isNoteToSelf(message.toUserId)){
+        NoteToSelf.handleOutgoing(message)
         return
     }
     if(message.toUserId.startsWith("group")){

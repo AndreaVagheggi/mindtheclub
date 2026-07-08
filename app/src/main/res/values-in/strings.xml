@@ -266,4 +266,8 @@
     <string name="assistant_limit_global">Asisten sedang istirahat hari ini. Silakan coba lagi besok!</string>
     <string name="assistant_error_network">Saya tidak dapat dihubungi — periksa koneksimu dan coba lagi.</string>
     <string name="assistant_error_generic">Ada yang salah di pihak saya. Coba lagi sebentar lagi.</string>
+
+    <!-- Note to myself -->
+    <string name="note_to_self">Catatan untuk saya</string>
+    <string name="note_to_self_bio">Ruang pribadimu — catatan, foto, dan file, disimpan hanya di ponsel ini</string>
 </resources>
