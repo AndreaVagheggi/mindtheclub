@@ -13,7 +13,7 @@ import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.convertDpToPx
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.formatDate
-import com.bolimot.mindtheclub.functions.formatTime
+import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bumptech.glide.Glide
 
@@ -65,7 +65,7 @@ class GroupStickerViewHolder(itemView: View, private val listener: MessagesAdapt
                 }
                 cardMessage.layoutParams = cardParams
 
-                itemView.findViewById<TextView>(R.id.time_stamp).text = formatTime(it.date)
+                itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(it)
 
                 status = itemView.findViewById(R.id.status)
                 if(it.fromUserId == MySelf.userId()){

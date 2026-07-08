@@ -14,7 +14,7 @@ import com.bolimot.mindtheclub.functions.calculateVideoTargetDimensions
 import com.bolimot.mindtheclub.functions.convertDpToPx
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.formatDate
-import com.bolimot.mindtheclub.functions.formatTime
+import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
 import com.bumptech.glide.Glide
@@ -85,7 +85,7 @@ class VideoViewHolder(itemView: View, private val listener: MessagesAdapter.OnIt
                     itemView.findViewById<TextView>(R.id.forwarded).visibility = View.GONE
                 }
 
-                itemView.findViewById<TextView>(R.id.time_stamp).text = formatTime(it.date)
+                itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(it)
                 itemView.findViewById<TextView>(R.id.nameAttached).text = it.nameAttached
                 itemView.findViewById<TextView>(R.id.textAttached).text = it.textAttached
 

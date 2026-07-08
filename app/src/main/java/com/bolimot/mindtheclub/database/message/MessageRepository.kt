@@ -134,36 +134,44 @@ class MessageRepository(private val messageDao: MessageDao) {
         return withContext(Dispatchers.IO) {
             mutex.withLock {
                 try {
-                    val existing = messageDao.getMessage(message.messageId)
+                    // Incoming messages get their local reception time stamped here,
+                    // the single choke point every receive path goes through.
+                    val toStore = if (messageIn && message.receivedAt == null) {
+                        message.copy(receivedAt = System.currentTimeMillis())
+                    } else {
+                        message
+                    }
+
+                    val existing = messageDao.getMessage(toStore.messageId)
                     if (existing != null) {
-                        if (existing.status == Status.RECEIVING && message.status != Status.RECEIVING) {
-                            messageDao.deleteMessage(message.messageId)
-                            val insertResult = messageDao.insert(message) > 0L
+                        if (existing.status == Status.RECEIVING && toStore.status != Status.RECEIVING) {
+                            messageDao.deleteMessage(toStore.messageId)
+                            val insertResult = messageDao.insert(toStore) > 0L
                             if (insertResult) {
-                                debugLine("saveMessage", "Placeholder replaced for: ${message.messageId}")
-                                touchPeerLastMessage(message, messageIn)
+                                debugLine("saveMessage", "Placeholder replaced for: ${toStore.messageId}")
+                                touchPeerLastMessage(toStore, messageIn)
                                 if (messageIn) {
                                     withContext(Dispatchers.Main) {
-                                        ViewModelProviderHolder.messageViewModel?.incomingMessage(message)
+                                        ViewModelProviderHolder.messageViewModel?.incomingMessage(toStore)
                                     }
                                 }
                             }
                             return@withLock insertResult
                         }
-                        debugLine("saveMessage", "Message ${message.messageId}, already exists")
+                        debugLine("saveMessage", "Message ${toStore.messageId}, already exists")
                         return@withLock true
                     }
 
-                    val insertResult = messageDao.insert(message) > 0L
+                    val insertResult = messageDao.insert(toStore) > 0L
 
                     if (insertResult) {
                         debugLine("saveMessage", "Message successfully added")
-                        touchPeerLastMessage(message, messageIn)
+                        touchPeerLastMessage(toStore, messageIn)
 
                         if (messageIn) {
                             debugLine("saveMessage", "Message in detected")
                             withContext(Dispatchers.Main) {
-                                ViewModelProviderHolder.messageViewModel?.incomingMessage(message)
+                                ViewModelProviderHolder.messageViewModel?.incomingMessage(toStore)
                             }
                         }
                     }

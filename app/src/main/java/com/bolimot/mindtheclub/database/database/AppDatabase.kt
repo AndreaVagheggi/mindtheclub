@@ -37,7 +37,7 @@ import com.bolimot.mindtheclub.database.groupMessageStatus.GroupMessageStatusDao
     BlockedUser::class,
     Message::class,
     GroupMessageStatus::class],
-    version = 1064)
+    version = 1065)
 
 abstract class AppDatabase : RoomDatabase() {
     abstract fun peerDao(): PeerDao
@@ -138,13 +138,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_1064_1065 = object : Migration(1064, 1065) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE Message ADD COLUMN receivedAt INTEGER")
+            }
+        }
+
         private fun buildDatabase(context: Context): AppDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "mtc.db"
             )
-                .addMigrations(MIGRATION_1057_1058, MIGRATION_1058_1059, MIGRATION_1059_1060, MIGRATION_1060_1061, MIGRATION_1061_1062, MIGRATION_1062_1063, MIGRATION_1063_1064).fallbackToDestructiveMigration(false)
+                .addMigrations(MIGRATION_1057_1058, MIGRATION_1058_1059, MIGRATION_1059_1060, MIGRATION_1060_1061, MIGRATION_1061_1062, MIGRATION_1062_1063, MIGRATION_1063_1064, MIGRATION_1064_1065).fallbackToDestructiveMigration(false)
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .build()
         }

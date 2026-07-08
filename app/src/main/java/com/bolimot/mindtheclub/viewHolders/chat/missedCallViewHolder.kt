@@ -11,7 +11,7 @@ import com.bolimot.mindtheclub.adapters.MessagesAdapter
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.formatDate
-import com.bolimot.mindtheclub.functions.formatTime
+import com.bolimot.mindtheclub.functions.formatMessageTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,7 +25,7 @@ class MissedCallViewHolder(itemView: View, private val listener: MessagesAdapter
             message?.let {
                 val messageTextView = itemView.findViewById<TextView>(R.id.message)
 
-                itemView.findViewById<TextView>(R.id.time_stamp).text = formatTime(it.date)
+                itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(it)
                 selectableView = itemView.findViewById<View>(R.id.selectable_area)
                 messageTextView.text = getString(this.itemView.context, R.string.missed_call)
             }

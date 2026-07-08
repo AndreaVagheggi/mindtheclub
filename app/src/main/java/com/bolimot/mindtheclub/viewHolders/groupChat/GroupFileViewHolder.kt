@@ -12,7 +12,7 @@ import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.formatDate
 import com.bolimot.mindtheclub.functions.formatFileSize
-import com.bolimot.mindtheclub.functions.formatTime
+import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
@@ -54,7 +54,7 @@ class GroupFileViewHolder(itemView: View, private val listener: MessagesAdapter.
                     itemView.findViewById<TextView>(R.id.forwarded).visibility = View.GONE
                 }
 
-                itemView.findViewById<TextView>(R.id.time_stamp).text = formatTime(it.date)
+                itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(it)
                 itemView.findViewById<TextView>(R.id.nameAttached).text = it.nameAttached
                 itemView.findViewById<TextView>(R.id.textAttached).text = it.textAttached
 

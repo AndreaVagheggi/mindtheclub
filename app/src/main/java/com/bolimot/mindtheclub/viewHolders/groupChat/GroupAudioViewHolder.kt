@@ -16,7 +16,7 @@ import com.bolimot.mindtheclub.adapters.MessagesAdapter
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.formatDate
-import com.bolimot.mindtheclub.functions.formatTime
+import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.functions.safeUrl
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bumptech.glide.Glide
@@ -89,7 +89,7 @@ class GroupAudioViewHolder(
                 reaction = itemView.findViewById(R.id.emoji)
                 reaction.text = msg.reaction
 
-                itemView.findViewById<TextView>(R.id.time_stamp).text = formatTime(msg.date)
+                itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(msg)
 
                 reaction.text = msg.reaction
                 status = itemView.findViewById(R.id.status)

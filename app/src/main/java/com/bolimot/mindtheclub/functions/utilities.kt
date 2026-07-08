@@ -43,8 +43,10 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.FileDetails
+import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.Broadcast
 import com.bolimot.mindtheclub.tools.CallControlEvent
@@ -140,6 +142,28 @@ fun showToast(message: String?, context: Context) {
 fun formatTime(time: Long): String {
     val date = Date(time)
     return SimpleDateFormat("HH.mm", Locale.getDefault()).format(date)
+}
+
+/**
+ * Bubble timestamp. Release builds always show the clock time. Debug builds
+ * show the transfer latency ("+1.2s" = received 1.2s after it was sent) for
+ * incoming messages, so delivery performance can be evaluated while testing.
+ * A negative value means the sender's clock is ahead of this device's.
+ */
+fun formatMessageTime(message: Message): String {
+    if (BuildConfig.ENABLE_DEBUG_TOOLS) {
+        message.receivedAt?.let { receivedAt ->
+            val elapsedMs = receivedAt - message.date
+            val sign = if (elapsedMs < 0) "-" else "+"
+            val absMs = abs(elapsedMs)
+            return if (absMs < 60_000) {
+                String.format(Locale.US, "%s%.1fs", sign, absMs / 1000.0)
+            } else {
+                "$sign${absMs / 60_000}m${(absMs % 60_000) / 1000}s"
+            }
+        }
+    }
+    return formatTime(message.date)
 }
 
 fun formatDate(time: Long): String {

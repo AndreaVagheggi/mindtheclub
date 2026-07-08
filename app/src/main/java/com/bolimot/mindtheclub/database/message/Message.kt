@@ -28,4 +28,7 @@ data class Message(
     var reaction: String? = null,
     val chatGroupId: String? = null,
     val originalSenderId: String? = null,
+    // Local reception time, stamped in saveMessage() for incoming messages.
+    // Debug builds show (receivedAt - date) instead of the clock time.
+    val receivedAt: Long? = null,
 )

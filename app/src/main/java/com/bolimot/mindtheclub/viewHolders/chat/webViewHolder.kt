@@ -17,7 +17,7 @@ import com.bolimot.mindtheclub.adapters.MessagesAdapter
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.formatDate
-import com.bolimot.mindtheclub.functions.formatTime
+import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.tools.Icon
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
@@ -102,7 +102,7 @@ class WebViewHolder(itemView: View, private val listener: MessagesAdapter.OnItem
                 val nameAttached = itemView.findViewById<TextView>(R.id.nameAttached)
                 val textAttached = itemView.findViewById<TextView>(R.id.textAttached)
 
-                itemView.findViewById<TextView>(R.id.time_stamp).text = formatTime(it.date)
+                itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(it)
                 nameAttached.text = it.nameAttached
                 textAttached.text = it.textAttached
                 val messageTextView = itemView.findViewById<TextView>(R.id.message)
