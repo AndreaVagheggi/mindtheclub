@@ -35,6 +35,10 @@ class DataSyncService : Service() {
         const val NOTIFICATION_ID = 9999
         private const val POLL_INTERVAL_MS = 5_000L
         private const val IDLE_LIMIT_MS = 15_000L
+        // Extra time the service stays alive after the chunk flow stops, while a
+        // completed message is still being assembled (chunks -> file -> Message).
+        // Bounded so a stale unprocessable inbox row can never pin the service.
+        private const val ASSEMBLY_GRACE_MS = 120_000L
         private const val MAX_SYNC_MS = 10 * 60 * 1000L
     }
 
@@ -157,12 +161,9 @@ class DataSyncService : Service() {
                     && client.rtcClient.isConnected()
                     && client.rtcClient.isDataChannelOpen()
 
-            if (!channelOpen) {
-                debugLine(tag, "Data channel closed. Transfer done or connection lost.")
-                break
-            }
-
-            // Check if new chunks are arriving (across all messages)
+            // Check if new chunks are arriving (across all messages). Assembly
+            // deletes the chunks when it finishes, so that also counts as
+            // activity and correctly extends the window for a following message.
             val currentCount = inboxDao.countRecords()
 
             if (currentCount != lastChunkCount) {
@@ -171,7 +172,36 @@ class DataSyncService : Service() {
             }
 
             val idleMs = System.currentTimeMillis() - lastActivityTime
+
+            // A fully received message may still be assembling (chunks are only
+            // deleted afterwards). Losing the foreground protection now would let
+            // doze freeze the assembly mid-write — the exact failure that made a
+            // video sit invisible for 91 minutes. Stay alive, within the grace.
+            val assemblyPending = if (idleMs < ASSEMBLY_GRACE_MS) {
+                try {
+                    inboxDao.getCompleteMessageIds().isNotEmpty()
+                } catch (e: Exception) {
+                    debugLine(tag, "Assembly-pending check failed: ${e.message}")
+                    false
+                }
+            } else {
+                false
+            }
+
+            if (!channelOpen) {
+                if (assemblyPending) {
+                    debugLine(tag, "Channel closed but assembly pending — keeping sync alive (idle ${idleMs / 1000}s).")
+                    continue
+                }
+                debugLine(tag, "Data channel closed. Transfer done or connection lost.")
+                break
+            }
+
             if (idleMs >= IDLE_LIMIT_MS) {
+                if (assemblyPending) {
+                    debugLine(tag, "Idle but assembly pending — keeping sync alive (idle ${idleMs / 1000}s).")
+                    continue
+                }
                 debugLine(tag, "Data channel open but idle for ${idleMs / 1000}s. Stopping.")
                 break
             }

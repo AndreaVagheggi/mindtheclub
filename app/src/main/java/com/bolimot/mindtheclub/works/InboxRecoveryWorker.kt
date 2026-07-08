@@ -10,14 +10,10 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
-import com.bolimot.mindtheclub.receiving.fullMessageReceivedEvent
 import com.bolimot.mindtheclub.receiving.isProcessingActive
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class InboxRecoveryWorker(
@@ -48,7 +44,7 @@ class InboxRecoveryWorker(
         val inboxDao = getInboxDao(applicationContext)
         val messageDao = getMessageDao(applicationContext)
 
-        // Pass 1: complete messages that need fullMessageReceivedEvent re-triggered
+        // Pass 1: complete messages whose assembly needs re-triggering (via AssembleMessageWorker)
         val completeIds = inboxDao.getCompleteMessageIds()
 
         if (completeIds.isNotEmpty()) {
@@ -75,14 +71,11 @@ class InboxRecoveryWorker(
                         continue
                     }
 
-                    debugLine(TAG, "Re-triggering fullMessageReceivedEvent for $messageId ($type)")
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            fullMessageReceivedEvent(messageId)
-                        } catch (e: Exception) {
-                            debugLine(TAG, "Background assembly failed for $messageId: ${e.message}")
-                        }
-                    }
+                    // Assembly must run under WorkManager protection, never as a
+                    // fire-and-forget coroutine: doWork() returning while assembly
+                    // is still running drops the doze protection mid-write.
+                    debugLine(TAG, "Re-triggering assembly for $messageId ($type)")
+                    AssembleMessageWorker.enqueue(applicationContext, messageId)
                 } catch (e: Exception) {
                     debugLine(TAG, "Failed to recover $messageId: ${e.message}")
                 }

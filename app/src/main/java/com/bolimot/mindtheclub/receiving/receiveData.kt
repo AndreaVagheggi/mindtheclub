@@ -18,6 +18,7 @@ import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
+import com.bolimot.mindtheclub.works.AssembleMessageWorker
 import com.bolimot.mindtheclub.works.StalePlaceholderCheckWorker
 import kotlinx.serialization.json.Json
 
@@ -156,7 +157,15 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
     if (currentChunkNo == expectedChunksNo) {
         val type = inboxDao.getMessage(messageId).type
         debugLine("inboxCheckMessageComplete","Message is complete, received $currentChunkNo chunks out of $expectedChunksNo, type=$type")
-        fullMessageReceivedEvent(messageId)
+        if (expectedChunksNo > 1) {
+            // Multi-chunk (media) assembly takes seconds and must survive doze:
+            // run it under WorkManager, like every other part of the send path.
+            AssembleMessageWorker.enqueue(App.context(), messageId)
+        } else {
+            // Single-chunk messages (text, reactions, …) assemble instantly:
+            // keep the original inline path untouched.
+            fullMessageReceivedEvent(messageId)
+        }
     }
     else {
         debugLine("inboxCheckMessageComplete","Message is not complete, received $currentChunkNo chunks out of $expectedChunksNo")
