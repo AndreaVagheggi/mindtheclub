@@ -144,7 +144,7 @@
     <string name="info">Info</string>
     <string name="group_member_limit_exceeded">Grup tidak boleh melebihi %d anggota.</string>
     <string name="media_lost">Media tidak tersedia</string>
-    <string name="message_size_limit">Batas 50 MB untuk pesan grup terlampaui</string>
+    <string name="message_size_limit">Batas 250 MB untuk pesan grup terlampaui</string>
     <string name="no_results">Tidak ada hasil</string>
     <string name="connected_and_ready">Terhubung</string>
     <string name="bug">Bug</string>

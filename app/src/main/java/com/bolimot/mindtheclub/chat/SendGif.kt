@@ -124,7 +124,7 @@ class SendGif : BaseActivity() {
             if (selectedPeerUserIds.any { it.startsWith("group") }) {
                 val size = com.bolimot.mindtheclub.functions.getFileDetails(contentResolver,
                     imagePath.toUri()).size
-                if (size > 52428800L) {
+                if (size > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
                     showToast(getString(R.string.message_size_limit), this)
                     caption.text.clear()
                     send.isEnabled = true

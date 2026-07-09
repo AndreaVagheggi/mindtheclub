@@ -142,7 +142,7 @@
     <string name="info">Infos</string>
     <string name="group_member_limit_exceeded">Les groupes ne peuvent pas dépasser %d membres.</string>
     <string name="media_lost">Média non disponible</string>
-    <string name="message_size_limit">Limite de 50 Mo dépassée pour les messages de groupe</string>
+    <string name="message_size_limit">Limite de 250 Mo dépassée pour les messages de groupe</string>
     <string name="no_results">Aucun résultat</string>
     <string name="connected_and_ready">Connecté</string>
     <string name="bug">Bug</string>

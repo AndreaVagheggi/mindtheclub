@@ -164,7 +164,7 @@ class SendImages : BaseActivity() {
                 for (u in uriList) {
                     totalSize += com.bolimot.mindtheclub.functions.getFileDetails(contentResolver, u).size
                 }
-                if (totalSize > 52428800L) {
+                if (totalSize > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
                     showToast(getString(R.string.message_size_limit), this)
                     caption.text.clear()
                     send.isEnabled = true

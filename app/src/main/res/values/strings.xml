@@ -143,7 +143,7 @@
     <string name="info">Info</string>
     <string name="group_member_limit_exceeded">Groups cannot exceed %d members.</string>
     <string name="media_lost">Media not available</string>
-    <string name="message_size_limit">50Mb limit for messages to a group, exceeded</string>
+    <string name="message_size_limit">250Mb limit for messages to a group, exceeded</string>
     <string name="no_results">No Results</string>
     <string name="connected_and_ready">Connected</string>
     <string name="bug">Bug</string>

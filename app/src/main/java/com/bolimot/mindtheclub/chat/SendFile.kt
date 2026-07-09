@@ -131,7 +131,7 @@ class SendFile : BaseActivity() {
 
             closeKeyboard(this)
 
-            if (selectedPeerUserIds.any { it.startsWith("group") } && detail.size > 52428800L) {
+            if (selectedPeerUserIds.any { it.startsWith("group") } && detail.size > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
                 showToast(getString(R.string.message_size_limit), this)
                 caption.text.clear()
                 send.isEnabled = true
