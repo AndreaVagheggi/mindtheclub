@@ -2,7 +2,7 @@
     <!-- Spanish (es) translation of the default strings.xml.
          Non-translatable strings (app_name, call_service, microphone) are intentionally omitted. -->
     <string name="contacts">Contactos</string>
-    <string name="bluetooth_transport">Bluetooth activado/desactivado</string>
+    <string name="bluetooth_transport">Bluetooth</string>
     <string name="remove_pending">Eliminar contacto pendiente</string>
     <string name="new_contact">Nuevo contacto</string>
     <string name="delete_group">Eliminar grupo</string>

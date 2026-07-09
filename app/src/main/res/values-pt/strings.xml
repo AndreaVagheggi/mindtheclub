@@ -2,7 +2,7 @@
     <!-- Portuguese (pt, Brazilian) translation of the default strings.xml.
          Non-translatable strings (app_name, call_service, microphone) are intentionally omitted. -->
     <string name="contacts">Contatos</string>
-    <string name="bluetooth_transport">Bluetooth ativado/desativado</string>
+    <string name="bluetooth_transport">Bluetooth</string>
     <string name="remove_pending">Remover contato pendente</string>
     <string name="new_contact">Novo contato</string>
     <string name="delete_group">Remover grupo</string>

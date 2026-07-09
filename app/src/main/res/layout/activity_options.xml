@@ -19,240 +19,295 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <LinearLayout
-        android:id="@+id/optionsContainer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/optionsScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
-        app:layout_constraintBottom_toTopOf="@+id/inviteFriendButton"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintBottom_toTopOf="@+id/inviteFriendButton">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:id="@+id/optionsContainer"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
-            <ImageView
-                android:id="@+id/showClubbyView"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="12dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/clubby"
-                android:contentDescription="@string/show_clubby" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/showClubbySwitch"
-                android:layout_width="200dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="4dp"
-                android:text="@string/show_clubby" />
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
 
-            <ImageView
-                android:id="@+id/showClubbyHelpIcon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/show_clubby" />
+                <ImageView
+                    android:id="@+id/showClubbyView"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/clubby"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/show_clubby"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_text" />
+
+                <ImageView
+                    android:id="@+id/showClubbyHelpIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/help_outline"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/show_clubby" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/showClubbySwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/show_clubby" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:id="@+id/showNoteToSelfView"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/profile"
+                    app:tint="@color/mtc_main"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/note_to_self"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_text" />
+
+                <ImageView
+                    android:id="@+id/showNoteToSelfHelpIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/help_outline"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/note_to_self" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/showNoteToSelfSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/note_to_self" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:id="@+id/stealthView"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/stealth"
+                    app:tint="@color/mtc_main"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/stealth_mode"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_text" />
+
+                <ImageView
+                    android:id="@+id/stealthHelpIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/help_outline"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/stealth_mode" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/stealthModeSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/stealth_mode" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:id="@+id/autoInviteView"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/invite_friend"
+                    app:tint="@color/mtc_main"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/auto_invite_mode"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_text" />
+
+                <ImageView
+                    android:id="@+id/autoInviteHelpIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/help_outline"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/auto_invite_mode" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/autoInviteModeSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/auto_invite_mode" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:id="@+id/bluetoothView"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/bluetooth"
+                    app:tint="@color/mtc_main"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/bluetooth_transport"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_text" />
+
+                <ImageView
+                    android:id="@+id/bluetoothHelpIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/help_outline"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/bluetooth_transport" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/bluetoothTransportSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/bluetooth_transport" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+    </androidx.core.widget.NestedScrollView>
 
-            <ImageView
-                android:id="@+id/showNoteToSelfView"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="12dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/profile"
-                app:tint="@color/black"
-                android:contentDescription="@string/note_to_self" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/showNoteToSelfSwitch"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:padding="4dp"
-                android:text="@string/note_to_self" />
-
-            <ImageView
-                android:id="@+id/showNoteToSelfHelpIcon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/note_to_self" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:id="@+id/stealthView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="12dp"
-                android:src="@drawable/stealth"
-                app:tint="@color/black"
-                android:contentDescription="@string/stealth_mode" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/stealthModeSwitch"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:padding="4dp"
-                android:text="@string/stealth_mode" />
-
-            <ImageView
-                android:id="@+id/stealthHelpIcon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/stealth_mode" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:id="@+id/autoInviteView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="12dp"
-                android:src="@drawable/invite_friend"
-                app:tint="@color/black"
-                android:contentDescription="@string/auto_invite_mode" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/autoInviteModeSwitch"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:padding="4dp"
-                android:text="@string/auto_invite_mode" />
-
-            <ImageView
-                android:id="@+id/autoInviteHelpIcon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/auto_invite_mode" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:id="@+id/bluetoothView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="12dp"
-                android:src="@drawable/bluetooth"
-                app:tint="@color/black"
-                android:contentDescription="@string/bluetooth_transport" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/bluetoothTransportSwitch"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:padding="4dp"
-                android:text="@string/bluetooth_transport" />
-
-            <ImageView
-                android:id="@+id/bluetoothHelpIcon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:padding="2dp"
-                android:src="@drawable/help"
-                android:scaleType="centerInside"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/bluetooth_transport" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/inviteFriendButton"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:textAllCaps="false"
-        android:textSize="16sp"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="18dp"
-        android:contentDescription="@string/share"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="12dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
         android:text="@string/share"
-        app:layout_constraintBottom_toTopOf="@+id/myProfileButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/myProfileButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="56dp"
-        android:textAllCaps="false"
         android:textSize="16sp"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="18dp"
-        android:contentDescription="@string/my_profile"
+        android:textAllCaps="false"
+        app:cornerRadius="28dp"
+        app:layout_constraintBottom_toTopOf="@+id/myProfileButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/myProfileButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="24dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
         android:text="@string/my_profile"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:textColor="@color/mtc_main"
+        app:strokeColor="@color/mtc_main"
+        app:rippleColor="@color/primary_transparent"
+        app:cornerRadius="28dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

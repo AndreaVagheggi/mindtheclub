@@ -21,8 +21,8 @@ import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.transport.BluetoothToggle
 import com.bolimot.mindtheclub.webrtc.RTCClient
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 class OptionsActivity : BaseActivity() {
@@ -122,7 +122,7 @@ class OptionsActivity : BaseActivity() {
             )
         }
 
-        findViewById<ExtendedFloatingActionButton>(R.id.inviteFriendButton).setOnClickListener {
+        findViewById<MaterialButton>(R.id.inviteFriendButton).setOnClickListener {
             val name = MySelf.name()?.trim() ?: ""
             val userId = MySelf.userId() ?: ""
             val bio = MySelf.bio()?.trim() ?: ""
@@ -137,7 +137,7 @@ class OptionsActivity : BaseActivity() {
             startActivity(Intent(this, InviteActivity::class.java).putExtra("payload", payload))
         }
 
-        findViewById<ExtendedFloatingActionButton>(R.id.myProfileButton).setOnClickListener {
+        findViewById<MaterialButton>(R.id.myProfileButton).setOnClickListener {
             startActivity(Intent(this, MyProfile::class.java))
         }
 

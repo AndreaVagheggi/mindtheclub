@@ -2,7 +2,7 @@
     <string name="app_name" translatable="false">MindTheClub</string>
     <string name="call_service" translatable="false">Call service</string>
     <string name="contacts">Contacts</string>
-    <string name="bluetooth_transport">Bluetooth On/Off</string>
+    <string name="bluetooth_transport">Bluetooth</string>
     <string name="remove_pending">Remove pending contact</string>
     <string name="new_contact">New Contact</string>
     <string name="delete_group">Remove group</string>
@@ -57,7 +57,7 @@
     <string name="delete_club_message">Do you want to delete this Club?</string>
     <string name="share_profile">Share</string>
     <string name="share_club">Share Club</string>
-    <string name="stealth_mode">Stealth Mode</string>
+    <string name="stealth_mode">Stealth mode</string>
     <string name="auto_invite_mode">Auto-invite mode</string>
     <string name="show_qr_code">Show QR</string>
     <string name="scan_qr_code">Scan QR</string>

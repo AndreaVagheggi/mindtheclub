@@ -7,6 +7,7 @@ import com.bolimot.mindtheclub.transport.TorManager
 import org.json.JSONObject
 import com.bolimot.mindtheclub.tools.FCM
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.views.AppTab
 import com.google.firebase.appcheck.FirebaseAppCheck
 import kotlinx.coroutines.delay
@@ -24,6 +25,23 @@ import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 private const val FCM_WORKER_URL = "https://mtc-fcm.long-sun-7368.workers.dev"
+
+/**
+ * Types that must punch through doze: the recipient is (possibly) idle and has
+ * to be woken to receive content or act. Everything else is a status update
+ * that is only meaningful while the recipient's device is awake anyway — those
+ * go out at normal FCM priority, preserving the per-device high-priority budget
+ * (Android demotes an app's high-priority messages when they are overused
+ * without user-visible work — which is what silently deferred our wake-ups).
+ */
+private val WAKE_TYPES = setOf(
+    Notify.PENDING,
+    Notify.SEND_ME,
+    Notify.CONTACT_REQUEST,
+    Notify.CANCEL_TRANSFER,
+    Notify.GROUP,
+    Notify.GROUP_REMOVED,
+)
 
 suspend fun fcmSendInstant(
     userId: String,
@@ -75,7 +93,10 @@ suspend fun fcmSendWork(
         "type" to type,
     )
 
-    return FcmMessageSender.sendFcmMessage(dataPayload, collapseKey, false, collapseKey == "offer")
+    return FcmMessageSender.sendFcmMessage(
+        dataPayload, collapseKey, false, collapseKey == "offer",
+        wake = type in WAKE_TYPES
+    )
 }
 
 object FcmMessageSender {
@@ -142,7 +163,8 @@ object FcmMessageSender {
         collapseKey: String,
         instant: Boolean,
         isOffer: Boolean = false,
-        viaTor: Boolean = false
+        viaTor: Boolean = false,
+        wake: Boolean = false
     ): String = withContext(Dispatchers.IO) {
 
         AppTab.fcmSending = true
@@ -156,6 +178,9 @@ object FcmMessageSender {
                 put("collapseKey", collapseKey)
                 put("instant", instant)
                 put("isOffer", isOffer)
+                // Routing metadata (outside the sealed payload): lets the cloud
+                // function pick FCM priority without seeing the encrypted type.
+                put("wake", wake)
             }
 
             val appCheckToken = try {
