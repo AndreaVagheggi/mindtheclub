@@ -268,13 +268,10 @@
     <string name="assistant_error_generic">Ada yang salah di pihak saya. Coba lagi sebentar lagi.</string>
 
     <!-- Onboarding: battery restriction screen -->
-    <string name="onboarding_battery_title">Pengiriman andal</string>
-    <string name="onboarding_battery_why_title">Ponselmu yang bekerja</string>
-    <string name="onboarding_battery_why_body">MindTheClub tidak punya server: pesan berpindah langsung dari ponsel ke ponsel. Saat Android menidurkan aplikasi untuk menghemat baterai, pesanmu bisa terlambat tiba.</string>
-    <string name="onboarding_battery_how_title">Cukup satu ketukan</string>
-    <string name="onboarding_battery_how_body">Di halaman setelan, pilih Baterai dan atur MindTheClub ke Tanpa batasan. Aplikasi ini memakai sangat sedikit daya — ini hanya memastikan pesanmu tiba tepat waktu.</string>
-    <string name="onboarding_battery_open_settings">Buka setelan</string>
-    <string name="onboarding_battery_skip">Nanti saja</string>
+    <string name="onboarding_battery_title">Satu tips singkat</string>
+    <string name="onboarding_battery_body">Semua sudah siap! Untuk pengalaman paling mulus, kamu bisa membiarkan MindTheClub berjalan bebas di latar belakang — dayanya sangat kecil. Sepenuhnya opsional, dan bisa diubah kapan saja.</string>
+    <string name="onboarding_battery_open_settings">Baik, tunjukkan</string>
+    <string name="onboarding_battery_skip">Mungkin nanti</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Catatan untuk saya</string>

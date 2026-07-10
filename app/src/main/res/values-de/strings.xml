@@ -267,13 +267,10 @@
     <string name="assistant_error_generic">Bei mir ist etwas schiefgelaufen. Bitte versuche es gleich noch einmal.</string>
 
     <!-- Onboarding: battery restriction screen -->
-    <string name="onboarding_battery_title">Zuverlässige Zustellung</string>
-    <string name="onboarding_battery_why_title">Dein Telefon macht die Arbeit</string>
-    <string name="onboarding_battery_why_body">MindTheClub hat keine Server: Nachrichten reisen direkt von Telefon zu Telefon. Wenn Android die App zum Energiesparen schlafen legt, können deine Nachrichten verspätet ankommen.</string>
-    <string name="onboarding_battery_how_title">Mit einem Tippen behoben</string>
-    <string name="onboarding_battery_how_body">Wähle auf der Einstellungsseite „Akku" und stelle MindTheClub auf „Uneingeschränkt". Die App verbraucht sehr wenig Strom — das sorgt nur dafür, dass deine Nachrichten pünktlich ankommen.</string>
-    <string name="onboarding_battery_open_settings">Einstellungen öffnen</string>
-    <string name="onboarding_battery_skip">Jetzt nicht</string>
+    <string name="onboarding_battery_title">Ein kurzer Tipp</string>
+    <string name="onboarding_battery_body">Alles bereit! Für das flüssigste Erlebnis kannst du MindTheClub im Hintergrund frei laufen lassen — es verbraucht sehr wenig Akku. Völlig optional und jederzeit änderbar.</string>
+    <string name="onboarding_battery_open_settings">Klar, zeig mir</string>
+    <string name="onboarding_battery_skip">Vielleicht später</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Notiz an mich</string>

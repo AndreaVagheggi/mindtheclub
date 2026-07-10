@@ -10,6 +10,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
@@ -22,6 +23,20 @@ class OnboardingActivity : BaseActivity() {
 
     companion object {
         /**
+         * DEBUG ONLY — flip to true to replay the whole onboarding flow on every
+         * launch (and stop the permissions/battery screens from auto-skipping),
+         * so the screens can be iterated without reinstalling or clearing data.
+         * Effective only in debug/staging builds: [forcedForTesting] also gates on
+         * BuildConfig.ENABLE_DEBUG_TOOLS, so leaving it true can never affect a
+         * release build. Remember to set it back to false when done.
+         */
+        private const val FORCE_ONBOARDING_FOR_TESTING = true
+
+        /** True only when the debug force flag is on AND this is a debug build. */
+        fun forcedForTesting(): Boolean =
+            BuildConfig.ENABLE_DEBUG_TOOLS && FORCE_ONBOARDING_FOR_TESTING
+
+        /**
          * Onboarding runs only when no user name has been set yet. The name is the
          * one piece of information the app can't work without, so its absence means
          * this is effectively a first run. Once a name exists, the app starts
@@ -29,6 +44,7 @@ class OnboardingActivity : BaseActivity() {
          * without entering one.)
          */
         fun shouldRun(context: Context): Boolean {
+            if (forcedForTesting()) return true
             return getPreference(MySelf.NAME_KEY, context).isNullOrEmpty()
         }
     }

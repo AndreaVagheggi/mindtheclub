@@ -38,7 +38,8 @@ class OnboardingPermissionsActivity : BaseActivity() {
 
         // Nothing left to ask for? Skip the screen entirely (e.g. onboarding
         // re-runs while testing, but the permissions are already granted).
-        if (missingPermissions().isEmpty()) {
+        // Debug-force mode keeps it visible so the flow can be reviewed.
+        if (!OnboardingActivity.forcedForTesting() && missingPermissions().isEmpty()) {
             goToInviteStep()
             return
         }
