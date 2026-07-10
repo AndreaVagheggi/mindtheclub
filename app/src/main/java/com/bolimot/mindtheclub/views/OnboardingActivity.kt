@@ -30,7 +30,7 @@ class OnboardingActivity : BaseActivity() {
          * BuildConfig.ENABLE_DEBUG_TOOLS, so leaving it true can never affect a
          * release build. Remember to set it back to false when done.
          */
-        private const val FORCE_ONBOARDING_FOR_TESTING = true
+        private const val FORCE_ONBOARDING_FOR_TESTING = false
 
         /** True only when the debug force flag is on AND this is a debug build. */
         fun forcedForTesting(): Boolean =

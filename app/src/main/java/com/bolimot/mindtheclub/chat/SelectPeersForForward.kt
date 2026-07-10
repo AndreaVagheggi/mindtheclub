@@ -27,6 +27,10 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
     private lateinit var peersAdapter: PeersAdapter
     private lateinit var fabContainer: FrameLayout
     private var excludedUserId: String? = null
+    // Contact shares set this: sending a contact card to the AI assistant or to
+    // note-to-myself is meaningless, so those pseudo-peers are hidden regardless
+    // of the "Show Clubby"/"Note to myself" toggles.
+    private var excludePseudoPeers = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +42,7 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         excludedUserId = intent.getStringExtra("excludedUserId")
+        excludePseudoPeers = intent.getBooleanExtra("excludePseudoPeers", false)
 
         peersAdapter = PeersAdapter(this@SelectPeersForForward, this, true, this)
         peersAdapter.maxSelectableCount = 3
@@ -67,8 +72,8 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
                 .map { pagingData: PagingData<Peer> ->
                     pagingData.filter { peer: Peer ->
                         peer.userId != excludedUserId && peer.status == Contact.ACTIVE
-                                && (!AiAssistant.isAssistant(peer.userId) || AiAssistant.isVisible(this@SelectPeersForForward))
-                                && (!NoteToSelf.isNoteToSelf(peer.userId) || NoteToSelf.isVisible(this@SelectPeersForForward))
+                                && (!AiAssistant.isAssistant(peer.userId) || (!excludePseudoPeers && AiAssistant.isVisible(this@SelectPeersForForward)))
+                                && (!NoteToSelf.isNoteToSelf(peer.userId) || (!excludePseudoPeers && NoteToSelf.isVisible(this@SelectPeersForForward)))
                     }
                 }
                 .collectLatest { filteredPagingData: PagingData<Peer> ->
