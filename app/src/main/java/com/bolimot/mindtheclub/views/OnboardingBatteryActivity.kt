@@ -22,11 +22,16 @@ import com.bolimot.mindtheclub.start.BaseActivity
  * permission, which draws Play review scrutiny. A settings deep-link needs no
  * permission at all. Checking the state via PowerManager is also free.
  *
- * If the exemption is already granted the screen is skipped silently, and it
- * auto-advances when the user comes back from settings with it granted.
+ * If the exemption is already granted the screen is skipped silently. Once the
+ * user has been sent to settings, returning advances to the next step — the
+ * screen never re-presents itself (this is an optional suggestion, not a gate).
  * Flow: permissions screen -> this screen -> invite screen.
  */
 class OnboardingBatteryActivity : BaseActivity() {
+
+    // Set when the user taps "Sure, show me": on the next onResume (i.e. when
+    // they return from the settings screen) we move on, whatever they chose.
+    private var sentToSettings = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +46,7 @@ class OnboardingBatteryActivity : BaseActivity() {
         setContentView(R.layout.activity_onboarding_battery)
 
         findViewById<View>(R.id.openBatterySettings).setOnClickListener {
+            sentToSettings = true
             openBatteryOptimizationSettings()
         }
 
@@ -70,9 +76,11 @@ class OnboardingBatteryActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Back from settings with the restriction lifted: nothing left to explain.
-        // (Suppressed in debug-force mode so the screen stays put for review.)
-        if (!OnboardingActivity.forcedForTesting() && isExempt()) {
+        // Returned from the settings screen we opened: advance rather than showing
+        // the identical screen again (which reads as "did nothing happen?"). We
+        // don't check whether the exemption was actually granted — it's optional,
+        // and re-presenting the same prompt is worse than moving on.
+        if (sentToSettings) {
             goToInviteStep()
         }
     }
