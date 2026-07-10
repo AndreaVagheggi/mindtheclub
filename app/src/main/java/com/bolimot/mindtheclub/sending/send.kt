@@ -172,7 +172,40 @@ fun setMessageToNotSent(messageId: String, missingItems: List<Int>, context: Con
     }
 }
 
-fun sendMessageWork(message: MessageData, context: Context, scope: CoroutineScope): Boolean {
+/**
+ * Inverse of setMessageToNotSent: marks everything as already sent, then
+ * re-enables only [missingItems]. Used when serving a partial sendMe on a
+ * freshly rebuilt batch, so dispatch transmits just the missing chunks.
+ */
+fun restrictBatchToMissing(messageId: String, missingItems: List<Int>, context: Context): Boolean {
+    val db = AppDatabase.getInstance(context).openHelper.writableDatabase
+    val numberOfBatches = getBatchesNumber(db, messageId)
+    if (numberOfBatches == 0 || missingItems.isEmpty()) return false
+    val sequenceNoList = missingItems.joinToString(separator = ",")
+
+    return try {
+        db.beginTransaction()
+        for (i in 1..numberOfBatches) {
+            val tableName = "batch${messageId}$i"
+            db.execSQL("UPDATE $tableName SET sent = 1")
+            db.execSQL("UPDATE $tableName SET sent = 0 WHERE sequenceNo IN ($sequenceNoList)")
+        }
+        db.setTransactionSuccessful()
+        true
+    } catch (e: Exception) {
+        debugLine("restrictBatch", "Error restricting batch for $messageId: ${e.message}")
+        false
+    } finally {
+        db.endTransaction()
+    }
+}
+
+fun sendMessageWork(
+    message: MessageData,
+    context: Context,
+    scope: CoroutineScope,
+    resendMissing: List<Int>? = null
+): Boolean {
     if (CancelledTransferRegistry.isCancelled(context, message.messageId)) {
         debugLine("sendMediaMessage", "Transfer ${message.messageId} was cancelled, aborting build")
         deleteBatchTables(message.messageId)
@@ -353,6 +386,15 @@ fun sendMessageWork(message: MessageData, context: Context, scope: CoroutineScop
         val reconciled = reconcileBatchTotalNo(message.messageId)
         if (reconciled > 0) {
             debugLine("sendMediaMessage", "Batch totalNo reconciled to $reconciled for ${message.messageId}")
+        }
+
+        // Partial sendMe: the requester told us which chunks it is missing —
+        // don't re-transmit the ones it already has. On any failure the batch
+        // stays complete and a full (current-behavior) send happens instead.
+        if (!resendMissing.isNullOrEmpty()) {
+            if (restrictBatchToMissing(message.messageId, resendMissing, context)) {
+                debugLine("sendMediaMessage", "Restricted batch to ${resendMissing.size} missing chunks for ${message.messageId}")
+            }
         }
 
         submitDispatchWorker(message.messageId, message.toUserId, context, message.groupId, message.uri!!, message.chatGroupId ?: "", message.originalSenderId ?: "", message.date)

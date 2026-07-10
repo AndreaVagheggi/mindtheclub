@@ -265,6 +265,15 @@
     <string name="assistant_error_network">Impossible de me joindre — vérifie ta connexion et réessaie.</string>
     <string name="assistant_error_generic">Quelque chose s\'est mal passé de mon côté. Réessaie dans un instant.</string>
 
+    <!-- Onboarding: battery restriction screen -->
+    <string name="onboarding_battery_title">Livraison fiable</string>
+    <string name="onboarding_battery_why_title">Ton téléphone fait le travail</string>
+    <string name="onboarding_battery_why_body">MindTheClub n\'a pas de serveurs : les messages voyagent directement de téléphone à téléphone. Quand Android met l\'appli en veille pour économiser la batterie, tes messages peuvent arriver en retard.</string>
+    <string name="onboarding_battery_how_title">Réglé en un geste</string>
+    <string name="onboarding_battery_how_body">Dans la page des réglages, choisis Batterie et mets MindTheClub sur Non restreinte. L\'appli consomme très peu d\'énergie — cela garantit seulement que tes messages arrivent à l\'heure.</string>
+    <string name="onboarding_battery_open_settings">Ouvrir les réglages</string>
+    <string name="onboarding_battery_skip">Pas maintenant</string>
+
     <!-- Note to myself -->
     <string name="note_to_self">Note à moi-même</string>
     <string name="note_to_self_bio">Ton espace privé — notes, photos et fichiers, stockés uniquement sur ce téléphone</string>

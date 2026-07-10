@@ -266,6 +266,15 @@
     <string name="assistant_error_network">I couldn\'t be reached — please check your connection and try again.</string>
     <string name="assistant_error_generic">Something went wrong on my side. Please try again in a moment.</string>
 
+    <!-- Onboarding: battery restriction screen -->
+    <string name="onboarding_battery_title">Reliable delivery</string>
+    <string name="onboarding_battery_why_title">Your phone does the work</string>
+    <string name="onboarding_battery_why_body">MindTheClub has no servers: messages travel directly between phones. When Android puts the app to sleep to save battery, your messages can arrive late.</string>
+    <string name="onboarding_battery_how_title">One tap to fix it</string>
+    <string name="onboarding_battery_how_body">In the settings page, choose Battery and set MindTheClub to Unrestricted. The app uses very little power — this only makes sure your messages arrive on time.</string>
+    <string name="onboarding_battery_open_settings">Open settings</string>
+    <string name="onboarding_battery_skip">Not now</string>
+
     <!-- Note to myself -->
     <string name="note_to_self">Note to myself</string>
     <string name="note_to_self_bio">Your private space — notes, photos and files, stored only on this phone</string>

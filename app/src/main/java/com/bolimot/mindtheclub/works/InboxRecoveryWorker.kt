@@ -11,6 +11,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.receiving.isProcessingActive
+import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
@@ -101,8 +102,16 @@ class InboxRecoveryWorker(
 
                         val originalSender = msg.originalSenderId
                         if (!originalSender.isNullOrEmpty()) {
-                            debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $originalSender")
-                            notifyRemotePeer(originalSender, msg.messageId, Notify.SEND_ME)
+                            // Resume-aware: report the missing range so the sender can
+                            // re-send only those chunks (see the PENDING/SEND_ME handlers).
+                            val missing = missingChunksByContent(inboxDao, ck)
+                            val missingRange = if (missing != null && missing.isNotEmpty()) {
+                                "${missing.min()},${missing.max()}"
+                            } else {
+                                null
+                            }
+                            debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $originalSender (missing: ${missingRange ?: "all"})")
+                            notifyRemotePeer(originalSender, msg.messageId, Notify.SEND_ME, missingRange)
                         } else {
                             debugLine(TAG, "RECEIVING ${msg.messageId} has no originalSenderId, skipping")
                         }

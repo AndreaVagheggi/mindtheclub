@@ -22,7 +22,7 @@ import com.bolimot.mindtheclub.start.BaseActivity
  * in-context elsewhere.
  *
  * If everything is already granted the screen is skipped silently.
- * Flow: profile screen -> this screen -> invite screen.
+ * Flow: profile screen -> this screen -> battery screen -> invite screen.
  */
 class OnboardingPermissionsActivity : BaseActivity() {
 
@@ -81,8 +81,9 @@ class OnboardingPermissionsActivity : BaseActivity() {
     }
 
     private fun goToInviteStep() {
-        // Onboarding step 4 (final): encourage inviting friends, then open the app.
-        startActivity(Intent(this, OnboardingInviteActivity::class.java))
+        // Next step: battery-restriction priming (skips itself if already exempt),
+        // then the final invite screen.
+        startActivity(Intent(this, OnboardingBatteryActivity::class.java))
         finish()
     }
 }

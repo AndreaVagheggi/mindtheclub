@@ -80,11 +80,6 @@
             android:foregroundServiceType="shortService" />
 
         <service
-            android:name="org.torproject.jni.TorService"
-            android:enabled="true"
-            android:exported="false" />
-
-        <service
             android:name=".voip.CallService"
             android:foregroundServiceType="phoneCall"
             android:exported="false" />
@@ -402,6 +397,13 @@
 
         <activity
             android:name=".views.OnboardingPermissionsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <activity
+            android:name=".views.OnboardingBatteryActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/MindTheClub"

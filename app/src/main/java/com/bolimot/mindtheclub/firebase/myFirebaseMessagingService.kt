@@ -28,6 +28,7 @@ import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.appIsForeground
 import com.bolimot.mindtheclub.functions.batchTablesExists
+import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteBatchTables
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
@@ -38,6 +39,7 @@ import com.bolimot.mindtheclub.functions.getMessageViewModel
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.guid
+import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.functions.saveNewGroupAsPeer
 import com.bolimot.mindtheclub.functions.stringToListInt
 import com.bolimot.mindtheclub.functions.timer
@@ -45,10 +47,12 @@ import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
 import com.bolimot.mindtheclub.processor.MessageProcessor
 import com.bolimot.mindtheclub.receiving.DataSyncService
 import com.bolimot.mindtheclub.receiving.checkIfMessageIsCompleted
+import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.handleGroupDeliveryConfirmation
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.reSendMessage
+import com.bolimot.mindtheclub.sending.restrictBatchToMissing
 import com.bolimot.mindtheclub.sending.receiveTransferCancelled
 import com.bolimot.mindtheclub.sending.sendMessageId
 import com.bolimot.mindtheclub.sending.sendSingleMessage
@@ -291,6 +295,26 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             return@launch
                         }
 
+                        // Resume-aware sendMe: report which chunks are still missing so
+                        // the sender can re-send only those (big-transfer bandwidth saver).
+                        // No local chunks -> plain sendMe (full send, original behavior).
+                        val pendingContentKey = if (existingMessage != null) {
+                            contentKeyOf(msgId, existingMessage.chatGroupId, existingMessage.originalSenderId, existingMessage.date)
+                        } else {
+                            resolveContentKey(getInboxDao(applicationContext), msgId)
+                        }
+                        val missing = missingChunksByContent(getInboxDao(applicationContext), pendingContentKey)
+                        if (missing == null) {
+                            // Every chunk is already here: requesting a re-send would be
+                            // pure waste. Assembly (worker/recovery) finishes the job.
+                            debugLine(tag, "All chunks already present for $msgId — skipping sendMe, awaiting assembly")
+                            return@launch
+                        }
+                        val missingRange = if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
+                        if (missingRange != null) {
+                            debugLine(tag, "Partial state for $msgId: requesting chunks $missingRange (${missing.size} missing)")
+                        }
+
                         if (!chatGroupId.isNullOrEmpty()) {
                             debugLine(tag, "Group pending for $chatGroupId, fanning out sendMe")
                             try {
@@ -307,20 +331,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     val targets = membersMap?.keys?.filter { key -> key != myId } ?: emptyList()
 
                                     for (memberId in targets) {
-                                        notifyRemotePeer(memberId, msgId, "sendMe")
+                                        notifyRemotePeer(memberId, msgId, "sendMe", missingRange)
                                     }
                                     debugLine(tag, "Sent sendMe to ${targets.size} group members for $msgId")
                                 } else {
                                     debugLine(tag, "Group $chatGroupId not found, falling back to sender")
-                                    notifyRemotePeer(fromUserId, msgId, "sendMe")
+                                    notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)
                                 }
                             } catch (e: Exception) {
                                 debugLine(tag, "Failed to fan out sendMe, falling back to sender: ${e.message}")
-                                notifyRemotePeer(fromUserId, msgId, "sendMe")
+                                notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)
                             }
                         } else {
                             debugLine(tag, "1:1 pending, sending sendMe to $fromUserId")
-                            notifyRemotePeer(fromUserId, msgId, "sendMe")
+                            notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)
                         }
                     }
                 }
@@ -328,15 +352,41 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             Notify.SEND_ME -> {
                 debugLine(tag, "I am sending a message: $channelId to requester $fromUserId")
-                channelId?.let { msgId ->
+                channelId?.let { payload ->
                     appScope.launch {
+                        // Optional "#low,high" suffix (same format as someMissing): the
+                        // requester already holds everything outside that range.
+                        val sendMeParts = payload.split("#", limit = 2)
+                        val msgId = sendMeParts[0]
+                        val missingItems: List<Int>? = sendMeParts.getOrNull(1)?.let { range ->
+                            try {
+                                val (low, high) = range.split(",").map { it.trim().toInt() }
+                                if (low in 1..high) (low..high).toList() else null
+                            } catch (e: Exception) {
+                                debugLine(tag, "Ignoring malformed sendMe range '$range'")
+                                null
+                            }
+                        }
+
                         if (CancelledTransferRegistry.isCancelled(applicationContext, msgId)) {
                             debugLine(tag, "Transfer $msgId was cancelled, ignoring sendMe")
                             return@launch
                         }
                         if (batchTablesExists(msgId)) {
-                            debugLine(tag, "Batch tables exist for $msgId, dispatching to $fromUserId")
-                            submitDispatchWorker(msgId, fromUserId, applicationContext)
+                            if (missingItems != null) {
+                                debugLine(tag, "Partial sendMe: re-sending chunks ${missingItems.first()}..${missingItems.last()} of $msgId to $fromUserId")
+                                // The requester holds everything outside this range, but —
+                                // unlike the someMissing flow — the batch rows here may
+                                // still be sent=0 (post-freeze rebuild or interrupted
+                                // dispatch). Normalize first: mark all as delivered, then
+                                // re-enable only the missing range, or dispatch would
+                                // re-stream the whole remainder as duplicates.
+                                restrictBatchToMissing(msgId, missingItems, applicationContext)
+                                reSendMessage(fromUserId, msgId, missingItems, applicationContext)
+                            } else {
+                                debugLine(tag, "Batch tables exist for $msgId, dispatching to $fromUserId")
+                                submitDispatchWorker(msgId, fromUserId, applicationContext)
+                            }
                         } else {
                             val message = getMessageRepository(App.context()).getMessage(msgId)
                             if (message != null) {
@@ -370,7 +420,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     debugLine(tag, "Re-sending received/group message $msgId to requester $fromUserId")
                                     submitSendMessageWorker(
                                         MessageData.fromMessage(message).copy(toUserId = fromUserId),
-                                        applicationContext
+                                        applicationContext,
+                                        resendMissing = missingItems
                                     )
                                 } else {
                                     sendMessageId(msgId)

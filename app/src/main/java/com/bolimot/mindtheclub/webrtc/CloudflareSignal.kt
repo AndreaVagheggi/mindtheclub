@@ -15,8 +15,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.bolimot.mindtheclub.transport.TorManager
-import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -24,9 +22,6 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import org.webrtc.PeerConnection
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.Proxy
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -35,7 +30,6 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val SIGNALING_WS_BASE = "wss://mtc-signal.long-sun-7368.workers.dev/c/"
 private const val PEER_TIMEOUT_MS = 45_000L
 private const val WS_CONNECT_TIMEOUT_S = 30L
-private const val TOR_READY_TIMEOUT_MS = 15_000L
 
 // Handshake retry: a Cloudflare Durable Object can transiently 500/503 (cold start,
 // eviction, platform hiccup). Retry the WS handshake before surfacing an error.
@@ -43,24 +37,15 @@ private const val WS_MAX_CONNECT_ATTEMPTS = 3
 private const val WS_RETRY_BASE_DELAY_MS = 2_000L
 
 @Volatile private var cachedClient: OkHttpClient? = null
-@Volatile private var cachedPort: Int? = null
 
-private fun signalClientFor(socksPort: Int?): OkHttpClient {
-    cachedClient?.let { if (cachedPort == socksPort) return it }
-    val builder = OkHttpClient.Builder()
+private fun signalClient(): OkHttpClient {
+    cachedClient?.let { return it }
+    val client = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
         .connectTimeout(WS_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
-    if (socksPort != null) {
-        builder.proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", socksPort)))
-        builder.dns(object : Dns {
-            override fun lookup(hostname: String): List<InetAddress> =
-                listOf(InetAddress.getByAddress(hostname, byteArrayOf(0, 0, 0, 0)))
-        })
-    }
-    val client = builder.build()
+        .build()
     cachedClient = client
-    cachedPort = socksPort
     return client
 }
 
@@ -346,18 +331,6 @@ suspend fun openSignal(
 
     onIceServersFetched(iceServers)
 
-    val socksPort: Int? = if (initiator) {
-        val port = TorManager.awaitReady(TOR_READY_TIMEOUT_MS)
-        if (port == null) {
-            debugLine(tag, "Tor not ready within budget — falling back to direct connection")
-            null
-        } else {
-            port
-        }
-    } else {
-        null
-    }
-
     val remoteKey = try {
         PeerIdentityResolver.publicKeyForUserId(remoteUserId)
     } catch (e: Exception) {
@@ -367,7 +340,7 @@ suspend fun openSignal(
 
     val socket = Socket(channelId, remoteUserId)
     socket.connect(
-        client = signalClientFor(socksPort),
+        client = signalClient(),
         remotePublicKey = remoteKey,
         onJoin = { sk ->
             debugLine(tag, "JOIN: I have joined the channel")

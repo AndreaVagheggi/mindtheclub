@@ -143,6 +143,24 @@ suspend fun checkIfMessageIsCompleted(messageId: String): List<Int>? {
     }
 }
 
+/**
+ * Missing chunk sequence numbers for [contentKey]:
+ *  - null       -> all chunks present locally (assembly pending, nothing to request)
+ *  - empty list -> nothing received locally (a full send is needed)
+ *  - list       -> partial: exactly these sequence numbers are missing
+ *
+ * Used to enrich sendMe requests so the sender can re-send only what is
+ * actually missing instead of the whole message.
+ */
+suspend fun missingChunksByContent(inboxDao: InboxDao, contentKey: String): List<Int>? {
+    val current = inboxDao.countChunksByContent(contentKey)
+    if (current == 0) return listOf()
+    val expected = inboxDao.getTotalChunksByContent(contentKey)
+    if (current >= expected) return null
+    val have = inboxDao.getAllSequencesByContent(contentKey)
+    return (1..expected).filter { it !in have }
+}
+
 suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
     val contentKey = resolveContentKey(inboxDao, messageId)
     val currentChunkNo = inboxDao.countChunksByContent(contentKey)

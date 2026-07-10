@@ -210,10 +210,6 @@ dependencies {
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
 
-    // TOR
-    implementation("info.guardianproject:tor-android:0.4.8.18")
-    implementation("info.guardianproject:jtorctl:0.4.5.7")
-
     // VARIOUS
     implementation("com.android.installreferrer:installreferrer:2.2")
     implementation("com.google.zxing:core:3.5.3")

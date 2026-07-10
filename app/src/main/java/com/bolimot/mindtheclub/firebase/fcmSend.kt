@@ -3,7 +3,6 @@ package com.bolimot.mindtheclub.firebase
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.transport.PeerIdentityResolver
-import com.bolimot.mindtheclub.transport.TorManager
 import org.json.JSONObject
 import com.bolimot.mindtheclub.tools.FCM
 import com.bolimot.mindtheclub.tools.MySelf
@@ -14,14 +13,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 private const val FCM_WORKER_URL = "https://mtc-fcm.long-sun-7368.workers.dev"
@@ -69,7 +64,7 @@ suspend fun fcmSendInstant(
         putAll(extraData)
     }
 
-    return FcmMessageSender.sendFcmMessage(dataPayload, collapseKey, true, collapseKey == "offer", viaTor = true) == FCM.SUCCESS
+    return FcmMessageSender.sendFcmMessage(dataPayload, collapseKey, true, collapseKey == "offer") == FCM.SUCCESS
 }
 
 suspend fun fcmSendWork(
@@ -103,32 +98,11 @@ object FcmMessageSender {
 
     private val ROUTING_KEYS = setOf("toUserId")
 
-    private const val TOR_READY_TIMEOUT_MS = 60_000L
-
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
-    }
-
-    @Volatile private var torClient: OkHttpClient? = null
-    @Volatile private var torClientPort: Int? = null
-
-    private fun torHttpClient(socksPort: Int): OkHttpClient {
-        torClient?.let { if (torClientPort == socksPort) return it }
-        val client = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", socksPort)))
-            .dns(object : Dns {
-                override fun lookup(hostname: String): List<InetAddress> =
-                    listOf(InetAddress.getByAddress(hostname, byteArrayOf(0, 0, 0, 0)))
-            })
-            .build()
-        torClient = client
-        torClientPort = socksPort
-        return client
     }
 
     private suspend fun sealPayload(data: Map<String, String?>): Map<String, String?> {
@@ -163,7 +137,6 @@ object FcmMessageSender {
         collapseKey: String,
         instant: Boolean,
         isOffer: Boolean = false,
-        viaTor: Boolean = false,
         wake: Boolean = false
     ): String = withContext(Dispatchers.IO) {
 
@@ -210,18 +183,7 @@ object FcmMessageSender {
 
             while (attempts < maxAttempts) {
                 try {
-                    val client = if (viaTor) {
-                        val port = TorManager.awaitReady(TOR_READY_TIMEOUT_MS)
-                        if (port == null) {
-                            debugLine("fcmMessageSender", "Tor not ready, retrying")
-                            attempts++
-                            if (attempts < maxAttempts) { delay(retryDelay); retryDelay *= 2 }
-                            continue
-                        }
-                        torHttpClient(port)
-                    } else {
-                        httpClient
-                    }
+                    val client = httpClient
 
                     val request = Request.Builder()
                         .url(FCM_WORKER_URL)
