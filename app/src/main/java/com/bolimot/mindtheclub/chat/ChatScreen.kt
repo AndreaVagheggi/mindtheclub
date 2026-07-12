@@ -531,8 +531,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
             val intent = Intent(this@ChatScreen, SelectPeersForForward::class.java)
             intent.putExtra("excludedUserId", remoteUserId)
-            // Sending a contact card to the AI/note-to-self makes no sense.
-            intent.putExtra("excludePseudoPeers", true)
+            // Picking which contact to send: exclude groups + AI + note-to-self.
+            intent.putExtra("contactShareMode", true)
             getPeersResult.launch(intent)
         }
 
@@ -1430,8 +1430,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
                         val intent = Intent(this@ChatScreen, SelectPeersForForward::class.java)
                         intent.putExtra("excludedUserId", remoteUserId)
-                        // Forwarding a received contact card: exclude the AI/note-to-self.
-                        intent.putExtra("excludePseudoPeers", messageToForward?.type == Type.CONTACT)
+                        // Forwarding a received contact card: exclude groups/AI/note-to-self.
+                        intent.putExtra("contactShareMode", messageToForward?.type == Type.CONTACT)
                         getPeersResult.launch(intent)
 
                         messagesAdapter.toggleSelection(selectedMessageId)

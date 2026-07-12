@@ -27,10 +27,11 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
     private lateinit var peersAdapter: PeersAdapter
     private lateinit var fabContainer: FrameLayout
     private var excludedUserId: String? = null
-    // Contact shares set this: sending a contact card to the AI assistant or to
-    // note-to-myself is meaningless, so those pseudo-peers are hidden regardless
-    // of the "Show Clubby"/"Note to myself" toggles.
-    private var excludePseudoPeers = false
+    // Set when the picker is choosing WHICH CONTACT to send as a card (not a
+    // forward recipient). Only real one-to-one contacts qualify: groups, the AI
+    // assistant and note-to-myself can't be sent as a contact card, so they are
+    // hidden here regardless of the "Show Clubby"/"Note to myself" toggles.
+    private var contactShareMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +43,7 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         excludedUserId = intent.getStringExtra("excludedUserId")
-        excludePseudoPeers = intent.getBooleanExtra("excludePseudoPeers", false)
+        contactShareMode = intent.getBooleanExtra("contactShareMode", false)
 
         peersAdapter = PeersAdapter(this@SelectPeersForForward, this, true, this)
         peersAdapter.maxSelectableCount = 3
@@ -71,9 +72,19 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
             peerViewModel.peers
                 .map { pagingData: PagingData<Peer> ->
                     pagingData.filter { peer: Peer ->
-                        peer.userId != excludedUserId && peer.status == Contact.ACTIVE
-                                && (!AiAssistant.isAssistant(peer.userId) || (!excludePseudoPeers && AiAssistant.isVisible(this@SelectPeersForForward)))
-                                && (!NoteToSelf.isNoteToSelf(peer.userId) || (!excludePseudoPeers && NoteToSelf.isVisible(this@SelectPeersForForward)))
+                        val basicOk = peer.userId != excludedUserId && peer.status == Contact.ACTIVE
+                        when {
+                            !basicOk -> false
+                            // Contact-share picker: only real one-to-one contacts.
+                            contactShareMode ->
+                                !peer.userId.startsWith("group")
+                                        && !AiAssistant.isAssistant(peer.userId)
+                                        && !NoteToSelf.isNoteToSelf(peer.userId)
+                            // Forwarding content: groups OK; pseudo-peers follow their toggle.
+                            else ->
+                                (!AiAssistant.isAssistant(peer.userId) || AiAssistant.isVisible(this@SelectPeersForForward))
+                                        && (!NoteToSelf.isNoteToSelf(peer.userId) || NoteToSelf.isVisible(this@SelectPeersForForward))
+                        }
                     }
                 }
                 .collectLatest { filteredPagingData: PagingData<Peer> ->
