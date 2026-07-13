@@ -41,7 +41,7 @@ class MessageReceivedNotification {
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
             // We increment the version and append it to the ID to enforce a brand-new channel creation
-            val channelVersion = 8
+            val channelVersion = 9
             val channelId = "message_received_v$channelVersion"
 
             debugLine("MessageNotification", "show() for ${message.messageId} type=${message.type}")
@@ -79,8 +79,10 @@ class MessageReceivedNotification {
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build()
 
+                // Name-based URI: numeric R.raw IDs shift between builds, and the channel
+                // stores the URI permanently at creation time.
                 val soundUri =
-                    ("android.resource://" + context.packageName + "/" + R.raw.notification_sound).toUri()
+                    ("android.resource://" + context.packageName + "/raw/notification_sound").toUri()
 
                 val channel = NotificationChannel(
                     channelId, "Message Channel", NotificationManager.IMPORTANCE_HIGH

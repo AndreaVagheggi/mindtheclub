@@ -529,15 +529,20 @@ class AppTab : BaseActivity() {
     private fun showNewRequestNotification() {
         val context = App.context()
         val notificationManager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "NewRequestNotification"
+        val channelId = "NewRequestNotification_v2"
 
         if (notificationManager.getNotificationChannel(channelId) == null) {
+            // Remove the old channel: it may hold a stale numeric-ID sound URI
+            notificationManager.deleteNotificationChannel("NewRequestNotification")
+
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .build()
 
-            val soundUri = ("android.resource://" + context.packageName + "/" + R.raw.notification_sound).toUri()
+            // Name-based URI: numeric R.raw IDs shift between builds, and the channel
+            // stores the URI permanently at creation time.
+            val soundUri = ("android.resource://" + context.packageName + "/raw/notification_sound").toUri()
 
             val channel = NotificationChannel(channelId, "New Request Channel", NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Channel for new requests"
