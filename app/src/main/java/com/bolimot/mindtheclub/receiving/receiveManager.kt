@@ -415,7 +415,7 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 propagateGroupMessage(propagateData)
             }
             inboxDao.deleteByContent(contentKey)
-            if (content.isNotEmpty()) deleteFile(content.toUri())
+            if (content.isNotEmpty() && content != existingMessage.uri) deleteFile(content.toUri())
             if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
                 MessageReceivedNotification.show(existingMessage)
             }
