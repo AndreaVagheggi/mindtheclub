@@ -28,8 +28,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1002
-        versionName = "Release 1.2"
+        versionCode = 1003
+        versionName = "Release 1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

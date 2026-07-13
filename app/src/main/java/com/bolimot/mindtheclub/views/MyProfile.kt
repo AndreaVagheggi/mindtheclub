@@ -1,20 +1,16 @@
 package com.bolimot.mindtheclub.views
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
-import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -25,11 +21,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
-import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.buildInviteLink
 import com.bolimot.mindtheclub.functions.debugLine
-import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
 import com.bolimot.mindtheclub.functions.generateQRCode
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
@@ -45,7 +39,6 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.signature.ObjectKey
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -338,116 +331,10 @@ class MyProfile : BaseActivity() {
         imageEditIcon.isClickable = true
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.my_profile_toolbar, menu)
-        if (!BuildConfig.ENABLE_DEBUG_TOOLS) {
-            menu.findItem(R.id.bug)?.isVisible = false
-            menu.findItem(R.id.delete_log)?.isVisible = false
-        }
-        return true
-    }
-
-    @SuppressLint("SetTextI18n")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            android.R.id.home -> {
-                finish()
-                return true
-            }
-            R.id.bug -> {
-                if (BuildConfig.ENABLE_DEBUG_TOOLS) exportLogToVisibleStorage()
-                return true
-            }
-            R.id.backup_restore -> {
-                startActivity(Intent(this, BackupRestoreActivity::class.java))
-                return true
-            }
-            R.id.black_list -> {
-                startActivity(Intent(this, BlackListActivity::class.java))
-                return true
-            }
-            R.id.delete_log -> {
-                if (BuildConfig.ENABLE_DEBUG_TOOLS) {
-                    val context = applicationContext
-                    val deviceContext = context.createDeviceProtectedStorageContext()
-                    val safeName = MySelf.name()?.trim() ?: return true
-                    val logFile = java.io.File(deviceContext.filesDir, "$safeName.txt")
-                    if (logFile.exists()) {
-                        logFile.delete()
-                        android.widget.Toast.makeText(
-                            this,
-                            "Log deleted",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        android.widget.Toast.makeText(
-                            this,
-                            "No log file found",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-                return true
-            }
-            R.id.about -> {
-                run {
-                    val layout = LinearLayout(this).apply {
-                        orientation = LinearLayout.VERTICAL
-                        gravity = android.view.Gravity.CENTER
-                        setPadding(0, 64, 0, 0)
-                    }
-
-                    val appName = TextView(this).apply {
-                        text = getString(R.string.app_name)
-                        textSize = 20f
-                        gravity = android.view.Gravity.CENTER
-                        setTypeface(null, android.graphics.Typeface.BOLD)
-                    }
-
-                    val versionLabel = TextView(this).apply {
-                        text = getString(R.string.version)
-                        textSize = 16f
-                        gravity = android.view.Gravity.CENTER
-                        setPadding(0, 16, 0, 0)
-                    }
-
-                    val versionValue = TextView(this).apply {
-                        text = BuildConfig.VERSION_NAME
-                        textSize = 16f
-                        gravity = android.view.Gravity.CENTER
-                        setPadding(0, 8, 0, 0)
-                    }
-
-                    val userIdLabel = TextView(this).apply {
-                        text = "User ID"
-                        textSize = 16f
-                        gravity = android.view.Gravity.CENTER
-                        setPadding(0, 32, 0, 0)
-                    }
-
-                    val userIdValue = TextView(this).apply {
-                        text = MySelf.userId()
-                        textSize = 14f
-                        gravity = android.view.Gravity.CENTER
-                        setPadding(0, 8, 0, 0)
-                        setTextIsSelectable(true)
-                    }
-
-                    layout.addView(appName)
-                    layout.addView(versionLabel)
-                    layout.addView(versionValue)
-                    layout.addView(userIdLabel)
-                    layout.addView(userIdValue)
-
-                    MaterialAlertDialogBuilder(this)
-                        .setView(layout)
-                        .setPositiveButton(R.string.close, null)
-                        .setCancelable(true)
-                        .show()
-                }
-
-                return true
-            }
+        if (item.itemId == android.R.id.home) {
+            finish()
+            return true
         }
         return super.onOptionsItemSelected(item)
     }
