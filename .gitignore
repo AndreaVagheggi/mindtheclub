@@ -90,3 +90,4 @@ package-lock.json
 
 # Personal Claude Code instructions (do not commit)
 CLAUDE.local.md
+PLAY_BILLING_SETUP.local.md

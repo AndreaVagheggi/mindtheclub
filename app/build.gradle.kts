@@ -28,8 +28,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1003
-        versionName = "Release 1.3"
+        versionCode = 1004
+        versionName = "Release 1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -209,6 +209,9 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.2")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
+
+    // GOOGLE PLAY BILLING (subscriptions: mtc_standard / mtc_stealth)
+    implementation("com.android.billingclient:billing-ktx:8.0.0")
 
     // VARIOUS
     implementation("com.android.installreferrer:installreferrer:2.2")

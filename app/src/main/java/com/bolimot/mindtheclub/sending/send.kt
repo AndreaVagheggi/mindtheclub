@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat.getString
 import androidx.core.net.toUri
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.billing.TrialManager
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.AppDatabase
 import com.bolimot.mindtheclub.database.outbox.Outbox
@@ -50,6 +51,9 @@ fun sendMessage(message: MessageData) {
         NoteToSelf.handleOutgoing(message)
         return
     }
+    // First real peer message starts the 30-day trial clock (activation-based
+    // trial: downloads that never engage cost nothing and are never gated).
+    TrialManager.markActivated(App.context())
     if(message.toUserId.startsWith("group")){
         sendGroupMessage(message)
     } else {

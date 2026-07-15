@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
@@ -34,6 +35,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 class OptionsActivity : BaseActivity() {
 
     private lateinit var bluetoothSwitch: SwitchMaterial
+    private lateinit var stealthModeSwitch: SwitchMaterial
 
     private val enableBtResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -54,9 +56,17 @@ class OptionsActivity : BaseActivity() {
         supportActionBar?.title = getString(R.string.options)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val stealthModeSwitch: SwitchMaterial = findViewById(R.id.stealthModeSwitch)
-        stealthModeSwitch.isChecked = getPreference(RTCClient.PREF_STEALTH_MODE, this) == "true"
+        stealthModeSwitch = findViewById(R.id.stealthModeSwitch)
+        stealthModeSwitch.isChecked = getPreference(RTCClient.PREF_STEALTH_MODE, this) == "true" &&
+                BillingManager.hasStealthEntitlement(this)
         stealthModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && !BillingManager.hasStealthEntitlement(this)) {
+                // Paid feature: revert the switch and open the plans screen.
+                stealthModeSwitch.isChecked = false
+                showToast(getString(R.string.stealth_requires_sub), this)
+                startActivity(Intent(this, SubscriptionActivity::class.java))
+                return@setOnCheckedChangeListener
+            }
             setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
         }
 
@@ -152,6 +162,15 @@ class OptionsActivity : BaseActivity() {
                 finish()
             }
         })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Entitlement may have changed while away (e.g. upgrade completed in
+        // SubscriptionActivity, or the Stealth subscription lapsed).
+        if (::stealthModeSwitch.isInitialized && !BillingManager.hasStealthEntitlement(this)) {
+            stealthModeSwitch.isChecked = false
+        }
     }
 
     private fun showHelpDialog(title: String, message: String) {

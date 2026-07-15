@@ -275,4 +275,26 @@
     <string name="note_to_self">Nota para mim</string>
     <string name="note_to_self_bio">Seu espaço privado — notas, fotos e arquivos, guardados apenas neste telefone</string>
     <string name="show_note_to_self_help">"Nota para mim" é o seu espaço privado: um chat com você mesmo para notas, fotos e arquivos, guardados apenas neste telefone. Quando esta opção está desativada, ele desaparece da sua lista de contatos e dos resultados de busca. Suas notas são mantidas e voltam assim que você ativar a opção novamente.</string>
+
+    <!-- Subscription / billing -->
+    <string name="subscription_title">Assinatura</string>
+    <string name="sub_standard_title">Standard</string>
+    <string name="sub_standard_desc">Mensagens privadas completas: chats, chamadas e transferências de arquivos peer-to-peer ilimitados, além de uma cota mensal de relay para redes difíceis. Começa com um teste gratuito de 30 dias.</string>
+    <string name="sub_stealth_title">Stealth</string>
+    <string name="sub_stealth_desc">Tudo do Standard, mais o modo furtivo: todas as conexões passam por um relay, então seu endereço IP nunca fica visível para as pessoas com quem você conversa — com uma cota mensal de relay 50% maior.</string>
+    <string name="sub_price_loading">Carregando preço…</string>
+    <string name="sub_price_per_month">%1$s / mês</string>
+    <string name="sub_subscribe">Assinar</string>
+    <string name="sub_upgrade">Fazer upgrade</string>
+    <string name="sub_downgrade">Mudar para o Standard na próxima renovação</string>
+    <string name="sub_current_plan">Plano atual</string>
+    <string name="sub_manage">Gerenciar no Google Play</string>
+    <string name="sub_status_standard">Assinatura Standard ativa</string>
+    <string name="sub_status_stealth">Assinatura Stealth ativa</string>
+    <string name="sub_trial_active">Teste gratuito: %1$d dias restantes</string>
+    <string name="sub_trial_not_started">Seu teste gratuito de 30 dias começa quando você envia sua primeira mensagem.</string>
+    <string name="sub_trial_expired">Seu teste gratuito terminou. Assine para continuar usando o MindTheClub.</string>
+    <string name="stealth_requires_sub">O modo furtivo faz parte da assinatura Stealth.</string>
+    <string name="stealth_cap_reached">A cota de dados Stealth deste mês acabou. As conexões estão pausadas para que seu endereço IP continue oculto. Ela será renovada no próximo mês.</string>
+    <string name="stealth_turn_unavailable">Conexão Stealth indisponível no momento: não foi possível alcançar o relay. Tente novamente em instantes.</string>
 </resources>

@@ -7,6 +7,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.bolimot.mindtheclub.BuildConfig
+import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.tools.SoundManager
 import com.bolimot.mindtheclub.transport.BluetoothPresence
@@ -49,6 +50,10 @@ class App : Application(), DefaultLifecycleObserver {
             )
         }
         ManagedTelecom.init(this)
+
+        // Connects to Google Play Billing and refreshes the cached subscription
+        // entitlement (also re-acknowledges any purchase missed at buy time).
+        BillingManager.init(this)
 
         debugLine("App", "Application starting")
 

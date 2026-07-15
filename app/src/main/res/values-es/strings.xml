@@ -276,4 +276,26 @@
     <string name="note_to_self">Nota para mí</string>
     <string name="note_to_self_bio">Tu espacio privado — notas, fotos y archivos, guardados solo en este teléfono</string>
     <string name="show_note_to_self_help">«Nota para mí» es tu espacio privado: un chat contigo mismo para notas, fotos y archivos, guardados solo en este teléfono. Cuando esta opción está desactivada, desaparece de tu lista de contactos y de los resultados de búsqueda. Tus notas se conservan y vuelven en cuanto la actives de nuevo.</string>
+
+    <!-- Subscription / billing -->
+    <string name="subscription_title">Suscripción</string>
+    <string name="sub_standard_title">Standard</string>
+    <string name="sub_standard_desc">Mensajería privada completa: chats, llamadas y transferencias de archivos peer-to-peer ilimitados, más una cuota mensual de relé para redes difíciles. Empieza con una prueba gratuita de 30 días.</string>
+    <string name="sub_stealth_title">Stealth</string>
+    <string name="sub_stealth_desc">Todo lo de Standard, más el modo sigiloso: todas las conexiones pasan por un relé, así tu dirección IP nunca es visible para las personas con las que hablas — con una cuota mensual de relé un 50 % mayor.</string>
+    <string name="sub_price_loading">Cargando precio…</string>
+    <string name="sub_price_per_month">%1$s / mes</string>
+    <string name="sub_subscribe">Suscribirse</string>
+    <string name="sub_upgrade">Mejorar plan</string>
+    <string name="sub_downgrade">Cambiar a Standard en la próxima renovación</string>
+    <string name="sub_current_plan">Plan actual</string>
+    <string name="sub_manage">Gestionar en Google Play</string>
+    <string name="sub_status_standard">Suscripción Standard activa</string>
+    <string name="sub_status_stealth">Suscripción Stealth activa</string>
+    <string name="sub_trial_active">Prueba gratuita: quedan %1$d días</string>
+    <string name="sub_trial_not_started">Tu prueba gratuita de 30 días empieza cuando envías tu primer mensaje.</string>
+    <string name="sub_trial_expired">Tu prueba gratuita ha terminado. Suscríbete para seguir usando MindTheClub.</string>
+    <string name="stealth_requires_sub">El modo sigiloso forma parte de la suscripción Stealth.</string>
+    <string name="stealth_cap_reached">La cuota de datos Stealth de este mes se ha agotado. Las conexiones están en pausa para que tu dirección IP siga oculta. Se restablece el mes que viene.</string>
+    <string name="stealth_turn_unavailable">Conexión Stealth no disponible en este momento: no se pudo contactar con el relé. Inténtalo de nuevo en un momento.</string>
 </resources>

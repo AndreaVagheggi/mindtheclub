@@ -276,4 +276,26 @@
     <string name="note_to_self">Note to myself</string>
     <string name="note_to_self_bio">Your private space — notes, photos and files, stored only on this phone</string>
     <string name="show_note_to_self_help">Note to myself is your private space: a chat with yourself for notes, photos and files, stored only on this phone. When this is off, it disappears from your contact list and from search results. Your notes are kept and come back as soon as you turn it on again.</string>
+
+    <!-- Subscription / billing -->
+    <string name="subscription_title">Subscription</string>
+    <string name="sub_standard_title">Standard</string>
+    <string name="sub_standard_desc">Full private messaging: unlimited peer-to-peer chats, calls and file transfers, plus a monthly relay allowance for tricky networks. Starts with a 30-day free trial.</string>
+    <string name="sub_stealth_title">Stealth</string>
+    <string name="sub_stealth_desc">Everything in Standard, plus Stealth mode: all connections are routed through a relay so your IP address is never visible to the people you talk to — with a 50% larger monthly relay allowance.</string>
+    <string name="sub_price_loading">Loading price…</string>
+    <string name="sub_price_per_month">%1$s / month</string>
+    <string name="sub_subscribe">Subscribe</string>
+    <string name="sub_upgrade">Upgrade</string>
+    <string name="sub_downgrade">Switch to Standard at next renewal</string>
+    <string name="sub_current_plan">Current plan</string>
+    <string name="sub_manage">Manage on Google Play</string>
+    <string name="sub_status_standard">Standard subscription active</string>
+    <string name="sub_status_stealth">Stealth subscription active</string>
+    <string name="sub_trial_active">Free trial: %1$d days left</string>
+    <string name="sub_trial_not_started">Your 30-day free trial starts when you send your first message.</string>
+    <string name="sub_trial_expired">Your free trial has ended. Subscribe to keep using MindTheClub.</string>
+    <string name="stealth_requires_sub">Stealth mode is part of the Stealth subscription.</string>
+    <string name="stealth_cap_reached">Stealth data allowance for this month is used up. Connections are paused so your IP address stays hidden. It resets next month.</string>
+    <string name="stealth_turn_unavailable">Stealth connection unavailable right now: the relay could not be reached. Try again in a moment.</string>
 </resources>

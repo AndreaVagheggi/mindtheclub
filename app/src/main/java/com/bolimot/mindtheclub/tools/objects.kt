@@ -77,7 +77,7 @@ const val NO_PICTURE = "//no-picture"
 // Size cap for messages sent to a group, checked in the Send* screens.
 // Raised to 250 MB for stress testing — the previous production value
 // was 50 MB (52428800L).
-const val MAX_GROUP_MESSAGE_BYTES = 262144000L
+const val MAX_GROUP_MESSAGE_BYTES = 52428800L
 
 object CallEvent {
     const val ACCEPT = "accept"

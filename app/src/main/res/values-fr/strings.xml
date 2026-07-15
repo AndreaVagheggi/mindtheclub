@@ -275,4 +275,26 @@
     <string name="note_to_self">Note à moi-même</string>
     <string name="note_to_self_bio">Ton espace privé — notes, photos et fichiers, stockés uniquement sur ce téléphone</string>
     <string name="show_note_to_self_help">« Note à moi-même » est ton espace privé : une discussion avec toi-même pour tes notes, photos et fichiers, stockés uniquement sur ce téléphone. Quand cette option est désactivée, elle disparaît de ta liste de contacts et des résultats de recherche. Tes notes sont conservées et reviennent dès que tu la réactives.</string>
+
+    <!-- Subscription / billing -->
+    <string name="subscription_title">Abonnement</string>
+    <string name="sub_standard_title">Standard</string>
+    <string name="sub_standard_desc">Messagerie privée complète : discussions, appels et transferts de fichiers pair-à-pair illimités, plus un quota mensuel de relais pour les réseaux difficiles. Commence par un essai gratuit de 30 jours.</string>
+    <string name="sub_stealth_title">Stealth</string>
+    <string name="sub_stealth_desc">Tout le contenu de Standard, plus le mode furtif : toutes les connexions passent par un relais, ton adresse IP n\'est donc jamais visible pour tes interlocuteurs — avec un quota mensuel de relais 50 % plus élevé.</string>
+    <string name="sub_price_loading">Chargement du prix…</string>
+    <string name="sub_price_per_month">%1$s / mois</string>
+    <string name="sub_subscribe">S\'abonner</string>
+    <string name="sub_upgrade">Passer au niveau supérieur</string>
+    <string name="sub_downgrade">Passer à Standard au prochain renouvellement</string>
+    <string name="sub_current_plan">Forfait actuel</string>
+    <string name="sub_manage">Gérer sur Google Play</string>
+    <string name="sub_status_standard">Abonnement Standard actif</string>
+    <string name="sub_status_stealth">Abonnement Stealth actif</string>
+    <string name="sub_trial_active">Essai gratuit : %1$d jours restants</string>
+    <string name="sub_trial_not_started">Ton essai gratuit de 30 jours commence lorsque tu envoies ton premier message.</string>
+    <string name="sub_trial_expired">Ton essai gratuit est terminé. Abonne-toi pour continuer à utiliser MindTheClub.</string>
+    <string name="stealth_requires_sub">Le mode furtif fait partie de l\'abonnement Stealth.</string>
+    <string name="stealth_cap_reached">Le quota de données Stealth de ce mois est épuisé. Les connexions sont en pause afin que ton adresse IP reste masquée. Il se réinitialise le mois prochain.</string>
+    <string name="stealth_turn_unavailable">Connexion Stealth indisponible pour le moment : le relais n\'a pas pu être contacté. Réessaie dans un instant.</string>
 </resources>

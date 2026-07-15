@@ -1,0 +1,17 @@
+name = "mtc-ice"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# App Check rollout switch:
+#   "false" = monitor mode — old app builds (no token) are still served.
+#   "true"  = enforce mode — no valid token, no TURN credentials (401).
+# Start with "false"; flip to "true" and `wrangler deploy` again once the
+# Play release that sends the token has reached your testers.
+[vars]
+ENFORCE_APP_CHECK = "false"
+
+# Secrets (NOT stored here — set once with):
+#   npx wrangler secret put TURN_KEY_ID
+#   npx wrangler secret put TURN_KEY_API_TOKEN
+# Use the same Cloudflare Realtime TURN key values currently configured as
+# CF_TURN_KEY_ID / CF_TURN_KEY_API_TOKEN in the legacy Firebase function.

@@ -24,6 +24,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.chat.SelectPeersForForward
 import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
 import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
@@ -251,6 +252,16 @@ class AppTab : BaseActivity() {
 
         if (!startedForCallOnly) {
             maybeConsumePendingInvite()
+
+            // Access gate: trial over and no subscription -> plans screen.
+            // Refresh first so a purchase made on another device is picked up.
+            BillingManager.refreshPurchases()
+            if (!BillingManager.hasAccess(this)) {
+                startActivity(
+                    Intent(this, SubscriptionActivity::class.java)
+                        .putExtra(SubscriptionActivity.EXTRA_REQUIRED, true)
+                )
+            }
         }
 
         updateNotificationsBanner()
