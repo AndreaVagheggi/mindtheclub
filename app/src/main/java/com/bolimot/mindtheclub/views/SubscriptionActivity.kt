@@ -7,6 +7,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.net.toUri
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.billing.BillingManager
+import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.billing.TrialManager
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.google.android.material.appbar.MaterialToolbar
@@ -27,6 +28,9 @@ class SubscriptionActivity : BaseActivity() {
     }
 
     private var required = false
+
+    /** This IS the gate's destination — it must never gate itself. */
+    override fun isSubscriptionGateExempt(): Boolean = true
 
     private val billingListener: () -> Unit = {
         runOnUiThread { if (!isFinishing && !isDestroyed) renderState() }
@@ -92,7 +96,7 @@ class SubscriptionActivity : BaseActivity() {
             entitlement == BillingManager.Entitlement.STANDARD ->
                 getString(R.string.sub_status_standard)
             TrialManager.state(this) == TrialManager.State.ACTIVE ->
-                getString(R.string.sub_trial_active, TrialManager.daysLeft(this))
+                SubscriptionCopy.daysLeftText(this)
             TrialManager.state(this) == TrialManager.State.NOT_STARTED ->
                 getString(R.string.sub_trial_not_started)
             else -> getString(R.string.sub_trial_expired)

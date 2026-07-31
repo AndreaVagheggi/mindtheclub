@@ -1,10 +1,13 @@
 package com.bolimot.mindtheclub.start
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.tools.ActivityStatus
+import com.bolimot.mindtheclub.views.SubscriptionActivity
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.ViewCompat
@@ -115,9 +118,37 @@ open class BaseActivity : AppCompatActivity() {
         return emptyMap()
     }
 
+    /**
+     * Screens that must never be interrupted by the subscription gate:
+     * the plans screen itself (it would re-launch itself forever) and the
+     * incoming-call screen (hijacking a ringing call with a paywall is worse
+     * than letting a lapsed user answer it — they still cannot place calls).
+     */
+    protected open fun isSubscriptionGateExempt(): Boolean = false
+
+    /**
+     * Central access gate. It lives here rather than in AppTab because message
+     * notifications open ChatScreen directly, which would otherwise let a user
+     * with an expired trial keep reading and replying indefinitely.
+     *
+     * Reads the cached entitlement, so it is synchronous and works offline;
+     * AppTab refreshes that cache from Google on every resume.
+     */
+    private fun enforceSubscriptionGate() {
+        if (isSubscriptionGateExempt()) return
+        if (BillingManager.hasAccess(this)) return
+
+        startActivity(
+            Intent(this, SubscriptionActivity::class.java)
+                .putExtra(SubscriptionActivity.EXTRA_REQUIRED, true)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+    }
+
     override fun onResume() {
         super.onResume()
         ActivityStatus.activityResumed(this, getExtraData())
+        enforceSubscriptionGate()
     }
 
     override fun onPause() {

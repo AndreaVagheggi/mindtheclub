@@ -12,6 +12,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.EditText
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationCompat
@@ -25,6 +26,9 @@ import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.billing.BillingManager
+import com.bolimot.mindtheclub.billing.SubscriptionCopy
+import com.bolimot.mindtheclub.billing.TrialManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.bolimot.mindtheclub.chat.SelectPeersForForward
 import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
 import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
@@ -253,18 +257,51 @@ class AppTab : BaseActivity() {
         if (!startedForCallOnly) {
             maybeConsumePendingInvite()
 
-            // Access gate: trial over and no subscription -> plans screen.
-            // Refresh first so a purchase made on another device is picked up.
+            // Keeps the cached entitlement fresh (picking up a purchase made on
+            // another device). The access gate itself lives in BaseActivity, so
+            // that notification -> ChatScreen cannot bypass it.
             BillingManager.refreshPurchases()
-            if (!BillingManager.hasAccess(this)) {
-                startActivity(
-                    Intent(this, SubscriptionActivity::class.java)
-                        .putExtra(SubscriptionActivity.EXTRA_REQUIRED, true)
-                )
-            }
+            maybeShowTrialStartedDialog()
         }
 
         updateNotificationsBanner()
+        updateTrialBanner()
+    }
+
+    /**
+     * One-time disclosure, shown the first time the user returns here after the
+     * trial clock started (it starts on a background thread when the first
+     * message is sent, so it cannot show a dialog itself).
+     */
+    private fun maybeShowTrialStartedDialog() {
+        if (!TrialManager.consumeStartNotice(this)) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.trial_started_title)
+            .setMessage(SubscriptionCopy.trialStartedBody(this))
+            .setPositiveButton(R.string.close, null)
+            .setCancelable(true)
+            .show()
+    }
+
+    /** Countdown shown only in the last days of an unsubscribed trial. */
+    private fun updateTrialBanner() {
+        val banner = findViewById<View>(R.id.trialBanner) ?: return
+
+        val daysLeft = TrialManager.daysLeft(this)
+        val show = !BillingManager.hasSubscription(this) &&
+                TrialManager.state(this) == TrialManager.State.ACTIVE &&
+                daysLeft <= TrialManager.REMINDER_DAYS
+
+        banner.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+
+        findViewById<TextView>(R.id.trialBannerText).text = SubscriptionCopy.daysLeftText(this)
+
+        val openPlans = View.OnClickListener {
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+        }
+        banner.setOnClickListener(openPlans)
+        findViewById<View>(R.id.trialBannerAction).setOnClickListener(openPlans)
     }
 
     /**

@@ -281,8 +281,8 @@
     <string name="subscription_title">Subscription</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Full private messaging: unlimited peer-to-peer chats, calls and file transfers, plus a monthly relay allowance for tricky networks. Starts with a 30-day free trial.</string>
-    <string name="sub_stealth_title">Stealth</string>
-    <string name="sub_stealth_desc">Everything in Standard, plus Stealth mode: all connections are routed through a relay so your IP address is never visible to the people you talk to — with a 50% larger monthly relay allowance.</string>
+    <string name="sub_stealth_title">Premium</string>
+    <string name="sub_stealth_desc">Everything in Standard, plus Stealth mode: all connections are routed through a relay so your IP address is never visible to the people you talk to.</string>
     <string name="sub_price_loading">Loading price…</string>
     <string name="sub_price_per_month">%1$s / month</string>
     <string name="sub_subscribe">Subscribe</string>
@@ -291,11 +291,28 @@
     <string name="sub_current_plan">Current plan</string>
     <string name="sub_manage">Manage on Google Play</string>
     <string name="sub_status_standard">Standard subscription active</string>
-    <string name="sub_status_stealth">Stealth subscription active</string>
-    <string name="sub_trial_active">Free trial: %1$d days left</string>
+    <string name="sub_status_stealth">Premium subscription active</string>
     <string name="sub_trial_not_started">Your 30-day free trial starts when you send your first message.</string>
     <string name="sub_trial_expired">Your free trial has ended. Subscribe to keep using MindTheClub.</string>
-    <string name="stealth_requires_sub">Stealth mode is part of the Stealth subscription.</string>
+    <string name="stealth_requires_sub">Stealth mode is part of the Premium subscription.</string>
+
+    <!-- Trial disclosure: prices come from Google, localized per country -->
+    <string name="sub_trial_not_started_short">Free trial starts with your first message</string>
+    <string name="sub_trial_expired_short">Free trial ended — subscribe to continue</string>
+    <string name="trial_started_title">Your free trial has started</string>
+    <string name="trial_started_body">You have 30 days of full access, with no payment needed and no card required.\n\nAfter that, MindTheClub is %1$s per month. There are no ads and no data collection — your subscription is what pays for the service.</string>
+    <string name="trial_started_body_no_price">You have 30 days of full access, with no payment needed and no card required.\n\nAfter that, a subscription is needed to keep using MindTheClub. There are no ads and no data collection — your subscription is what pays for the service.</string>
+    <string name="trial_banner_action">Subscribe</string>
+    <string name="onboarding_plan_title">How MindTheClub pays for itself</string>
+    <string name="onboarding_plan_body">Your first 30 days are free — the clock starts when you send your first message, not now. Take your time and bring your friends over.\n\nAfter that, MindTheClub is %1$s per month.\n\nNo ads. No data collection. Nothing to sell, because your subscription is the entire business model.</string>
+    <string name="onboarding_plan_body_no_price">Your first 30 days are free — the clock starts when you send your first message, not now. Take your time and bring your friends over.\n\nAfter that, a small monthly subscription keeps it running.\n\nNo ads. No data collection. Nothing to sell, because your subscription is the entire business model.</string>
+    <string name="onboarding_plan_continue">Got it</string>
     <string name="stealth_cap_reached">Stealth data allowance for this month is used up. Connections are paused so your IP address stays hidden. It resets next month.</string>
     <string name="stealth_turn_unavailable">Stealth connection unavailable right now: the relay could not be reached. Try again in a moment.</string>
+
+    <!-- Days remaining: plurals so the last day never reads "1 days" -->
+    <plurals name="trial_days_left">
+        <item quantity="one">Free trial: %1$d day left</item>
+        <item quantity="other">Free trial: %1$d days left</item>
+    </plurals>
 </resources>

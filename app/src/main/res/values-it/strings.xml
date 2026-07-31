@@ -281,8 +281,8 @@
     <string name="subscription_title">Abbonamento</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Messaggistica privata completa: chat, chiamate e trasferimenti di file peer-to-peer illimitati, più una quota relay mensile per le reti difficili. Inizia con una prova gratuita di 30 giorni.</string>
-    <string name="sub_stealth_title">Stealth</string>
-    <string name="sub_stealth_desc">Tutto ciò che è incluso in Standard, più la modalità Stealth: tutte le connessioni passano attraverso un relay, così il tuo indirizzo IP non è mai visibile alle persone con cui parli — con una quota relay mensile più grande del 50%.</string>
+    <string name="sub_stealth_title">Premium</string>
+    <string name="sub_stealth_desc">Tutto ciò che è incluso in Standard, più la modalità Stealth: tutte le connessioni passano attraverso un relay, così il tuo indirizzo IP non è mai visibile alle persone con cui parli.</string>
     <string name="sub_price_loading">Caricamento prezzo…</string>
     <string name="sub_price_per_month">%1$s / mese</string>
     <string name="sub_subscribe">Abbonati</string>
@@ -291,11 +291,28 @@
     <string name="sub_current_plan">Piano attuale</string>
     <string name="sub_manage">Gestisci su Google Play</string>
     <string name="sub_status_standard">Abbonamento Standard attivo</string>
-    <string name="sub_status_stealth">Abbonamento Stealth attivo</string>
-    <string name="sub_trial_active">Prova gratuita: %1$d giorni rimasti</string>
+    <string name="sub_status_stealth">Abbonamento Premium attivo</string>
     <string name="sub_trial_not_started">La tua prova gratuita di 30 giorni inizia quando invii il primo messaggio.</string>
     <string name="sub_trial_expired">La tua prova gratuita è terminata. Abbonati per continuare a usare MindTheClub.</string>
-    <string name="stealth_requires_sub">La modalità Stealth fa parte dell\'abbonamento Stealth.</string>
+    <string name="stealth_requires_sub">La modalità Stealth fa parte dell\'abbonamento Premium.</string>
     <string name="stealth_cap_reached">La quota dati Stealth per questo mese è esaurita. Le connessioni sono in pausa così il tuo indirizzo IP resta nascosto. Si rinnova il mese prossimo.</string>
     <string name="stealth_turn_unavailable">Connessione Stealth al momento non disponibile: impossibile raggiungere il relay. Riprova tra un momento.</string>
+
+    <!-- Informazioni sulla prova gratuita: i prezzi arrivano da Google, gia localizzati -->
+    <string name="sub_trial_not_started_short">La prova gratuita inizia con il primo messaggio</string>
+    <string name="sub_trial_expired_short">Prova terminata — abbonati per continuare</string>
+    <string name="trial_started_title">La tua prova gratuita è iniziata</string>
+    <string name="trial_started_body">Hai 30 giorni di accesso completo, senza pagamenti e senza carta.\n\nDopodiché MindTheClub costa %1$s al mese. Nessuna pubblicità e nessuna raccolta di dati: è il tuo abbonamento a pagare il servizio.</string>
+    <string name="trial_started_body_no_price">Hai 30 giorni di accesso completo, senza pagamenti e senza carta.\n\nDopodiché serve un abbonamento per continuare a usare MindTheClub. Nessuna pubblicità e nessuna raccolta di dati: è il tuo abbonamento a pagare il servizio.</string>
+    <string name="trial_banner_action">Abbonati</string>
+    <string name="onboarding_plan_title">Come si mantiene MindTheClub</string>
+    <string name="onboarding_plan_body">I tuoi primi 30 giorni sono gratuiti — il conto alla rovescia parte quando invii il primo messaggio, non adesso. Prenditi il tuo tempo e porta qui i tuoi amici.\n\nDopodiché MindTheClub costa %1$s al mese.\n\nNessuna pubblicità. Nessuna raccolta di dati. Niente da vendere, perché il tuo abbonamento è l\'intero modello di business.</string>
+    <string name="onboarding_plan_body_no_price">I tuoi primi 30 giorni sono gratuiti — il conto alla rovescia parte quando invii il primo messaggio, non adesso. Prenditi il tuo tempo e porta qui i tuoi amici.\n\nDopodiché un piccolo abbonamento mensile tiene in piedi il servizio.\n\nNessuna pubblicità. Nessuna raccolta di dati. Niente da vendere, perché il tuo abbonamento è l\'intero modello di business.</string>
+    <string name="onboarding_plan_continue">Ho capito</string>
+
+    <!-- Days remaining: plurals so the last day never reads "1 days" -->
+    <plurals name="trial_days_left">
+        <item quantity="one">Prova gratuita: %1$d giorno rimasto</item>
+        <item quantity="other">Prova gratuita: %1$d giorni rimasti</item>
+    </plurals>
 </resources>

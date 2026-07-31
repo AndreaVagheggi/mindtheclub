@@ -280,8 +280,8 @@
     <string name="subscription_title">Assinatura</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Mensagens privadas completas: chats, chamadas e transferências de arquivos peer-to-peer ilimitados, além de uma cota mensal de relay para redes difíceis. Começa com um teste gratuito de 30 dias.</string>
-    <string name="sub_stealth_title">Stealth</string>
-    <string name="sub_stealth_desc">Tudo do Standard, mais o modo furtivo: todas as conexões passam por um relay, então seu endereço IP nunca fica visível para as pessoas com quem você conversa — com uma cota mensal de relay 50% maior.</string>
+    <string name="sub_stealth_title">Premium</string>
+    <string name="sub_stealth_desc">Tudo do Standard, mais o modo furtivo: todas as conexões passam por um relay, então seu endereço IP nunca fica visível para as pessoas com quem você conversa.</string>
     <string name="sub_price_loading">Carregando preço…</string>
     <string name="sub_price_per_month">%1$s / mês</string>
     <string name="sub_subscribe">Assinar</string>
@@ -290,11 +290,31 @@
     <string name="sub_current_plan">Plano atual</string>
     <string name="sub_manage">Gerenciar no Google Play</string>
     <string name="sub_status_standard">Assinatura Standard ativa</string>
-    <string name="sub_status_stealth">Assinatura Stealth ativa</string>
-    <string name="sub_trial_active">Teste gratuito: %1$d dias restantes</string>
+    <string name="sub_status_stealth">Assinatura Premium ativa</string>
     <string name="sub_trial_not_started">Seu teste gratuito de 30 dias começa quando você envia sua primeira mensagem.</string>
     <string name="sub_trial_expired">Seu teste gratuito terminou. Assine para continuar usando o MindTheClub.</string>
-    <string name="stealth_requires_sub">O modo furtivo faz parte da assinatura Stealth.</string>
+    <string name="stealth_requires_sub">O modo furtivo faz parte da assinatura Premium.</string>
     <string name="stealth_cap_reached">A cota de dados Stealth deste mês acabou. As conexões estão pausadas para que seu endereço IP continue oculto. Ela será renovada no próximo mês.</string>
     <string name="stealth_turn_unavailable">Conexão Stealth indisponível no momento: não foi possível alcançar o relay. Tente novamente em instantes.</string>
+
+    <!-- Assinatura / cobrança. Os nomes dos planos "Standard" e "Stealth"
+         permanecem em inglês para coincidir com o Google Play. -->
+
+    <!-- Aviso sobre o teste: os preços vêm do Google, já localizados -->
+    <string name="sub_trial_not_started_short">O teste grátis começa na sua primeira mensagem</string>
+    <string name="sub_trial_expired_short">Teste encerrado — assine para continuar</string>
+    <string name="trial_started_title">Seu teste grátis começou</string>
+    <string name="trial_started_body">Você tem 30 dias de acesso completo, sem pagamento e sem cartão.\n\nDepois disso, o MindTheClub custa %1$s por mês. Não há anúncios nem coleta de dados — a sua assinatura é o que paga o serviço.</string>
+    <string name="trial_started_body_no_price">Você tem 30 dias de acesso completo, sem pagamento e sem cartão.\n\nDepois disso, é preciso uma assinatura para continuar usando o MindTheClub. Não há anúncios nem coleta de dados — a sua assinatura é o que paga o serviço.</string>
+    <string name="trial_banner_action">Assinar</string>
+    <string name="onboarding_plan_title">Como o MindTheClub se paga</string>
+    <string name="onboarding_plan_body">Seus primeiros 30 dias são grátis — a contagem começa quando você enviar a primeira mensagem, não agora. Vá com calma e traga seus amigos.\n\nDepois disso, o MindTheClub custa %1$s por mês.\n\nSem anúncios. Sem coleta de dados. Nada para vender, porque a sua assinatura é todo o modelo de negócio.</string>
+    <string name="onboarding_plan_body_no_price">Seus primeiros 30 dias são grátis — a contagem começa quando você enviar a primeira mensagem, não agora. Vá com calma e traga seus amigos.\n\nDepois disso, uma pequena assinatura mensal mantém tudo funcionando.\n\nSem anúncios. Sem coleta de dados. Nada para vender, porque a sua assinatura é todo o modelo de negócio.</string>
+    <string name="onboarding_plan_continue">Entendi</string>
+
+    <!-- Days remaining: plurals so the last day never reads "1 days" -->
+    <plurals name="trial_days_left">
+        <item quantity="one">Teste grátis: falta %1$d dia</item>
+        <item quantity="other">Teste grátis: faltam %1$d dias</item>
+    </plurals>
 </resources>

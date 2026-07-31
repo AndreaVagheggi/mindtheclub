@@ -16,7 +16,11 @@ import java.util.concurrent.TimeUnit
 object TrialManager {
 
     private const val PREF_TRIAL_STARTED_AT = "mtc_trial_started_at"
+    private const val PREF_START_NOTICE_PENDING = "mtc_trial_notice_pending"
     private const val TRIAL_DAYS = 30L
+
+    /** Days before expiry at which the countdown banner appears. */
+    const val REMINDER_DAYS = 7
 
     enum class State { NOT_STARTED, ACTIVE, EXPIRED }
 
@@ -24,8 +28,19 @@ object TrialManager {
     fun markActivated(context: Context) {
         if (getPreference(PREF_TRIAL_STARTED_AT, context) == null) {
             setPreference(PREF_TRIAL_STARTED_AT, System.currentTimeMillis().toString(), context)
+            // The clock starts on a background thread (message send), so the
+            // "your trial started" dialog is queued here and shown by the next
+            // resumed screen instead.
+            setPreference(PREF_START_NOTICE_PENDING, "true", context)
             debugLine("TrialManager", "30-day trial clock started")
         }
+    }
+
+    /** True once, the first time it is called after the trial clock started. */
+    fun consumeStartNotice(context: Context): Boolean {
+        if (getPreference(PREF_START_NOTICE_PENDING, context) != "true") return false
+        setPreference(PREF_START_NOTICE_PENDING, "false", context)
+        return true
     }
 
     fun state(context: Context): State {

@@ -13,6 +13,7 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
+import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
@@ -53,7 +54,12 @@ object BillingManager : PurchasesUpdatedListener {
 
     fun init(context: Context) {
         appContext = context.applicationContext
-        ensureConnected { refreshPurchases() }
+        ensureConnected {
+            refreshPurchases()
+            // Prices are needed outside SubscriptionActivity too (trial dialog,
+            // onboarding, Options row), so they are fetched at startup and cached.
+            queryProducts()
+        }
     }
 
     fun addListener(l: () -> Unit) = listeners.add(l)
@@ -78,7 +84,9 @@ object BillingManager : PurchasesUpdatedListener {
      * trial, or a trial that has not started yet (it starts at first message).
      */
     fun hasAccess(context: Context): Boolean =
-        hasSubscription(context) || TrialManager.state(context) != TrialManager.State.EXPIRED
+        BuildConfig.NO_PAY ||
+                hasSubscription(context) ||
+                TrialManager.state(context) != TrialManager.State.EXPIRED
 
     private fun activeSubToken(context: Context): String? = getPreference(PREF_SUB_TOKEN, context)
 

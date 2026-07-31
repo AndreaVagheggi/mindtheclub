@@ -72,6 +72,11 @@ class DataSyncService : Service() {
             manager.createNotificationChannel(channel)
         }
 
+        // The PENDING handler may already have posted the "checking" notice for this
+        // peer. It now carries its own per-peer id, so drop it explicitly — otherwise
+        // it would sit next to this one showing the same text twice.
+        manager.cancel("sync_$remoteUserId".hashCode())
+
         val pendingIntent = PendingIntent.getActivity(
             this,
             remoteUserId.hashCode(),

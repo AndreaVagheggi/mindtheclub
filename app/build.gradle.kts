@@ -14,6 +14,24 @@ plugins {
 //   - no build-time symbol/source upload happens, so no Sentry auth token is needed.
 val sentryEnabled = (project.findProperty("sentryEnabled") as String? ?: "true").toBoolean()
 
+// Verbose file logging (debugLine), the log-export menu and the stealth leak
+// check in RELEASE builds. Off by default so production never writes message
+// content to disk; enable only for a Play-installable troubleshooting build:
+//   gradlew bundleRelease -PreleaseLogging=true
+// Such a build reports its version name as "... (log)" so it is recognisable
+// in Options -> About.
+val releaseLogging = (project.findProperty("releaseLogging") as String? ?: "false").toBoolean()
+
+// Disables payment enforcement: the app keeps working after the 30-day trial
+// and Stealth mode is free. All the subscription messaging (onboarding screen,
+// trial dialog, countdown banner, "Stealth needs a subscription" prompt) still
+// appears exactly as in a real build — only the blocking is lifted.
+// For test devices only:
+//   gradlew bundleRelease -PnoPay=true
+// The version name gets a "(nopay)" suffix so such a build is recognisable in
+// Options -> About and can never be shipped by accident.
+val noPay = (project.findProperty("noPay") as String? ?: "false").toBoolean()
+
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.bolimot.mindtheclub"
     compileSdk = 36
@@ -28,14 +46,17 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1004
-        versionName = "Release 1.4"
+        versionCode = 1008
+        versionName = "Release 1.8" +
+                (if (releaseLogging) " (log)" else "") +
+                (if (noPay) " (nopay)" else "")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Exposed to code (BuildConfig.SENTRY_ENABLED) and to the manifest
         // (io.sentry.auto-init via ${sentryAutoInit}); both driven by the flag above.
         buildConfigField("Boolean", "SENTRY_ENABLED", sentryEnabled.toString())
+        buildConfigField("Boolean", "NO_PAY", noPay.toString())
         manifestPlaceholders["sentryAutoInit"] = sentryEnabled.toString()
     }
 
@@ -80,7 +101,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             )
             signingConfig = signingConfigs.getByName("release")
             isDebuggable = false
-            buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", "false")
+            buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", releaseLogging.toString())
         }
 
         create("debugMinified") {

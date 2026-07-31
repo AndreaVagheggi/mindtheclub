@@ -34,6 +34,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 class IncomingCall : BaseActivity() {
+
+    /**
+     * A ringing call must never be replaced by the paywall: a lapsed user can
+     * still answer (they cannot place calls, and the caller's own relay cap
+     * bounds the cost), which is far better than a call that silently dies.
+     */
+    override fun isSubscriptionGateExempt(): Boolean = true
+
     private var callId: String? = null
     private var displayName: String? = null
     private var picture: String? = null

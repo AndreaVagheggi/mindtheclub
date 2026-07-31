@@ -903,6 +903,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 }
 
+private const val NOTICE_TIMEOUT_MS = 60_000L
+
 fun showIncomingDataNotification(remoteUserId: String) {
     val context = App.context()
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -933,11 +935,18 @@ fun showIncomingDataNotification(remoteUserId: String) {
         .setSmallIcon(R.drawable.mtc_logo_small_icon)
         .setContentText(context.getString(R.string.checking))
         .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setOngoing(true)
-        .setAutoCancel(false)
+        .setOngoing(false)
+        .setAutoCancel(true)
+        // System-side expiry. The cancel below runs on an app coroutine, which does
+        // not tick while the process is frozen — a doze window would otherwise leave
+        // this notice on screen for as long as the freeze lasts.
+        .setTimeoutAfter(NOTICE_TIMEOUT_MS)
         .setContentIntent(pendingIntent)
 
-    val notificationId = 9999
+    // Per-peer id. 9999 belongs to DataSyncService/DataSyncWorker: sharing it meant
+    // their stopForeground(STOP_FOREGROUND_REMOVE) cancelled this notice, and made
+    // the matching cancel in MessageReceivedNotification.show() a no-op.
+    val notificationId = "sync_$remoteUserId".hashCode()
 
     try {
         notificationManager.notify(notificationId, builder.build())

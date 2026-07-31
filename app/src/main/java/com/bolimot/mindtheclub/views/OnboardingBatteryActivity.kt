@@ -25,7 +25,7 @@ import com.bolimot.mindtheclub.start.BaseActivity
  * If the exemption is already granted the screen is skipped silently. Once the
  * user has been sent to settings, returning advances to the next step — the
  * screen never re-presents itself (this is an optional suggestion, not a gate).
- * Flow: permissions screen -> this screen -> invite screen.
+ * Flow: permissions screen -> this screen -> plan screen -> invite screen.
  */
 class OnboardingBatteryActivity : BaseActivity() {
 
@@ -39,7 +39,7 @@ class OnboardingBatteryActivity : BaseActivity() {
         // In debug-force mode always show the screen (don't auto-skip when exempt),
         // so the layout/copy can be reviewed on every launch.
         if (!OnboardingActivity.forcedForTesting() && isExempt()) {
-            goToInviteStep()
+            goToPlanStep()
             return
         }
 
@@ -51,7 +51,7 @@ class OnboardingBatteryActivity : BaseActivity() {
         }
 
         findViewById<View>(R.id.skipBattery).setOnClickListener {
-            goToInviteStep()
+            goToPlanStep()
         }
     }
 
@@ -81,7 +81,7 @@ class OnboardingBatteryActivity : BaseActivity() {
         // don't check whether the exemption was actually granted — it's optional,
         // and re-presenting the same prompt is worse than moving on.
         if (sentToSettings) {
-            goToInviteStep()
+            goToPlanStep()
         }
     }
 
@@ -90,8 +90,8 @@ class OnboardingBatteryActivity : BaseActivity() {
         return pm.isIgnoringBatteryOptimizations(packageName)
     }
 
-    private fun goToInviteStep() {
-        startActivity(Intent(this, OnboardingInviteActivity::class.java))
+    private fun goToPlanStep() {
+        startActivity(Intent(this, OnboardingPlanActivity::class.java))
         finish()
     }
 }

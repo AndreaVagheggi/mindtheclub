@@ -7,6 +7,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.voip.ManagedTelecom
 import com.bolimot.mindtheclub.voip.shutdownRTC
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -116,8 +117,12 @@ class ConnectionManager {
 
         return mutex.withLock {
 
+            // The cooldown throttles OUR attempts to reach a peer that looks offline.
+            // It must never gate an answer: initiator = false means the peer contacted
+            // us and is already waiting in the signalling room, so it is demonstrably
+            // reachable — refusing there just drops the incoming message or call.
             val lastFail = lastConnectFailure[remoteUserId] ?: 0L
-            if (System.currentTimeMillis() - lastFail < CONNECT_COOLDOWN_MS) {
+            if (initiator && System.currentTimeMillis() - lastFail < CONNECT_COOLDOWN_MS) {
                 debugLine(tag, "Skipping connection attempt — recent failure for $remoteUserId")
                 return@withLock RTCClientResult.RTCClientGeneralFailure
             }
@@ -216,8 +221,16 @@ class ConnectionManager {
                     }
                 }
             } catch(e: Exception) {
-                lastConnectFailure[remoteUserId] = System.currentTimeMillis() // SOAK CHANGE
-                debugLine(tag, "New RTCClient creation failed with exception: ${e.message}")
+                // A cancellation (shutdownRTC tearing the client down while it is still
+                // being created) says nothing about whether the peer is reachable.
+                // Arming the cooldown here poisoned the peer for 15s and made us refuse
+                // its own incoming connection moments later.
+                if (e is CancellationException) {
+                    debugLine(tag, "RTCClient creation cancelled, not arming cooldown: ${e.message}")
+                } else {
+                    lastConnectFailure[remoteUserId] = System.currentTimeMillis() // SOAK CHANGE
+                    debugLine(tag, "New RTCClient creation failed with exception: ${e.message}")
+                }
                 if(!dataOnly) ManagedTelecom.updateWebRTCConnectionState(callId, ManagedTelecom.WebRTCConnectionState.FAILED)
                 return@withLock RTCClientResult.RTCClientGeneralFailure
             }

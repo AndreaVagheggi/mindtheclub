@@ -15,6 +15,7 @@ import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.billing.BillingManager
+import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
@@ -27,6 +28,7 @@ import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.transport.BluetoothToggle
 import com.bolimot.mindtheclub.webrtc.RTCClient
+import com.bolimot.mindtheclub.webrtc.StealthMode
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -56,16 +58,22 @@ class OptionsActivity : BaseActivity() {
         supportActionBar?.title = getString(R.string.options)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        findViewById<LinearLayout>(R.id.subscriptionRow).setOnClickListener {
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+        }
+
         stealthModeSwitch = findViewById(R.id.stealthModeSwitch)
-        stealthModeSwitch.isChecked = getPreference(RTCClient.PREF_STEALTH_MODE, this) == "true" &&
-                BillingManager.hasStealthEntitlement(this)
+        stealthModeSwitch.isChecked = StealthMode.isActive(this)
         stealthModeSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked && !BillingManager.hasStealthEntitlement(this)) {
-                // Paid feature: revert the switch and open the plans screen.
-                stealthModeSwitch.isChecked = false
+                // The paywall messaging is shown in every build...
                 showToast(getString(R.string.stealth_requires_sub), this)
                 startActivity(Intent(this, SubscriptionActivity::class.java))
-                return@setOnCheckedChangeListener
+                // ...but only a paying build actually blocks the feature.
+                if (!BuildConfig.NO_PAY) {
+                    stealthModeSwitch.isChecked = false
+                    return@setOnCheckedChangeListener
+                }
             }
             setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
         }
@@ -168,9 +176,11 @@ class OptionsActivity : BaseActivity() {
         super.onResume()
         // Entitlement may have changed while away (e.g. upgrade completed in
         // SubscriptionActivity, or the Stealth subscription lapsed).
-        if (::stealthModeSwitch.isInitialized && !BillingManager.hasStealthEntitlement(this)) {
+        if (::stealthModeSwitch.isInitialized && !StealthMode.isActive(this)) {
             stealthModeSwitch.isChecked = false
         }
+        findViewById<TextView>(R.id.subscriptionStatusSummary).text =
+            SubscriptionCopy.statusSummary(this)
     }
 
     private fun showHelpDialog(title: String, message: String) {
