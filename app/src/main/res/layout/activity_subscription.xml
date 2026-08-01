@@ -84,50 +84,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sub_stealth_title"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/stealthPrice"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="4dp"
-                        android:textSize="16sp"
-                        android:text="@string/sub_price_loading" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="8dp"
-                        android:text="@string/sub_stealth_desc" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/stealthButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="@string/sub_subscribe" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/manageButton"
                 style="?attr/borderlessButtonStyle"

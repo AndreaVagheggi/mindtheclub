@@ -23,10 +23,9 @@ val sentryEnabled = (project.findProperty("sentryEnabled") as String? ?: "true")
 val releaseLogging = (project.findProperty("releaseLogging") as String? ?: "false").toBoolean()
 
 // Disables payment enforcement: the app keeps working after the 30-day trial
-// and Stealth mode is free. All the subscription messaging (onboarding screen,
-// trial dialog, countdown banner, "Stealth needs a subscription" prompt) still
-// appears exactly as in a real build — only the blocking is lifted.
-// For test devices only:
+// without a subscription. All the subscription messaging (onboarding screen,
+// trial dialog, countdown banner) still appears exactly as in a real build,
+// only the blocking is lifted. For test devices only:
 //   gradlew bundleRelease -PnoPay=true
 // The version name gets a "(nopay)" suffix so such a build is recognisable in
 // Options -> About and can never be shipped by accident.
@@ -46,8 +45,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1008
-        versionName = "Release 1.8" +
+        versionCode = 1009
+        versionName = "Release 1.9" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "")
 

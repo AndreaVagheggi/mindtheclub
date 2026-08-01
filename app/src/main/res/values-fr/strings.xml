@@ -57,7 +57,6 @@
     <string name="delete_club_message">Voulez-vous supprimer ce club ?</string>
     <string name="share_profile">Partager</string>
     <string name="share_club">Partager le club</string>
-    <string name="stealth_mode">Mode furtif</string>
     <string name="auto_invite_mode">Mode d\'invitation automatique</string>
     <string name="show_qr_code">Afficher QR</string>
     <string name="scan_qr_code">Scanner QR</string>
@@ -201,7 +200,6 @@
     <string name="invite_share_other">Partager avec d\'autres applis</string>
     <string name="contacts_permission_needed">L\'autorisation d\'accès aux contacts est nécessaire pour afficher votre répertoire</string>
     <string name="no_sms_app">Aucune application de messagerie trouvée</string>
-    <string name="stealth_mode_help">Le mode furtif force le trafic à passer par un relais (TURN). Cela masque vos informations réseau à la personne avec qui vous discutez.</string>
     <string name="bluetooth_transport_help">Lorsque cette option est activée, MindTheClub peut envoyer des messages directement via Bluetooth à un contact à proximité, sans internet, Wi-Fi ni données mobiles. Pratique lorsque vous êtes hors ligne ou sans signal. L\'autre personne doit aussi avoir activé le Bluetooth et être appairée à votre appareil.</string>
     <string name="auto_invite_mode_help">Lorsque cette option est activée, toute personne qui scanne votre QR code ou appuie sur votre lien d\'invitation est acceptée automatiquement et ajoutée directement à votre liste de contacts en attente. Elle n\'apparaît plus dans l\'écran Nouvelles demandes de contact pour une approbation manuelle. Désactivez-la si vous préférez vérifier et accepter chaque demande vous-même.</string>
 
@@ -280,36 +278,28 @@
     <string name="subscription_title">Abonnement</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Messagerie privée complète : discussions, appels et transferts de fichiers pair-à-pair illimités, plus un quota mensuel de relais pour les réseaux difficiles. Commence par un essai gratuit de 30 jours.</string>
-    <string name="sub_stealth_title">Premium</string>
-    <string name="sub_stealth_desc">Tout le contenu de Standard, plus le mode furtif : toutes les connexions passent par un relais, ton adresse IP n\'est donc jamais visible pour tes interlocuteurs.</string>
     <string name="sub_price_loading">Chargement du prix…</string>
     <string name="sub_price_per_month">%1$s / mois</string>
     <string name="sub_subscribe">S\'abonner</string>
-    <string name="sub_upgrade">Passer au niveau supérieur</string>
-    <string name="sub_downgrade">Passer à Standard au prochain renouvellement</string>
     <string name="sub_current_plan">Forfait actuel</string>
     <string name="sub_manage">Gérer sur Google Play</string>
     <string name="sub_status_standard">Abonnement Standard actif</string>
-    <string name="sub_status_stealth">Abonnement Premium actif</string>
     <string name="sub_trial_not_started">Ton essai gratuit de 30 jours commence lorsque tu envoies ton premier message.</string>
     <string name="sub_trial_expired">Ton essai gratuit est terminé. Abonne-toi pour continuer à utiliser MindTheClub.</string>
-    <string name="stealth_requires_sub">Le mode furtif fait partie de l\'abonnement Premium.</string>
-    <string name="stealth_cap_reached">Le quota de données Stealth de ce mois est épuisé. Les connexions sont en pause afin que ton adresse IP reste masquée. Il se réinitialise le mois prochain.</string>
-    <string name="stealth_turn_unavailable">Connexion Stealth indisponible pour le moment : le relais n\'a pas pu être contacté. Réessaie dans un instant.</string>
 
-    <!-- Abonnement / facturation. Les noms de formules « Standard » et
-         « Stealth » restent en anglais pour correspondre à Google Play. -->
+    <!-- Abonnement / facturation. Le nom de formule "Standard" reste en
+         anglais pour correspondre a Google Play. -->
 
     <!-- Information sur la periode d'essai : prix fournis par Google -->
     <string name="sub_trial_not_started_short">L\'essai gratuit démarre à votre premier message</string>
-    <string name="sub_trial_expired_short">Essai terminé — abonnez-vous pour continuer</string>
+    <string name="sub_trial_expired_short">Essai terminé, abonnez-vous pour continuer</string>
     <string name="trial_started_title">Votre essai gratuit a commencé</string>
     <string name="trial_started_body">Vous disposez de 30 jours d\'accès complet, sans paiement ni carte bancaire.\n\nEnsuite, MindTheClub coûte %1$s par mois. Aucune publicité, aucune collecte de données : votre abonnement finance entièrement le service.</string>
     <string name="trial_started_body_no_price">Vous disposez de 30 jours d\'accès complet, sans paiement ni carte bancaire.\n\nEnsuite, un abonnement est nécessaire pour continuer à utiliser MindTheClub. Aucune publicité, aucune collecte de données : votre abonnement finance entièrement le service.</string>
     <string name="trial_banner_action">S\'abonner</string>
     <string name="onboarding_plan_title">Comment MindTheClub se finance</string>
-    <string name="onboarding_plan_body">Vos 30 premiers jours sont gratuits — le compte à rebours démarre à votre premier message, pas maintenant. Prenez votre temps et invitez vos amis.\n\nEnsuite, MindTheClub coûte %1$s par mois.\n\nAucune publicité. Aucune collecte de données. Rien à revendre, car votre abonnement est notre seul modèle économique.</string>
-    <string name="onboarding_plan_body_no_price">Vos 30 premiers jours sont gratuits — le compte à rebours démarre à votre premier message, pas maintenant. Prenez votre temps et invitez vos amis.\n\nEnsuite, un petit abonnement mensuel fait vivre le service.\n\nAucune publicité. Aucune collecte de données. Rien à revendre, car votre abonnement est notre seul modèle économique.</string>
+    <string name="onboarding_plan_body">Vos 30 premiers jours sont gratuits, le compte à rebours démarre à votre premier message, pas maintenant. Prenez votre temps et invitez vos amis.\n\nEnsuite, MindTheClub coûte %1$s par mois.\n\nAucune publicité. Aucune collecte de données. Rien à revendre, car votre abonnement est notre seul modèle économique.</string>
+    <string name="onboarding_plan_body_no_price">Vos 30 premiers jours sont gratuits, le compte à rebours démarre à votre premier message, pas maintenant. Prenez votre temps et invitez vos amis.\n\nEnsuite, un petit abonnement mensuel fait vivre le service.\n\nAucune publicité. Aucune collecte de données. Rien à revendre, car votre abonnement est notre seul modèle économique.</string>
     <string name="onboarding_plan_continue">J\'ai compris</string>
 
     <!-- Days remaining: plurals so the last day never reads "1 days" -->

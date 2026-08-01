@@ -59,7 +59,6 @@
     <string name="delete_club_message">Hapus klub ini?</string>
     <string name="share_profile">Bagikan</string>
     <string name="share_club">Bagikan klub</string>
-    <string name="stealth_mode">Mode siluman</string>
     <string name="auto_invite_mode">Mode undang otomatis</string>
     <string name="show_qr_code">Tampilkan QR</string>
     <string name="scan_qr_code">Pindai QR</string>
@@ -203,7 +202,6 @@
     <string name="invite_share_other">Bagikan dengan aplikasi lain</string>
     <string name="contacts_permission_needed">Izin kontak diperlukan untuk menampilkan buku alamat Anda</string>
     <string name="no_sms_app">Tidak ada aplikasi pesan yang ditemukan</string>
-    <string name="stealth_mode_help">Mode siluman memaksa lalu lintas melewati relai (TURN). Ini menyembunyikan informasi jaringan Anda dari orang yang sedang Anda ajak mengobrol.</string>
     <string name="bluetooth_transport_help">Saat aktif, MindTheClub dapat mengirim pesan langsung melalui Bluetooth ke kontak terdekat, tanpa internet, Wi-Fi, atau data seluler. Berguna saat Anda offline atau tidak ada sinyal. Orang lain juga harus mengaktifkan Bluetooth dan terhubung dengan perangkat Anda.</string>
     <string name="auto_invite_mode_help">Saat aktif, siapa pun yang memindai kode QR Anda atau mengetuk tautan undangan Anda akan diterima secara otomatis dan langsung ditambahkan ke daftar kontak Anda sebagai tertunda. Mereka tidak lagi muncul di layar Permintaan kontak baru untuk persetujuan manual. Nonaktifkan jika Anda lebih suka meninjau dan menerima setiap permintaan sendiri.</string>
 
@@ -282,36 +280,28 @@
     <string name="subscription_title">Langganan</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Perpesanan pribadi lengkap: chat, panggilan, dan transfer file peer-to-peer tanpa batas, plus kuota relai bulanan untuk jaringan yang sulit. Dimulai dengan uji coba gratis 30 hari.</string>
-    <string name="sub_stealth_title">Premium</string>
-    <string name="sub_stealth_desc">Semua yang ada di Standard, plus mode siluman: semua koneksi dialihkan melalui relai sehingga alamat IP-mu tidak pernah terlihat oleh lawan bicaramu.</string>
     <string name="sub_price_loading">Memuat harga…</string>
     <string name="sub_price_per_month">%1$s / bulan</string>
     <string name="sub_subscribe">Berlangganan</string>
-    <string name="sub_upgrade">Upgrade</string>
-    <string name="sub_downgrade">Beralih ke Standard pada perpanjangan berikutnya</string>
     <string name="sub_current_plan">Paket saat ini</string>
     <string name="sub_manage">Kelola di Google Play</string>
     <string name="sub_status_standard">Langganan Standard aktif</string>
-    <string name="sub_status_stealth">Langganan Premium aktif</string>
     <string name="sub_trial_not_started">Uji coba gratis 30 harimu dimulai saat kamu mengirim pesan pertama.</string>
     <string name="sub_trial_expired">Uji coba gratismu telah berakhir. Berlangganan untuk terus menggunakan MindTheClub.</string>
-    <string name="stealth_requires_sub">Mode siluman adalah bagian dari langganan Premium.</string>
-    <string name="stealth_cap_reached">Kuota data Stealth untuk bulan ini sudah habis. Koneksi dijeda agar alamat IP-mu tetap tersembunyi. Kuota akan direset bulan depan.</string>
-    <string name="stealth_turn_unavailable">Koneksi Stealth tidak tersedia saat ini: relai tidak dapat dihubungi. Coba lagi sebentar lagi.</string>
 
-    <!-- Langganan / penagihan. Nama paket "Standard" dan "Stealth" dibiarkan
-         dalam bahasa Inggris agar sama dengan Google Play. -->
+    <!-- Langganan / penagihan. Nama paket "Standard" dibiarkan dalam bahasa
+         Inggris agar sama dengan Google Play. -->
 
     <!-- Informasi masa uji coba: harga berasal dari Google, sudah dilokalkan -->
     <string name="sub_trial_not_started_short">Uji coba gratis dimulai pada pesan pertama Anda</string>
-    <string name="sub_trial_expired_short">Uji coba berakhir — berlangganan untuk lanjut</string>
+    <string name="sub_trial_expired_short">Uji coba berakhir, berlangganan untuk lanjut</string>
     <string name="trial_started_title">Uji coba gratis Anda telah dimulai</string>
-    <string name="trial_started_body">Anda mendapat akses penuh selama 30 hari, tanpa pembayaran dan tanpa kartu.\n\nSetelah itu, MindTheClub berbiaya %1$s per bulan. Tidak ada iklan dan tidak ada pengumpulan data — langganan Andalah yang membiayai layanan ini.</string>
-    <string name="trial_started_body_no_price">Anda mendapat akses penuh selama 30 hari, tanpa pembayaran dan tanpa kartu.\n\nSetelah itu, diperlukan langganan untuk terus menggunakan MindTheClub. Tidak ada iklan dan tidak ada pengumpulan data — langganan Andalah yang membiayai layanan ini.</string>
+    <string name="trial_started_body">Anda mendapat akses penuh selama 30 hari, tanpa pembayaran dan tanpa kartu.\n\nSetelah itu, MindTheClub berbiaya %1$s per bulan. Tidak ada iklan dan tidak ada pengumpulan data, langganan Andalah yang membiayai layanan ini.</string>
+    <string name="trial_started_body_no_price">Anda mendapat akses penuh selama 30 hari, tanpa pembayaran dan tanpa kartu.\n\nSetelah itu, diperlukan langganan untuk terus menggunakan MindTheClub. Tidak ada iklan dan tidak ada pengumpulan data, langganan Andalah yang membiayai layanan ini.</string>
     <string name="trial_banner_action">Berlangganan</string>
     <string name="onboarding_plan_title">Bagaimana MindTheClub membiayai dirinya</string>
-    <string name="onboarding_plan_body">30 hari pertama Anda gratis — hitungannya dimulai saat Anda mengirim pesan pertama, bukan sekarang. Santai saja dan ajak teman-teman Anda.\n\nSetelah itu, MindTheClub berbiaya %1$s per bulan.\n\nTanpa iklan. Tanpa pengumpulan data. Tidak ada yang dijual, karena langganan Anda adalah keseluruhan model bisnis kami.</string>
-    <string name="onboarding_plan_body_no_price">30 hari pertama Anda gratis — hitungannya dimulai saat Anda mengirim pesan pertama, bukan sekarang. Santai saja dan ajak teman-teman Anda.\n\nSetelah itu, langganan bulanan kecil menjaga layanan tetap berjalan.\n\nTanpa iklan. Tanpa pengumpulan data. Tidak ada yang dijual, karena langganan Anda adalah keseluruhan model bisnis kami.</string>
+    <string name="onboarding_plan_body">30 hari pertama Anda gratis, hitungannya dimulai saat Anda mengirim pesan pertama, bukan sekarang. Santai saja dan ajak teman-teman Anda.\n\nSetelah itu, MindTheClub berbiaya %1$s per bulan.\n\nTanpa iklan. Tanpa pengumpulan data. Tidak ada yang dijual, karena langganan Anda adalah keseluruhan model bisnis kami.</string>
+    <string name="onboarding_plan_body_no_price">30 hari pertama Anda gratis, hitungannya dimulai saat Anda mengirim pesan pertama, bukan sekarang. Santai saja dan ajak teman-teman Anda.\n\nSetelah itu, langganan bulanan kecil menjaga layanan tetap berjalan.\n\nTanpa iklan. Tanpa pengumpulan data. Tidak ada yang dijual, karena langganan Anda adalah keseluruhan model bisnis kami.</string>
     <string name="onboarding_plan_continue">Mengerti</string>
 
     <!-- Days remaining: plurals so the last day never reads "1 days" -->

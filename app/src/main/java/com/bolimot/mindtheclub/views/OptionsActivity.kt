@@ -21,14 +21,11 @@ import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
-import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.transport.BluetoothToggle
-import com.bolimot.mindtheclub.webrtc.RTCClient
-import com.bolimot.mindtheclub.webrtc.StealthMode
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -37,7 +34,6 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 class OptionsActivity : BaseActivity() {
 
     private lateinit var bluetoothSwitch: SwitchMaterial
-    private lateinit var stealthModeSwitch: SwitchMaterial
 
     private val enableBtResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -60,22 +56,6 @@ class OptionsActivity : BaseActivity() {
 
         findViewById<LinearLayout>(R.id.subscriptionRow).setOnClickListener {
             startActivity(Intent(this, SubscriptionActivity::class.java))
-        }
-
-        stealthModeSwitch = findViewById(R.id.stealthModeSwitch)
-        stealthModeSwitch.isChecked = StealthMode.isActive(this)
-        stealthModeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked && !BillingManager.hasStealthEntitlement(this)) {
-                // The paywall messaging is shown in every build...
-                showToast(getString(R.string.stealth_requires_sub), this)
-                startActivity(Intent(this, SubscriptionActivity::class.java))
-                // ...but only a paying build actually blocks the feature.
-                if (!BuildConfig.NO_PAY) {
-                    stealthModeSwitch.isChecked = false
-                    return@setOnCheckedChangeListener
-                }
-            }
-            setPreference(RTCClient.PREF_STEALTH_MODE, if (isChecked) "true" else "false", this)
         }
 
         val autoInviteModeSwitch: SwitchMaterial = findViewById(R.id.autoInviteModeSwitch)
@@ -109,13 +89,6 @@ class OptionsActivity : BaseActivity() {
             } else {
                 BluetoothToggle.disable(this)
             }
-        }
-
-        findViewById<ImageView>(R.id.stealthHelpIcon).setOnClickListener {
-            showHelpDialog(
-                getString(R.string.stealth_mode),
-                getString(R.string.stealth_mode_help)
-            )
         }
 
         findViewById<ImageView>(R.id.autoInviteHelpIcon).setOnClickListener {
@@ -174,11 +147,8 @@ class OptionsActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Entitlement may have changed while away (e.g. upgrade completed in
-        // SubscriptionActivity, or the Stealth subscription lapsed).
-        if (::stealthModeSwitch.isInitialized && !StealthMode.isActive(this)) {
-            stealthModeSwitch.isChecked = false
-        }
+        // Subscription state may have changed while away (e.g. a purchase
+        // completed in SubscriptionActivity).
         findViewById<TextView>(R.id.subscriptionStatusSummary).text =
             SubscriptionCopy.statusSummary(this)
     }

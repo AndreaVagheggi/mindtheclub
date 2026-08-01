@@ -57,7 +57,6 @@
     <string name="delete_club_message">Czy chcesz usunąć ten klub?</string>
     <string name="share_profile">Udostępnij</string>
     <string name="share_club">Udostępnij klub</string>
-    <string name="stealth_mode">Tryb Stealth</string>
     <string name="auto_invite_mode">Tryb automatycznych zaproszeń</string>
     <string name="show_qr_code">Pokaż kod QR</string>
     <string name="scan_qr_code">Skanuj kod QR</string>
@@ -201,7 +200,6 @@
     <string name="invite_share_other">Udostępnij przez inne aplikacje</string>
     <string name="contacts_permission_needed">Uprawnienie do kontaktów jest potrzebne, aby wyświetlić twoją książkę adresową</string>
     <string name="no_sms_app">Nie znaleziono aplikacji do wysyłania wiadomości</string>
-    <string name="stealth_mode_help">Tryb Stealth wymusza przesyłanie ruchu przez serwer pośredniczący (TURN). Dzięki temu twoje informacje sieciowe pozostają ukryte przed osobą, z którą rozmawiasz.</string>
     <string name="bluetooth_transport_help">Gdy ta opcja jest włączona, MindTheClub może dostarczać wiadomości bezpośrednio przez Bluetooth do kontaktu w pobliżu — bez internetu, Wi-Fi ani danych komórkowych. Przydaje się, gdy jesteś offline lub poza zasięgiem. Druga osoba również musi mieć włączony Bluetooth i urządzenie sparowane z twoim.</string>
     <string name="auto_invite_mode_help">Gdy ta opcja jest włączona, każdy, kto zeskanuje twój kod QR lub kliknie twój link z zaproszeniem, zostaje zaakceptowany automatycznie i od razu dodany do twojej listy kontaktów jako oczekujący. Takie prośby nie pojawiają się już na ekranie Nowe prośby o kontakt do ręcznego zatwierdzenia. Wyłącz tę opcję, jeśli wolisz samodzielnie przeglądać i akceptować każdą prośbę.</string>
 
@@ -281,33 +279,25 @@
     <string name="subscription_title">Subskrypcja</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Pełna prywatna komunikacja: nielimitowane czaty peer-to-peer, połączenia i przesyłanie plików, plus miesięczny pakiet transferu przez serwer pośredniczący na wypadek trudnych sieci. Zaczyna się od 30-dniowego bezpłatnego okresu próbnego.</string>
-    <string name="sub_stealth_title">Premium</string>
-    <string name="sub_stealth_desc">Wszystko, co w planie Standard, plus tryb Stealth: wszystkie połączenia przechodzą przez serwer pośredniczący, więc twój adres IP nigdy nie jest widoczny dla rozmówców.</string>
     <string name="sub_price_loading">Ładowanie ceny…</string>
     <string name="sub_price_per_month">%1$s / mies.</string>
     <string name="sub_subscribe">Subskrybuj</string>
-    <string name="sub_upgrade">Przejdź na wyższy plan</string>
-    <string name="sub_downgrade">Przejdź na Standard przy następnym odnowieniu</string>
     <string name="sub_current_plan">Obecny plan</string>
     <string name="sub_manage">Zarządzaj w Google Play</string>
     <string name="sub_status_standard">Subskrypcja Standard aktywna</string>
-    <string name="sub_status_stealth">Subskrypcja Premium aktywna</string>
     <string name="sub_trial_not_started">Twój 30-dniowy bezpłatny okres próbny rozpocznie się, gdy wyślesz pierwszą wiadomość.</string>
     <string name="sub_trial_expired">Twój bezpłatny okres próbny dobiegł końca. Subskrybuj, aby dalej korzystać z MindTheClub.</string>
-    <string name="stealth_requires_sub">Tryb Stealth jest częścią subskrypcji Premium.</string>
-    <string name="stealth_cap_reached">Pakiet transferu Stealth na ten miesiąc został wykorzystany. Połączenia są wstrzymane, aby twój adres IP pozostał ukryty. Pakiet odnowi się w przyszłym miesiącu.</string>
-    <string name="stealth_turn_unavailable">Połączenie Stealth jest teraz niedostępne: nie udało się połączyć z serwerem pośredniczącym. Spróbuj ponownie za chwilę.</string>
 
     <!-- Informacje o okresie próbnym: ceny pochodzą z Google, już zlokalizowane -->
     <string name="sub_trial_not_started_short">Okres próbny zaczyna się od pierwszej wiadomości</string>
-    <string name="sub_trial_expired_short">Okres próbny zakończony — subskrybuj, aby kontynuować</string>
+    <string name="sub_trial_expired_short">Okres próbny zakończony, subskrybuj, aby kontynuować</string>
     <string name="trial_started_title">Twój bezpłatny okres próbny się rozpoczął</string>
-    <string name="trial_started_body">Masz 30 dni pełnego dostępu, bez płatności i bez karty.\n\nPotem MindTheClub kosztuje %1$s miesięcznie. Bez reklam i bez zbierania danych — to Twoja subskrypcja finansuje usługę.</string>
-    <string name="trial_started_body_no_price">Masz 30 dni pełnego dostępu, bez płatności i bez karty.\n\nPotem do dalszego korzystania z MindTheClub potrzebna jest subskrypcja. Bez reklam i bez zbierania danych — to Twoja subskrypcja finansuje usługę.</string>
+    <string name="trial_started_body">Masz 30 dni pełnego dostępu, bez płatności i bez karty.\n\nPotem MindTheClub kosztuje %1$s miesięcznie. Bez reklam i bez zbierania danych, to Twoja subskrypcja finansuje usługę.</string>
+    <string name="trial_started_body_no_price">Masz 30 dni pełnego dostępu, bez płatności i bez karty.\n\nPotem do dalszego korzystania z MindTheClub potrzebna jest subskrypcja. Bez reklam i bez zbierania danych, to Twoja subskrypcja finansuje usługę.</string>
     <string name="trial_banner_action">Subskrybuj</string>
     <string name="onboarding_plan_title">Jak utrzymuje się MindTheClub</string>
-    <string name="onboarding_plan_body">Pierwsze 30 dni jest bezpłatne — odliczanie zaczyna się, gdy wyślesz pierwszą wiadomość, a nie teraz. Nie spiesz się i zaproś znajomych.\n\nPotem MindTheClub kosztuje %1$s miesięcznie.\n\nBez reklam. Bez zbierania danych. Nie ma czego sprzedawać, bo Twoja subskrypcja to cały nasz model biznesowy.</string>
-    <string name="onboarding_plan_body_no_price">Pierwsze 30 dni jest bezpłatne — odliczanie zaczyna się, gdy wyślesz pierwszą wiadomość, a nie teraz. Nie spiesz się i zaproś znajomych.\n\nPotem niewielka miesięczna subskrypcja utrzymuje usługę przy życiu.\n\nBez reklam. Bez zbierania danych. Nie ma czego sprzedawać, bo Twoja subskrypcja to cały nasz model biznesowy.</string>
+    <string name="onboarding_plan_body">Pierwsze 30 dni jest bezpłatne, odliczanie zaczyna się, gdy wyślesz pierwszą wiadomość, a nie teraz. Nie spiesz się i zaproś znajomych.\n\nPotem MindTheClub kosztuje %1$s miesięcznie.\n\nBez reklam. Bez zbierania danych. Nie ma czego sprzedawać, bo Twoja subskrypcja to cały nasz model biznesowy.</string>
+    <string name="onboarding_plan_body_no_price">Pierwsze 30 dni jest bezpłatne, odliczanie zaczyna się, gdy wyślesz pierwszą wiadomość, a nie teraz. Nie spiesz się i zaproś znajomych.\n\nPotem niewielka miesięczna subskrypcja utrzymuje usługę przy życiu.\n\nBez reklam. Bez zbierania danych. Nie ma czego sprzedawać, bo Twoja subskrypcja to cały nasz model biznesowy.</string>
     <string name="onboarding_plan_continue">Rozumiem</string>
 
     <!-- Days remaining: plurals so the last day never reads "1 days" -->

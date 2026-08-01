@@ -8,7 +8,6 @@ import android.content.IntentFilter
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
-import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.emitWebRtcControlEvent
 import com.bolimot.mindtheclub.functions.isLowEndDevice
@@ -169,7 +168,6 @@ class RTCClient private constructor(
 
     companion object {
         const val ACTION_WEBRTC_SHUTDOWN = "com.bolimot.mindtheclub.ACTION_WEBRTC_SHUTDOWN"
-        const val PREF_STEALTH_MODE = "mtc_stealth_mode_enabled"
 
         // How often to sample WebRTC stats to meter TURN-relay usage (read-only).
         private const val RELAY_STATS_POLL_MS = 10_000L
@@ -1009,9 +1007,6 @@ class RTCClient private constructor(
                     pc.getStats { report ->
                         try {
                             accumulateRelayBytes(report, countedPerPair)
-                            if (BuildConfig.ENABLE_DEBUG_TOOLS && StealthMode.isActive(context)) {
-                                verifyRelayOnly(report)
-                            }
                         } catch (e: Exception) {
                             debugLine("RelayUsage", "stats parse error: ${e.message}")
                         }
@@ -1050,30 +1045,6 @@ class RTCClient private constructor(
         }
     }
 
-    // Debug-build guard for the Stealth promise: if stealth is active, the
-    // nominated local candidate must be a TURN relay. Runs from the relay
-    // stats polling loop so a regression is caught during testing, not by a
-    // paying user's IP leaking.
-    private fun verifyRelayOnly(report: RTCStatsReport) {
-        val stats = report.statsMap
-        val pair = stats.values.firstOrNull { s ->
-            s.type == "candidate-pair" &&
-                    s.members["state"] == "succeeded" &&
-                    (s.members["nominated"] as? Boolean == true)
-        }
-        if (pair == null) {
-            debugLine("StealthCheck", "No nominated candidate pair yet")
-            return
-        }
-        val localId = pair.members["localCandidateId"] as? String
-        val localType = localId?.let { stats[it]?.members?.get("candidateType") }
-        val remoteId = pair.members["remoteCandidateId"] as? String
-        val remoteType = remoteId?.let { stats[it]?.members?.get("candidateType") }
-        debugLine("StealthCheck", "stealth ON  local=$localType  remote=$remoteType")
-        if (localType != "relay") {
-            debugLine("StealthCheck", "LEAK: stealth ON but local candidate is '$localType' (expected 'relay')")
-        }
-    }
 
     private fun initializePeerConnection(iceServers: List<PeerConnection.IceServer>) {        val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
@@ -1085,10 +1056,6 @@ class RTCClient private constructor(
             enableCpuOveruseDetection = true
             audioJitterBufferMaxPackets = 20
             audioJitterBufferFastAccelerate = true
-            if (StealthMode.isActive(context)) {
-                iceTransportsType = PeerConnection.IceTransportsType.RELAY
-                debugLine("initializePeerConnection", "Stealth mode ON — forcing RELAY-only ICE")
-            }
         }
 
         connection = peerConnectionFactory?.createPeerConnection(
@@ -1107,11 +1074,6 @@ class RTCClient private constructor(
                         null -> IceConnectionState.NULL
                     }
                     this@RTCClient.iceConnectionState = newIceState
-
-//
-//                    if (newIceState == IceConnectionState.CONNECTED || newIceState == IceConnectionState.COMPLETED) {
-//                        this@RTCClient.verifyRelayOnly()
-//                    }
                 }
 
                 override fun onConnectionChange(connectionState: PeerConnection.PeerConnectionState?) {

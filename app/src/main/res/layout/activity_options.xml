@@ -191,53 +191,6 @@
                 android:paddingEnd="20dp">
 
                 <ImageView
-                    android:id="@+id/stealthView"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_marginEnd="20dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/stealth"
-                    app:tint="@color/mtc_main"
-                    android:importantForAccessibility="no" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/stealth_mode"
-                    android:textSize="16sp"
-                    android:textColor="@color/primary_text" />
-
-                <ImageView
-                    android:id="@+id/stealthHelpIcon"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="9dp"
-                    android:src="@drawable/help_outline"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/stealth_mode" />
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/stealthModeSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/stealth_mode" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="56dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp">
-
-                <ImageView
                     android:id="@+id/autoInviteView"
                     android:layout_width="24dp"
                     android:layout_height="24dp"

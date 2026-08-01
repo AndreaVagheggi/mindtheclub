@@ -57,7 +57,6 @@
     <string name="delete_club_message">Möchtest du diesen Club löschen?</string>
     <string name="share_profile">Teilen</string>
     <string name="share_club">Club teilen</string>
-    <string name="stealth_mode">Tarnmodus</string>
     <string name="auto_invite_mode">Auto-Einladungsmodus</string>
     <string name="show_qr_code">QR anzeigen</string>
     <string name="scan_qr_code">QR scannen</string>
@@ -201,7 +200,6 @@
     <string name="invite_share_other">Mit anderen Apps teilen</string>
     <string name="contacts_permission_needed">Die Kontaktberechtigung wird benötigt, um dein Adressbuch anzuzeigen</string>
     <string name="no_sms_app">Keine Messaging-App gefunden</string>
-    <string name="stealth_mode_help">Der Tarnmodus leitet den Datenverkehr über einen Relay-Server (TURN). So bleiben deine Netzwerkinformationen vor deinem Gesprächspartner verborgen.</string>
     <string name="bluetooth_transport_help">Wenn dies aktiviert ist, kann MindTheClub Nachrichten direkt über Bluetooth an einen Kontakt in der Nähe senden, ganz ohne Internet, WLAN oder mobile Daten. Praktisch, wenn du offline bist oder keinen Empfang hast. Die andere Person muss ebenfalls Bluetooth aktiviert und mit deinem Gerät gekoppelt haben.</string>
     <string name="auto_invite_mode_help">Wenn dies aktiviert ist, wird jeder, der deinen QR-Code scannt oder auf deinen Einladungslink tippt, automatisch akzeptiert und direkt als ausstehend zu deiner Kontaktliste hinzugefügt. Solche Anfragen erscheinen nicht mehr im Bildschirm „Neue Kontaktanfragen“ zur manuellen Bestätigung. Deaktiviere die Option, wenn du jede Anfrage lieber selbst prüfen und annehmen möchtest.</string>
 
@@ -281,36 +279,28 @@
     <string name="subscription_title">Abonnement</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Vollwertige private Kommunikation: unbegrenzte Peer-to-Peer-Chats, Anrufe und Dateiübertragungen, plus ein monatliches Relay-Kontingent für schwierige Netzwerke. Beginnt mit einer 30-tägigen kostenlosen Testphase.</string>
-    <string name="sub_stealth_title">Premium</string>
-    <string name="sub_stealth_desc">Alles aus Standard, plus Tarnmodus: Alle Verbindungen laufen über einen Relay-Server, sodass deine IP-Adresse für deine Gesprächspartner nie sichtbar ist.</string>
     <string name="sub_price_loading">Preis wird geladen…</string>
     <string name="sub_price_per_month">%1$s / Monat</string>
     <string name="sub_subscribe">Abonnieren</string>
-    <string name="sub_upgrade">Upgrade ausführen</string>
-    <string name="sub_downgrade">Zur nächsten Verlängerung zu Standard wechseln</string>
     <string name="sub_current_plan">Aktueller Tarif</string>
     <string name="sub_manage">Bei Google Play verwalten</string>
     <string name="sub_status_standard">Standard-Abo aktiv</string>
-    <string name="sub_status_stealth">Premium-Abo aktiv</string>
     <string name="sub_trial_not_started">Deine 30-tägige kostenlose Testphase beginnt, wenn du deine erste Nachricht sendest.</string>
     <string name="sub_trial_expired">Deine kostenlose Testphase ist beendet. Abonniere, um MindTheClub weiter zu nutzen.</string>
-    <string name="stealth_requires_sub">Der Tarnmodus ist Teil des Premium-Abos.</string>
-    <string name="stealth_cap_reached">Das Stealth-Datenkontingent für diesen Monat ist aufgebraucht. Verbindungen sind pausiert, damit deine IP-Adresse verborgen bleibt. Es wird nächsten Monat zurückgesetzt.</string>
-    <string name="stealth_turn_unavailable">Stealth-Verbindung derzeit nicht verfügbar: Der Relay-Server konnte nicht erreicht werden. Versuche es gleich noch einmal.</string>
 
-    <!-- Abonnement / Bezahlung. Die Plannamen "Standard" und "Stealth" bleiben
-         unübersetzt, damit sie mit Google Play übereinstimmen. -->
+    <!-- Abonnement / Bezahlung. Der Planname "Standard" bleibt unuebersetzt,
+         damit er mit Google Play uebereinstimmt. -->
 
     <!-- Hinweise zum Testzeitraum: Preise kommen von Google, lokalisiert -->
     <string name="sub_trial_not_started_short">Testzeitraum startet mit Ihrer ersten Nachricht</string>
-    <string name="sub_trial_expired_short">Testzeitraum beendet — jetzt abonnieren</string>
+    <string name="sub_trial_expired_short">Testzeitraum beendet, jetzt abonnieren</string>
     <string name="trial_started_title">Ihr kostenloser Testzeitraum hat begonnen</string>
-    <string name="trial_started_body">Sie haben 30 Tage vollen Zugriff — ohne Zahlung und ohne Kreditkarte.\n\nDanach kostet MindTheClub %1$s pro Monat. Es gibt keine Werbung und keine Datensammlung — Ihr Abonnement finanziert den Dienst.</string>
-    <string name="trial_started_body_no_price">Sie haben 30 Tage vollen Zugriff — ohne Zahlung und ohne Kreditkarte.\n\nDanach wird ein Abonnement benötigt, um MindTheClub weiter zu nutzen. Es gibt keine Werbung und keine Datensammlung — Ihr Abonnement finanziert den Dienst.</string>
+    <string name="trial_started_body">Sie haben 30 Tage vollen Zugriff, ohne Zahlung und ohne Kreditkarte.\n\nDanach kostet MindTheClub %1$s pro Monat. Es gibt keine Werbung und keine Datensammlung, Ihr Abonnement finanziert den Dienst.</string>
+    <string name="trial_started_body_no_price">Sie haben 30 Tage vollen Zugriff, ohne Zahlung und ohne Kreditkarte.\n\nDanach wird ein Abonnement benötigt, um MindTheClub weiter zu nutzen. Es gibt keine Werbung und keine Datensammlung, Ihr Abonnement finanziert den Dienst.</string>
     <string name="trial_banner_action">Abonnieren</string>
     <string name="onboarding_plan_title">Wie sich MindTheClub finanziert</string>
-    <string name="onboarding_plan_body">Ihre ersten 30 Tage sind kostenlos — die Zeit läuft ab Ihrer ersten Nachricht, nicht ab jetzt. Lassen Sie sich Zeit und holen Sie Ihre Freunde dazu.\n\nDanach kostet MindTheClub %1$s pro Monat.\n\nKeine Werbung. Keine Datensammlung. Nichts zu verkaufen — Ihr Abonnement ist das gesamte Geschäftsmodell.</string>
-    <string name="onboarding_plan_body_no_price">Ihre ersten 30 Tage sind kostenlos — die Zeit läuft ab Ihrer ersten Nachricht, nicht ab jetzt. Lassen Sie sich Zeit und holen Sie Ihre Freunde dazu.\n\nDanach hält ein kleines Monatsabo den Dienst am Laufen.\n\nKeine Werbung. Keine Datensammlung. Nichts zu verkaufen — Ihr Abonnement ist das gesamte Geschäftsmodell.</string>
+    <string name="onboarding_plan_body">Ihre ersten 30 Tage sind kostenlos, die Zeit läuft ab Ihrer ersten Nachricht, nicht ab jetzt. Lassen Sie sich Zeit und holen Sie Ihre Freunde dazu.\n\nDanach kostet MindTheClub %1$s pro Monat.\n\nKeine Werbung. Keine Datensammlung. Nichts zu verkaufen, Ihr Abonnement ist das gesamte Geschäftsmodell.</string>
+    <string name="onboarding_plan_body_no_price">Ihre ersten 30 Tage sind kostenlos, die Zeit läuft ab Ihrer ersten Nachricht, nicht ab jetzt. Lassen Sie sich Zeit und holen Sie Ihre Freunde dazu.\n\nDanach hält ein kleines Monatsabo den Dienst am Laufen.\n\nKeine Werbung. Keine Datensammlung. Nichts zu verkaufen, Ihr Abonnement ist das gesamte Geschäftsmodell.</string>
     <string name="onboarding_plan_continue">Verstanden</string>
 
     <!-- Days remaining: plurals so the last day never reads "1 days" -->

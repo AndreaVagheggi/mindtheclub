@@ -1,9 +1,6 @@
 package com.bolimot.mindtheclub.webrtc
 
-import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.debugLine
-import com.bolimot.mindtheclub.functions.showToast
-import com.bolimot.mindtheclub.start.App
 import com.google.firebase.appcheck.FirebaseAppCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -18,47 +15,23 @@ import org.webrtc.PeerConnection
 import java.util.concurrent.TimeUnit
 
 suspend fun getIceServers(): List<PeerConnection.IceServer>? {
-    val context = App.context()
-    val stealth = StealthMode.isActive(context)
-
-    if (stealth) {
-        // Stealth is relay-only (IceTransportsType.RELAY): STUN-only fallbacks
-        // are useless AND silently connecting without TURN would leak the IP we
-        // promised to hide. Fail closed with a visible reason instead.
-        if (RelayUsageTracker.isOverCap(stealthTier = true)) {
-            debugLine("getIceServers", "Stealth relay allowance exhausted — refusing connection (fail-closed)")
-            showToast(context.getString(R.string.stealth_cap_reached), context)
-            return null
-        }
-
-        val servers = fetchCloudflareWithTimeout()
-        if (servers == null) {
-            debugLine("getIceServers", "Stealth ON but TURN unavailable — refusing connection (fail-closed)")
-            showToast(context.getString(R.string.stealth_turn_unavailable), context)
-        }
-        return servers
-    }
-
     if (RelayUsageTracker.isOverCap()) {
-        debugLine("getIceServers", "Monthly relay cap reached — withholding TURN, using STUN-only")
+        debugLine("getIceServers", "Monthly relay cap reached, withholding TURN, using STUN-only")
         return getAlternativeIceServers()
     }
 
-    val iceServers = fetchCloudflareWithTimeout()
-    if (iceServers == null) {
-        debugLine("getIceServers", "Falling back to Google STUN")
-        return getAlternativeIceServers()
-    }
-    return iceServers
-}
-
-private suspend fun fetchCloudflareWithTimeout(): List<PeerConnection.IceServer>? {
-    return try {
+    val iceServers = try {
         withTimeout(8000L) { getCloudflareIceServers() }
     } catch (e: Exception) {
         debugLine("getIceServers", "Cloudflare TURN timed out or failed: ${e.message}")
         null
     }
+
+    if (iceServers == null) {
+        debugLine("getIceServers", "Falling back to Google STUN")
+        return getAlternativeIceServers()
+    }
+    return iceServers
 }
 
 private const val ICE_WORKER_URL = "https://mtc-ice.long-sun-7368.workers.dev"

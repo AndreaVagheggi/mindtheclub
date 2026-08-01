@@ -14,12 +14,12 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 
 /**
- * Paywall / plan management screen.
+ * Paywall / subscription management screen.
  *
- * Launched (a) as a blocking gate from AppTab when the 30-day trial has ended
- * and no subscription is active (EXTRA_REQUIRED = true: back sends the task to
- * the background instead of dismissing the gate), and (b) voluntarily from the
- * Stealth toggle in OptionsActivity to upgrade.
+ * Launched (a) as a blocking gate from BaseActivity when the 30-day trial has
+ * ended and no subscription is active (EXTRA_REQUIRED = true: back sends the
+ * task to the background instead of dismissing the gate), and (b) voluntarily
+ * from the Subscription row in OptionsActivity.
  */
 class SubscriptionActivity : BaseActivity() {
 
@@ -29,7 +29,7 @@ class SubscriptionActivity : BaseActivity() {
 
     private var required = false
 
-    /** This IS the gate's destination — it must never gate itself. */
+    /** This IS the gate's destination, it must never gate itself. */
     override fun isSubscriptionGateExempt(): Boolean = true
 
     private val billingListener: () -> Unit = {
@@ -51,9 +51,6 @@ class SubscriptionActivity : BaseActivity() {
 
         findViewById<MaterialButton>(R.id.standardButton).setOnClickListener {
             BillingManager.launchPurchase(this, BillingManager.PRODUCT_STANDARD)
-        }
-        findViewById<MaterialButton>(R.id.stealthButton).setOnClickListener {
-            BillingManager.launchPurchase(this, BillingManager.PRODUCT_STEALTH)
         }
         findViewById<MaterialButton>(R.id.manageButton).setOnClickListener {
             openPlaySubscriptions()
@@ -87,14 +84,11 @@ class SubscriptionActivity : BaseActivity() {
     }
 
     private fun renderState() {
-        val entitlement = BillingManager.entitlement(this)
+        val subscribed = BillingManager.hasSubscription(this)
 
         val statusText: TextView = findViewById(R.id.subscriptionStatus)
         statusText.text = when {
-            entitlement == BillingManager.Entitlement.STEALTH ->
-                getString(R.string.sub_status_stealth)
-            entitlement == BillingManager.Entitlement.STANDARD ->
-                getString(R.string.sub_status_standard)
+            subscribed -> getString(R.string.sub_status_standard)
             TrialManager.state(this) == TrialManager.State.ACTIVE ->
                 SubscriptionCopy.daysLeftText(this)
             TrialManager.state(this) == TrialManager.State.NOT_STARTED ->
@@ -103,41 +97,18 @@ class SubscriptionActivity : BaseActivity() {
         }
 
         val standardPrice: TextView = findViewById(R.id.standardPrice)
-        val stealthPrice: TextView = findViewById(R.id.stealthPrice)
         standardPrice.text = BillingManager.recurringPrice(BillingManager.PRODUCT_STANDARD)
-            ?.let { getString(R.string.sub_price_per_month, it) }
-            ?: getString(R.string.sub_price_loading)
-        stealthPrice.text = BillingManager.recurringPrice(BillingManager.PRODUCT_STEALTH)
             ?.let { getString(R.string.sub_price_per_month, it) }
             ?: getString(R.string.sub_price_loading)
 
         val standardButton: MaterialButton = findViewById(R.id.standardButton)
-        val stealthButton: MaterialButton = findViewById(R.id.stealthButton)
         val manageButton: MaterialButton = findViewById(R.id.manageButton)
 
-        when (entitlement) {
-            BillingManager.Entitlement.NONE -> {
-                standardButton.isEnabled = true
-                standardButton.text = getString(R.string.sub_subscribe)
-                stealthButton.isEnabled = true
-                stealthButton.text = getString(R.string.sub_subscribe)
-                manageButton.isEnabled = false
-            }
-            BillingManager.Entitlement.STANDARD -> {
-                standardButton.isEnabled = false
-                standardButton.text = getString(R.string.sub_current_plan)
-                stealthButton.isEnabled = true
-                stealthButton.text = getString(R.string.sub_upgrade)
-                manageButton.isEnabled = true
-            }
-            BillingManager.Entitlement.STEALTH -> {
-                standardButton.isEnabled = true
-                standardButton.text = getString(R.string.sub_downgrade)
-                stealthButton.isEnabled = false
-                stealthButton.text = getString(R.string.sub_current_plan)
-                manageButton.isEnabled = true
-            }
-        }
+        standardButton.isEnabled = !subscribed
+        standardButton.text = getString(
+            if (subscribed) R.string.sub_current_plan else R.string.sub_subscribe
+        )
+        manageButton.isEnabled = subscribed
     }
 
     private fun openPlaySubscriptions() {

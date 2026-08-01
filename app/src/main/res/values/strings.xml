@@ -57,7 +57,6 @@
     <string name="delete_club_message">Do you want to delete this Club?</string>
     <string name="share_profile">Share</string>
     <string name="share_club">Share Club</string>
-    <string name="stealth_mode">Stealth mode</string>
     <string name="auto_invite_mode">Auto-invite mode</string>
     <string name="show_qr_code">Show QR</string>
     <string name="scan_qr_code">Scan QR</string>
@@ -202,7 +201,6 @@
     <string name="invite_share_other">Share with other apps</string>
     <string name="contacts_permission_needed">Contacts permission is needed to show your address book</string>
     <string name="no_sms_app">No messaging app found</string>
-    <string name="stealth_mode_help">Stealth mode forces traffic to travel through a relay (TURN). This hides your network information from the person you\'re chatting with.</string>
     <string name="bluetooth_transport_help">When this is on, MindTheClub can deliver messages directly over Bluetooth to a nearby contact, with no internet, Wi-Fi or mobile data needed. It\'s handy when you\'re offline or out of signal. The other person must also have Bluetooth enabled and be paired with your device.</string>
     <string name="auto_invite_mode_help">When this is on, anyone who scans your QR code or taps your invite link is accepted automatically and added straight to your contact list as pending. They no longer appear in the New contact requests screen for manual approval. Turn it off if you prefer to review and accept each request yourself.</string>
 
@@ -281,34 +279,26 @@
     <string name="subscription_title">Subscription</string>
     <string name="sub_standard_title">Standard</string>
     <string name="sub_standard_desc">Full private messaging: unlimited peer-to-peer chats, calls and file transfers, plus a monthly relay allowance for tricky networks. Starts with a 30-day free trial.</string>
-    <string name="sub_stealth_title">Premium</string>
-    <string name="sub_stealth_desc">Everything in Standard, plus Stealth mode: all connections are routed through a relay so your IP address is never visible to the people you talk to.</string>
     <string name="sub_price_loading">Loading price…</string>
     <string name="sub_price_per_month">%1$s / month</string>
     <string name="sub_subscribe">Subscribe</string>
-    <string name="sub_upgrade">Upgrade</string>
-    <string name="sub_downgrade">Switch to Standard at next renewal</string>
     <string name="sub_current_plan">Current plan</string>
     <string name="sub_manage">Manage on Google Play</string>
     <string name="sub_status_standard">Standard subscription active</string>
-    <string name="sub_status_stealth">Premium subscription active</string>
     <string name="sub_trial_not_started">Your 30-day free trial starts when you send your first message.</string>
     <string name="sub_trial_expired">Your free trial has ended. Subscribe to keep using MindTheClub.</string>
-    <string name="stealth_requires_sub">Stealth mode is part of the Premium subscription.</string>
 
     <!-- Trial disclosure: prices come from Google, localized per country -->
     <string name="sub_trial_not_started_short">Free trial starts with your first message</string>
-    <string name="sub_trial_expired_short">Free trial ended — subscribe to continue</string>
+    <string name="sub_trial_expired_short">Free trial ended, subscribe to continue</string>
     <string name="trial_started_title">Your free trial has started</string>
-    <string name="trial_started_body">You have 30 days of full access, with no payment needed and no card required.\n\nAfter that, MindTheClub is %1$s per month. There are no ads and no data collection — your subscription is what pays for the service.</string>
-    <string name="trial_started_body_no_price">You have 30 days of full access, with no payment needed and no card required.\n\nAfter that, a subscription is needed to keep using MindTheClub. There are no ads and no data collection — your subscription is what pays for the service.</string>
+    <string name="trial_started_body">You have 30 days of full access, with no payment needed and no card required.\n\nAfter that, MindTheClub is %1$s per month. There are no ads and no data collection, your subscription is what pays for the service.</string>
+    <string name="trial_started_body_no_price">You have 30 days of full access, with no payment needed and no card required.\n\nAfter that, a subscription is needed to keep using MindTheClub. There are no ads and no data collection, your subscription is what pays for the service.</string>
     <string name="trial_banner_action">Subscribe</string>
     <string name="onboarding_plan_title">How MindTheClub pays for itself</string>
-    <string name="onboarding_plan_body">Your first 30 days are free — the clock starts when you send your first message, not now. Take your time and bring your friends over.\n\nAfter that, MindTheClub is %1$s per month.\n\nNo ads. No data collection. Nothing to sell, because your subscription is the entire business model.</string>
-    <string name="onboarding_plan_body_no_price">Your first 30 days are free — the clock starts when you send your first message, not now. Take your time and bring your friends over.\n\nAfter that, a small monthly subscription keeps it running.\n\nNo ads. No data collection. Nothing to sell, because your subscription is the entire business model.</string>
+    <string name="onboarding_plan_body">Your first 30 days are free, the clock starts when you send your first message, not now. Take your time and bring your friends over.\n\nAfter that, MindTheClub is %1$s per month.\n\nNo ads. No data collection. Nothing to sell, because your subscription is the entire business model.</string>
+    <string name="onboarding_plan_body_no_price">Your first 30 days are free, the clock starts when you send your first message, not now. Take your time and bring your friends over.\n\nAfter that, a small monthly subscription keeps it running.\n\nNo ads. No data collection. Nothing to sell, because your subscription is the entire business model.</string>
     <string name="onboarding_plan_continue">Got it</string>
-    <string name="stealth_cap_reached">Stealth data allowance for this month is used up. Connections are paused so your IP address stays hidden. It resets next month.</string>
-    <string name="stealth_turn_unavailable">Stealth connection unavailable right now: the relay could not be reached. Try again in a moment.</string>
 
     <!-- Days remaining: plurals so the last day never reads "1 days" -->
     <plurals name="trial_days_left">

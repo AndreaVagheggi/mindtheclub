@@ -20,28 +20,27 @@ import com.bolimot.mindtheclub.functions.setPreference
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
- * Google Play Billing wrapper for the two subscription tiers:
+ * Google Play Billing wrapper for the single subscription:
  *
- *   - [PRODUCT_STANDARD]  "mtc_standard" — the base subscription (30-day free
- *     trial configured as an offer in Play Console).
- *   - [PRODUCT_STEALTH]   "mtc_stealth"  — includes everything in Standard plus
- *     Stealth mode (relay-only connections) and a larger relay allowance.
+ *   - [PRODUCT_STANDARD] "mtc_standard", the monthly subscription that unlocks
+ *     the app after the 30-day activation-based trial.
  *
- * The current entitlement is cached in preferences so it can be read
- * synchronously and offline (e.g. from RTCClient); it is refreshed from Play
- * on every app start and every time SubscriptionActivity opens. There is no
- * server: entitlement is verified client-side, consistent with the app's
- * open-source "convenience" model.
+ * The current subscription state is cached in preferences so it can be read
+ * synchronously and offline (e.g. from the access gate in BaseActivity); it is
+ * refreshed from Play on every app start and every time SubscriptionActivity
+ * opens. There is no server: the state is verified client-side, consistent
+ * with the app's open-source "convenience" model.
  */
 object BillingManager : PurchasesUpdatedListener {
 
     const val PRODUCT_STANDARD = "mtc_standard"
-    const val PRODUCT_STEALTH = "mtc_stealth"
 
-    private const val PREF_ENTITLEMENT = "mtc_entitlement" // none | standard | stealth
-    private const val PREF_SUB_TOKEN = "mtc_sub_token"     // purchase token of the active sub
+    // Product id of the removed second tier. Test purchases of it may still be
+    // active on tester accounts for a while; they count as a normal
+    // subscription so those devices keep working.
+    private const val LEGACY_PRODUCT_STEALTH = "mtc_stealth"
 
-    enum class Entitlement { NONE, STANDARD, STEALTH }
+    private const val PREF_ENTITLEMENT = "mtc_entitlement" // none | standard
 
     /** UI listeners, notified on the main-thread-agnostic billing callbacks. */
     private val listeners = CopyOnWriteArraySet<() -> Unit>()
@@ -67,17 +66,12 @@ object BillingManager : PurchasesUpdatedListener {
 
     // ---------------------------------------------------------------- state
 
-    fun entitlement(context: Context): Entitlement =
+    fun hasSubscription(context: Context): Boolean =
         when (getPreference(PREF_ENTITLEMENT, context)) {
-            "stealth" -> Entitlement.STEALTH
-            "standard" -> Entitlement.STANDARD
-            else -> Entitlement.NONE
+            // "stealth" can still be cached from the removed two-tier model.
+            "standard", "stealth" -> true
+            else -> false
         }
-
-    fun hasSubscription(context: Context): Boolean = entitlement(context) != Entitlement.NONE
-
-    fun hasStealthEntitlement(context: Context): Boolean =
-        entitlement(context) == Entitlement.STEALTH
 
     /**
      * Master gate for using the app: an active subscription, an unfinished
@@ -87,8 +81,6 @@ object BillingManager : PurchasesUpdatedListener {
         BuildConfig.NO_PAY ||
                 hasSubscription(context) ||
                 TrialManager.state(context) != TrialManager.State.EXPIRED
-
-    private fun activeSubToken(context: Context): String? = getPreference(PREF_SUB_TOKEN, context)
 
     // ----------------------------------------------------------- connection
 
@@ -134,7 +126,7 @@ object BillingManager : PurchasesUpdatedListener {
 
     // -------------------------------------------------------------- queries
 
-    /** Re-reads owned subscriptions from Play and updates the cached entitlement. */
+    /** Re-reads owned subscriptions from Play and updates the cached state. */
     fun refreshPurchases() {
         val context = appContext ?: return
         ensureConnected {
@@ -151,18 +143,18 @@ object BillingManager : PurchasesUpdatedListener {
         }
     }
 
-    /** Loads ProductDetails (localized prices) for both tiers; notifies listeners. */
+    /** Loads ProductDetails (localized price) for the plan; notifies listeners. */
     fun queryProducts() {
         val context = appContext ?: return
         ensureConnected {
             val params = QueryProductDetailsParams.newBuilder()
                 .setProductList(
-                    listOf(PRODUCT_STANDARD, PRODUCT_STEALTH).map { id ->
+                    listOf(
                         QueryProductDetailsParams.Product.newBuilder()
-                            .setProductId(id)
+                            .setProductId(PRODUCT_STANDARD)
                             .setProductType(BillingClient.ProductType.SUBS)
                             .build()
-                    }
+                    )
                 )
                 .build()
             client(context).queryProductDetailsAsync(params) { result, detailsResult ->
@@ -179,12 +171,7 @@ object BillingManager : PurchasesUpdatedListener {
 
     // ------------------------------------------------------------- purchase
 
-    /**
-     * Starts the Play purchase (or plan-change) flow for [productId].
-     * Upgrades (standard -> stealth) are charged the prorated difference and
-     * apply immediately; downgrades (stealth -> standard) are DEFERRED, so the
-     * paid stealth month always runs to its end first.
-     */
+    /** Starts the Play purchase flow for the subscription. */
     fun launchPurchase(activity: Activity, productId: String) {
         val context = appContext ?: return
         val details = productDetails[productId] ?: run {
@@ -201,33 +188,18 @@ object BillingManager : PurchasesUpdatedListener {
             .setOfferToken(offer.offerToken)
             .build()
 
-        val builder = BillingFlowParams.newBuilder()
+        val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productParams))
+            .build()
 
-        val oldToken = activeSubToken(context)
-        val current = entitlement(context)
-        if (oldToken != null && current != Entitlement.NONE) {
-            val mode = if (productId == PRODUCT_STEALTH) {
-                BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.CHARGE_PRORATED_PRICE
-            } else {
-                BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED
-            }
-            builder.setSubscriptionUpdateParams(
-                BillingFlowParams.SubscriptionUpdateParams.newBuilder()
-                    .setOldPurchaseToken(oldToken)
-                    .setSubscriptionReplacementMode(mode)
-                    .build()
-            )
-        }
-
-        val result = client(context).launchBillingFlow(activity, builder.build())
+        val result = client(context).launchBillingFlow(activity, flowParams)
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
             debugLine("BillingManager", "launchBillingFlow failed: ${result.debugMessage}")
         }
     }
 
     /**
-     * Prefers an offer containing a free phase (the 30-day trial offer) when
+     * Prefers an offer containing a free phase (an introductory offer) when
      * Play says the user is eligible; otherwise the plain base-plan offer.
      */
     private fun pickOffer(details: ProductDetails): ProductDetails.SubscriptionOfferDetails? {
@@ -237,7 +209,7 @@ object BillingManager : PurchasesUpdatedListener {
         } ?: offers.firstOrNull()
     }
 
-    /** Human-readable recurring price ("€0.99"), or null while still loading. */
+    /** Human-readable recurring price ("0,99 €"), or null while still loading. */
     fun recurringPrice(productId: String): String? {
         val offer = productDetails[productId]?.subscriptionOfferDetails?.firstOrNull()
             ?: return null
@@ -261,7 +233,7 @@ object BillingManager : PurchasesUpdatedListener {
 
         val active = purchases.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
 
-        // Acknowledge anything new — Play refunds unacknowledged subscriptions
+        // Acknowledge anything new. Play refunds unacknowledged subscriptions
         // after 3 days.
         for (p in active) {
             if (!p.isAcknowledged) {
@@ -274,18 +246,12 @@ object BillingManager : PurchasesUpdatedListener {
             }
         }
 
-        val stealth = active.firstOrNull { PRODUCT_STEALTH in it.products }
-        val standard = active.firstOrNull { PRODUCT_STANDARD in it.products }
-
-        val (label, token) = when {
-            stealth != null -> "stealth" to stealth.purchaseToken
-            standard != null -> "standard" to standard.purchaseToken
-            else -> "none" to ""
+        val subscribed = active.any {
+            PRODUCT_STANDARD in it.products || LEGACY_PRODUCT_STEALTH in it.products
         }
 
-        setPreference(PREF_ENTITLEMENT, label, context)
-        setPreference(PREF_SUB_TOKEN, token, context)
-        debugLine("BillingManager", "Entitlement -> $label")
+        setPreference(PREF_ENTITLEMENT, if (subscribed) "standard" else "none", context)
+        debugLine("BillingManager", "Subscribed -> $subscribed")
         notifyListeners()
     }
 

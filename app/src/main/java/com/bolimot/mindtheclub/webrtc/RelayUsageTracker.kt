@@ -9,10 +9,7 @@ import java.util.Calendar
 
 object RelayUsageTracker {
 
-    // Standard tier: relay is the 20% fallback path. Stealth tier costs more,
-    // so it buys a larger allowance (see pricing model in the master strategy).
     private const val RELAY_CAP_BYTES = 10L * 1_000_000_000L
-    private const val STEALTH_RELAY_CAP_BYTES = 15L * 1_000_000_000L
 
     private const val PREF_PERIOD = "mtc_relay_period"
     private const val PREF_BYTES = "mtc_relay_bytes"
@@ -29,8 +26,7 @@ object RelayUsageTracker {
         return getPreference(PREF_BYTES, ctx)?.toLongOrNull() ?: 0L
     }
 
-    fun isOverCap(stealthTier: Boolean = false): Boolean =
-        bytesThisMonth() >= if (stealthTier) STEALTH_RELAY_CAP_BYTES else RELAY_CAP_BYTES
+    fun isOverCap(): Boolean = bytesThisMonth() >= RELAY_CAP_BYTES
 
     @Synchronized
     fun addRelayBytes(bytes: Long) {
