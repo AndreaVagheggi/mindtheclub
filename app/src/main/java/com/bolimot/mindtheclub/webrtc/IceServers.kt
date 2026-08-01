@@ -20,8 +20,14 @@ suspend fun getIceServers(): List<PeerConnection.IceServer>? {
         return getAlternativeIceServers()
     }
 
+    // Budget for the whole fetch: an App Check token plus one HTTP round trip.
+    // It has to be generous because a cold Play Integrity attestation, which is
+    // what a phone waking from Doze needs, routinely takes several seconds. With
+    // a tighter budget the credentials still arrived but landed after the
+    // deadline and were thrown away, leaving the device on STUN with no relay
+    // and unable to connect from a mobile network.
     val iceServers = try {
-        withTimeout(8000L) { getCloudflareIceServers() }
+        withTimeout(ICE_FETCH_BUDGET_MS) { getCloudflareIceServers() }
     } catch (e: Exception) {
         debugLine("getIceServers", "Cloudflare TURN timed out or failed: ${e.message}")
         null
@@ -35,6 +41,9 @@ suspend fun getIceServers(): List<PeerConnection.IceServer>? {
 }
 
 private const val ICE_WORKER_URL = "https://mtc-ice.long-sun-7368.workers.dev"
+
+/** Total time allowed for App Check token plus worker request, see getIceServers. */
+private const val ICE_FETCH_BUDGET_MS = 20_000L
 
 private val iceClient: OkHttpClient by lazy {
     OkHttpClient.Builder()

@@ -19,6 +19,8 @@ import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import org.webrtc.PeerConnectionFactory
 
 class App : Application(), DefaultLifecycleObserver {
@@ -49,6 +51,8 @@ class App : Application(), DefaultLifecycleObserver {
                 PlayIntegrityAppCheckProviderFactory.getInstance()
             )
         }
+        warmAppCheckToken()
+
         ManagedTelecom.init(this)
 
         // Connects to Google Play Billing and refreshes the cached subscription
@@ -66,6 +70,28 @@ class App : Application(), DefaultLifecycleObserver {
         debugLine("App", "WebRTC native libraries initialized")
 
         setupLifecycleListener()
+    }
+
+    /**
+     * Starts fetching an App Check token as soon as the process comes up, in
+     * the background and without blocking startup.
+     *
+     * Tokens last about an hour, so a phone woken by FCM after a long idle
+     * period almost always needs a fresh one, and minting it means a Play
+     * Integrity attestation that can take several seconds. Paying that cost
+     * here, in parallel with the rest of the wake-up, means it is no longer
+     * paid inside the ICE fetch, where it used to make the TURN credentials
+     * arrive too late to be used.
+     */
+    private fun warmAppCheckToken() {
+        applicationScope.launch {
+            try {
+                FirebaseAppCheck.getInstance().getAppCheckToken(false).await()
+                debugLine("App", "App Check token warmed")
+            } catch (e: Exception) {
+                debugLine("App", "App Check warm-up failed: ${e.message}")
+            }
+        }
     }
 
     private fun clearLogOnNewInstall() {
