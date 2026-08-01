@@ -58,6 +58,10 @@ class OptionsActivity : BaseActivity() {
             startActivity(Intent(this, SubscriptionActivity::class.java))
         }
 
+        findViewById<LinearLayout>(R.id.batteryHelpRow).setOnClickListener {
+            startActivity(Intent(this, BatteryHelpActivity::class.java))
+        }
+
         val autoInviteModeSwitch: SwitchMaterial = findViewById(R.id.autoInviteModeSwitch)
         autoInviteModeSwitch.isChecked = isAutoInviteEnabled(this)
         autoInviteModeSwitch.setOnCheckedChangeListener { _, isChecked ->

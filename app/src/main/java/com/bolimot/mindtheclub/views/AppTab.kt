@@ -37,6 +37,7 @@ import com.bolimot.mindtheclub.fragments.PeersFragment
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
 import com.bolimot.mindtheclub.functions.NOTIF_BANNER_SNOOZE_MS
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.PREF_NOTIF_BANNER_SNOOZE_UNTIL
 import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
 import com.bolimot.mindtheclub.functions.areNotificationsEnabled
@@ -266,6 +267,7 @@ class AppTab : BaseActivity() {
 
         updateNotificationsBanner()
         updateTrialBanner()
+        updateBatteryBanner()
     }
 
     /**
@@ -329,6 +331,34 @@ class AppTab : BaseActivity() {
                 (System.currentTimeMillis() + NOTIF_BANNER_SNOOZE_MS).toString(),
                 this
             )
+            banner.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Battery-throttling nudge: visible only when this device is measurably
+     * delaying our wake-ups, either because the user restricted the app or
+     * because recent messages kept arriving very late (see DeliveryHealth).
+     * Being outside the battery whitelist is NOT enough to show it, that is the
+     * normal state for most apps. Dismiss snoozes it for 30 days, and it
+     * disappears on its own once deliveries are fast again.
+     */
+    private fun updateBatteryBanner() {
+        val banner = findViewById<View>(R.id.batteryBanner) ?: return
+
+        val show = DeliveryHealth.shouldWarn(this)
+        banner.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+
+        findViewById<View>(R.id.batteryBannerFix).setOnClickListener {
+            // The measured history restarts from here, so a device that is
+            // really fixed stops warning instead of waiting out the old samples.
+            DeliveryHealth.resetHistory(this)
+            banner.visibility = View.GONE
+            startActivity(Intent(this, BatteryHelpActivity::class.java))
+        }
+        findViewById<View>(R.id.batteryBannerDismiss).setOnClickListener {
+            DeliveryHealth.snooze(this)
             banner.visibility = View.GONE
         }
     }

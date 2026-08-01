@@ -305,4 +305,20 @@
         <item quantity="one">Free trial: %1$d day left</item>
         <item quantity="other">Free trial: %1$d days left</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">Messages may arrive late, this phone is limiting the app</string>
+    <string name="battery_banner_fix">Fix</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Message delays</string>
+    <string name="battery_help_intro">To save power, Android can put apps to sleep. When that happens to MindTheClub, messages arrive late or only when you open the app. The steps below fix it on your phone.</string>
+    <string name="battery_help_open">Open settings</string>
+    <string name="battery_help_note">Names change between models and Android versions. Look for anything about battery, background activity, autostart or sleeping apps.</string>
+    <string name="battery_steps_samsung">1. Settings, Battery, Background usage limits\n2. Open Deep sleeping apps and remove MindTheClub if it is listed\n3. Open Never sleeping apps and add MindTheClub\n4. Settings, Apps, MindTheClub, Battery, choose Unrestricted</string>
+    <string name="battery_steps_xiaomi">1. Settings, Apps, Manage apps, MindTheClub\n2. Turn on Autostart\n3. On the same page open Battery saver and choose No restrictions\n4. In Recent apps, hold MindTheClub and tap the padlock</string>
+    <string name="battery_steps_oppo">1. Settings, Battery, App battery management\n2. Find MindTheClub and allow background running\n3. Settings, Apps, Startup manager, turn on MindTheClub</string>
+    <string name="battery_steps_vivo">1. Settings, Battery, Background power consumption management\n2. Allow MindTheClub to run in the background\n3. Settings, More settings, Applications, Autostart, turn on MindTheClub</string>
+    <string name="battery_steps_huawei">1. Settings, Battery, App launch\n2. Find MindTheClub and turn off Manage automatically\n3. Turn on Auto launch, Secondary launch and Run in background</string>
+    <string name="battery_steps_generic">1. Settings, Apps, MindTheClub, Battery\n2. Choose Unrestricted, or remove any restriction you find\n3. If your phone has an autostart or startup manager, allow MindTheClub there too</string>
 </resources>

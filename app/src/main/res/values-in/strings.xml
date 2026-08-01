@@ -308,4 +308,20 @@
     <plurals name="trial_days_left">
         <item quantity="other">Uji coba gratis: sisa %1$d hari</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">Pesan bisa datang terlambat, ponsel ini membatasi aplikasi</string>
+    <string name="battery_banner_fix">Perbaiki</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Pesan terlambat</string>
+    <string name="battery_help_intro">Untuk menghemat daya, Android bisa menidurkan aplikasi. Jika itu terjadi pada MindTheClub, pesan datang terlambat atau hanya saat Anda membuka aplikasi. Langkah di bawah ini memperbaikinya di ponsel Anda.</string>
+    <string name="battery_help_open">Buka pengaturan</string>
+    <string name="battery_help_note">Nama menu berbeda antar model dan versi Android. Cari apa saja yang berhubungan dengan baterai, aktivitas latar belakang, mulai otomatis, atau aplikasi tidur.</string>
+    <string name="battery_steps_samsung">1. Pengaturan, Baterai, Batas penggunaan latar belakang\n2. Buka Aplikasi tidur nyenyak dan hapus MindTheClub jika ada\n3. Buka Aplikasi yang tidak pernah tidur dan tambahkan MindTheClub\n4. Pengaturan, Aplikasi, MindTheClub, Baterai, pilih Tanpa batasan</string>
+    <string name="battery_steps_xiaomi">1. Pengaturan, Aplikasi, Kelola aplikasi, MindTheClub\n2. Aktifkan Mulai otomatis\n3. Di halaman yang sama buka Penghemat baterai dan pilih Tanpa batasan\n4. Di aplikasi terbaru, tahan MindTheClub lalu ketuk ikon gembok</string>
+    <string name="battery_steps_oppo">1. Pengaturan, Baterai, Manajemen baterai aplikasi\n2. Cari MindTheClub dan izinkan berjalan di latar belakang\n3. Pengaturan, Aplikasi, Manajer mulai otomatis, aktifkan MindTheClub</string>
+    <string name="battery_steps_vivo">1. Pengaturan, Baterai, Manajemen konsumsi daya latar belakang\n2. Izinkan MindTheClub berjalan di latar belakang\n3. Pengaturan, Pengaturan lainnya, Aplikasi, Mulai otomatis, aktifkan MindTheClub</string>
+    <string name="battery_steps_huawei">1. Pengaturan, Baterai, Peluncuran aplikasi\n2. Cari MindTheClub dan matikan Kelola otomatis\n3. Aktifkan Peluncuran otomatis, Peluncuran sekunder, dan Berjalan di latar belakang</string>
+    <string name="battery_steps_generic">1. Pengaturan, Aplikasi, MindTheClub, Baterai\n2. Pilih Tanpa batasan, atau hapus batasan yang Anda temukan\n3. Jika ponsel Anda punya manajer mulai otomatis, izinkan MindTheClub di sana juga</string>
 </resources>

@@ -307,4 +307,20 @@
         <item quantity="one">Essai gratuit : %1$d jour restant</item>
         <item quantity="other">Essai gratuit : %1$d jours restants</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">Les messages peuvent arriver en retard, ce t&#233;l&#233;phone limite l\'application</string>
+    <string name="battery_banner_fix">Corriger</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Messages en retard</string>
+    <string name="battery_help_intro">Pour économiser la batterie, Android peut mettre les applications en veille. Quand cela arrive à MindTheClub, les messages arrivent en retard ou seulement quand tu ouvres l\'application. Les étapes ci-dessous corrigent cela sur ton téléphone.</string>
+    <string name="battery_help_open">Ouvrir les réglages</string>
+    <string name="battery_help_note">Les noms changent selon le modèle et la version d\'Android. Cherche tout ce qui concerne la batterie, l\'activité en arrière-plan, le démarrage automatique ou les applications en veille.</string>
+    <string name="battery_steps_samsung">1. Paramètres, Batterie, Limites d\'utilisation en arrière-plan\n2. Ouvre Applications en veille profonde et retire MindTheClub si elle y figure\n3. Ouvre Applications jamais en veille et ajoute MindTheClub\n4. Paramètres, Applications, MindTheClub, Batterie, choisis Sans restriction</string>
+    <string name="battery_steps_xiaomi">1. Paramètres, Applications, Gérer les applications, MindTheClub\n2. Active le Démarrage automatique\n3. Sur la même page, ouvre Économiseur de batterie et choisis Aucune restriction\n4. Dans les applications récentes, maintiens MindTheClub et touche le cadenas</string>
+    <string name="battery_steps_oppo">1. Paramètres, Batterie, Gestion de la batterie des applications\n2. Trouve MindTheClub et autorise l\'exécution en arrière-plan\n3. Paramètres, Applications, Gestionnaire de démarrage, active MindTheClub</string>
+    <string name="battery_steps_vivo">1. Paramètres, Batterie, Gestion de la consommation en arrière-plan\n2. Autorise MindTheClub à fonctionner en arrière-plan\n3. Paramètres, Plus de paramètres, Applications, Démarrage automatique, active MindTheClub</string>
+    <string name="battery_steps_huawei">1. Paramètres, Batterie, Lancement des applications\n2. Trouve MindTheClub et désactive Gérer automatiquement\n3. Active Lancement automatique, Lancement secondaire et Exécution en arrière-plan</string>
+    <string name="battery_steps_generic">1. Paramètres, Applications, MindTheClub, Batterie\n2. Choisis Sans restriction, ou retire les limitations que tu trouves\n3. Si ton téléphone a un gestionnaire de démarrage automatique, autorise MindTheClub là aussi</string>
 </resources>

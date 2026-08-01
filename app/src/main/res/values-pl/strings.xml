@@ -307,4 +307,20 @@
         <item quantity="many">Okres próbny: pozostało %1$d dni</item>
         <item quantity="other">Okres próbny: pozostało %1$d dnia</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">Wiadomo&#347;ci mog&#261; przychodzi&#263; z op&#243;&#378;nieniem, ten telefon ogranicza aplikacj&#281;</string>
+    <string name="battery_banner_fix">Napraw</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Opóźnione wiadomości</string>
+    <string name="battery_help_intro">Aby oszczędzać energię, Android może usypiać aplikacje. Gdy zdarzy się to MindTheClub, wiadomości przychodzą z opóźnieniem albo dopiero po otwarciu aplikacji. Poniższe kroki to naprawiają na Twoim telefonie.</string>
+    <string name="battery_help_open">Otwórz ustawienia</string>
+    <string name="battery_help_note">Nazwy różnią się zależnie od modelu i wersji Androida. Szukaj wszystkiego, co dotyczy baterii, aktywności w tle, autostartu lub uśpionych aplikacji.</string>
+    <string name="battery_steps_samsung">1. Ustawienia, Bateria, Limity używania w tle\n2. Otwórz Aplikacje w głębokim uśpieniu i usuń MindTheClub, jeśli tam jest\n3. Otwórz Aplikacje nigdy nieusypiane i dodaj MindTheClub\n4. Ustawienia, Aplikacje, MindTheClub, Bateria, wybierz Bez ograniczeń</string>
+    <string name="battery_steps_xiaomi">1. Ustawienia, Aplikacje, Zarządzaj aplikacjami, MindTheClub\n2. Włącz Autostart\n3. Na tej samej stronie otwórz Oszczędzanie baterii i wybierz Bez ograniczeń\n4. W ostatnich aplikacjach przytrzymaj MindTheClub i dotknij kłódki</string>
+    <string name="battery_steps_oppo">1. Ustawienia, Bateria, Zarządzanie baterią aplikacji\n2. Znajdź MindTheClub i zezwól na działanie w tle\n3. Ustawienia, Aplikacje, Menedżer autostartu, włącz MindTheClub</string>
+    <string name="battery_steps_vivo">1. Ustawienia, Bateria, Zarządzanie zużyciem energii w tle\n2. Zezwól MindTheClub na działanie w tle\n3. Ustawienia, Więcej ustawień, Aplikacje, Autostart, włącz MindTheClub</string>
+    <string name="battery_steps_huawei">1. Ustawienia, Bateria, Uruchamianie aplikacji\n2. Znajdź MindTheClub i wyłącz Zarządzaj automatycznie\n3. Włącz Uruchamianie automatyczne, Uruchamianie pomocnicze i Działanie w tle</string>
+    <string name="battery_steps_generic">1. Ustawienia, Aplikacje, MindTheClub, Bateria\n2. Wybierz Bez ograniczeń lub usuń znalezione ograniczenia\n3. Jeśli telefon ma menedżera autostartu, zezwól tam również na MindTheClub</string>
 </resources>

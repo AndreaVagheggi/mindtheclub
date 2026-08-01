@@ -124,6 +124,13 @@
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
         <activity
+            android:name=".views.BatteryHelpActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/MindTheClub"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <activity
             android:name=".views.SubscriptionActivity"
             android:exported="false"
             android:launchMode="singleTop"

@@ -9,6 +9,7 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.room.Transaction
 import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteFile
 import com.bolimot.mindtheclub.functions.getPeerDao
@@ -137,7 +138,11 @@ class MessageRepository(private val messageDao: MessageDao) {
                     // Incoming messages get their local reception time stamped here,
                     // the single choke point every receive path goes through.
                     val toStore = if (messageIn && message.receivedAt == null) {
-                        message.copy(receivedAt = System.currentTimeMillis())
+                        val now = System.currentTimeMillis()
+                        // How long the wake-up actually took: the signal that
+                        // reveals a device throttling our background work.
+                        DeliveryHealth.recordIncoming(message.date, now, App.context())
+                        message.copy(receivedAt = now)
                     } else {
                         message
                     }

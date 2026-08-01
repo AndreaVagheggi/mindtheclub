@@ -305,4 +305,20 @@
         <item quantity="one">Prova gratuita: %1$d giorno rimasto</item>
         <item quantity="other">Prova gratuita: %1$d giorni rimasti</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">I messaggi possono arrivare in ritardo, questo telefono sta limitando l\'app</string>
+    <string name="battery_banner_fix">Sistema</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Ritardi nei messaggi</string>
+    <string name="battery_help_intro">Per risparmiare batteria, Android puo mettere a dormire le app. Quando succede a MindTheClub, i messaggi arrivano in ritardo o solo quando apri l\'app. I passaggi qui sotto lo sistemano sul tuo telefono.</string>
+    <string name="battery_help_open">Apri impostazioni</string>
+    <string name="battery_help_note">I nomi cambiano da modello a modello e tra versioni di Android. Cerca qualsiasi voce che parli di batteria, attivita in background, avvio automatico o app in sospensione.</string>
+    <string name="battery_steps_samsung">1. Impostazioni, Batteria, Limiti di utilizzo in background\n2. Apri App in sospensione profonda e togli MindTheClub se e presente\n3. Apri App mai in sospensione e aggiungi MindTheClub\n4. Impostazioni, App, MindTheClub, Batteria, scegli Senza restrizioni</string>
+    <string name="battery_steps_xiaomi">1. Impostazioni, App, Gestisci app, MindTheClub\n2. Attiva Avvio automatico\n3. Nella stessa pagina apri Risparmio batteria e scegli Nessuna restrizione\n4. Nelle app recenti, tieni premuto MindTheClub e tocca il lucchetto</string>
+    <string name="battery_steps_oppo">1. Impostazioni, Batteria, Gestione batteria app\n2. Trova MindTheClub e consenti l\'esecuzione in background\n3. Impostazioni, App, Gestione avvio, attiva MindTheClub</string>
+    <string name="battery_steps_vivo">1. Impostazioni, Batteria, Gestione consumo in background\n2. Consenti a MindTheClub di funzionare in background\n3. Impostazioni, Altre impostazioni, Applicazioni, Avvio automatico, attiva MindTheClub</string>
+    <string name="battery_steps_huawei">1. Impostazioni, Batteria, Avvio app\n2. Trova MindTheClub e disattiva Gestisci automaticamente\n3. Attiva Avvio automatico, Avvio secondario ed Esecuzione in background</string>
+    <string name="battery_steps_generic">1. Impostazioni, App, MindTheClub, Batteria\n2. Scegli Senza restrizioni, oppure togli le limitazioni che trovi\n3. Se il telefono ha una gestione avvio automatico, abilita MindTheClub anche li</string>
 </resources>

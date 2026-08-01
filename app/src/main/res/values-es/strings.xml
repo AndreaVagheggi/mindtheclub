@@ -308,4 +308,20 @@
         <item quantity="one">Prueba gratuita: queda %1$d día</item>
         <item quantity="other">Prueba gratuita: quedan %1$d días</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">Los mensajes pueden llegar tarde, este tel&#233;fono est&#225; limitando la app</string>
+    <string name="battery_banner_fix">Corregir</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Mensajes con retraso</string>
+    <string name="battery_help_intro">Para ahorrar batería, Android puede poner las aplicaciones a dormir. Cuando le pasa a MindTheClub, los mensajes llegan tarde o solo cuando abres la app. Los pasos de abajo lo solucionan en tu teléfono.</string>
+    <string name="battery_help_open">Abrir ajustes</string>
+    <string name="battery_help_note">Los nombres cambian según el modelo y la versión de Android. Busca cualquier opción sobre batería, actividad en segundo plano, inicio automático o aplicaciones en suspensión.</string>
+    <string name="battery_steps_samsung">1. Ajustes, Batería, Límites de uso en segundo plano\n2. Abre Aplicaciones en suspensión profunda y quita MindTheClub si aparece\n3. Abre Aplicaciones que nunca se suspenden y añade MindTheClub\n4. Ajustes, Aplicaciones, MindTheClub, Batería, elige Sin restricciones</string>
+    <string name="battery_steps_xiaomi">1. Ajustes, Aplicaciones, Gestionar aplicaciones, MindTheClub\n2. Activa Inicio automático\n3. En la misma página abre Ahorro de batería y elige Sin restricciones\n4. En aplicaciones recientes, mantén pulsada MindTheClub y toca el candado</string>
+    <string name="battery_steps_oppo">1. Ajustes, Batería, Gestión de batería de aplicaciones\n2. Busca MindTheClub y permite la ejecución en segundo plano\n3. Ajustes, Aplicaciones, Gestor de inicio, activa MindTheClub</string>
+    <string name="battery_steps_vivo">1. Ajustes, Batería, Gestión del consumo en segundo plano\n2. Permite que MindTheClub funcione en segundo plano\n3. Ajustes, Más ajustes, Aplicaciones, Inicio automático, activa MindTheClub</string>
+    <string name="battery_steps_huawei">1. Ajustes, Batería, Inicio de aplicaciones\n2. Busca MindTheClub y desactiva Gestionar automáticamente\n3. Activa Inicio automático, Inicio secundario y Ejecutar en segundo plano</string>
+    <string name="battery_steps_generic">1. Ajustes, Aplicaciones, MindTheClub, Batería\n2. Elige Sin restricciones, o quita las limitaciones que encuentres\n3. Si tu teléfono tiene un gestor de inicio automático, permite MindTheClub también ahí</string>
 </resources>

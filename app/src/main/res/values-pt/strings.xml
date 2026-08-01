@@ -307,4 +307,20 @@
         <item quantity="one">Teste grátis: falta %1$d dia</item>
         <item quantity="other">Teste grátis: faltam %1$d dias</item>
     </plurals>
+
+    <!-- Battery throttling banner on the main screen -->
+    <string name="battery_banner_text">As mensagens podem chegar atrasadas, este telefone est&#225; limitando o app</string>
+    <string name="battery_banner_fix">Corrigir</string>
+
+    <!-- Per brand instructions for background delivery -->
+    <string name="battery_help_title">Mensagens atrasadas</string>
+    <string name="battery_help_intro">Para economizar bateria, o Android pode colocar os aplicativos para dormir. Quando isso acontece com o MindTheClub, as mensagens chegam atrasadas ou só quando você abre o app. Os passos abaixo resolvem isso no seu telefone.</string>
+    <string name="battery_help_open">Abrir configurações</string>
+    <string name="battery_help_note">Os nomes mudam conforme o modelo e a versão do Android. Procure qualquer opção sobre bateria, atividade em segundo plano, inicialização automática ou aplicativos em suspensão.</string>
+    <string name="battery_steps_samsung">1. Configurações, Bateria, Limites de uso em segundo plano\n2. Abra Aplicativos em suspensão profunda e remova o MindTheClub se estiver lá\n3. Abra Aplicativos que nunca suspendem e adicione o MindTheClub\n4. Configurações, Aplicativos, MindTheClub, Bateria, escolha Sem restrições</string>
+    <string name="battery_steps_xiaomi">1. Configurações, Aplicativos, Gerenciar aplicativos, MindTheClub\n2. Ative a Inicialização automática\n3. Na mesma página abra Economia de bateria e escolha Sem restrições\n4. Nos aplicativos recentes, segure o MindTheClub e toque no cadeado</string>
+    <string name="battery_steps_oppo">1. Configurações, Bateria, Gerenciamento de bateria dos aplicativos\n2. Encontre o MindTheClub e permita a execução em segundo plano\n3. Configurações, Aplicativos, Gerenciador de inicialização, ative o MindTheClub</string>
+    <string name="battery_steps_vivo">1. Configurações, Bateria, Gerenciamento de consumo em segundo plano\n2. Permita que o MindTheClub funcione em segundo plano\n3. Configurações, Mais configurações, Aplicativos, Inicialização automática, ative o MindTheClub</string>
+    <string name="battery_steps_huawei">1. Configurações, Bateria, Inicialização de aplicativos\n2. Encontre o MindTheClub e desative Gerenciar automaticamente\n3. Ative Inicialização automática, Inicialização secundária e Executar em segundo plano</string>
+    <string name="battery_steps_generic">1. Configurações, Aplicativos, MindTheClub, Bateria\n2. Escolha Sem restrições, ou remova as limitações que encontrar\n3. Se o seu telefone tiver um gerenciador de inicialização, permita o MindTheClub lá também</string>
 </resources>
