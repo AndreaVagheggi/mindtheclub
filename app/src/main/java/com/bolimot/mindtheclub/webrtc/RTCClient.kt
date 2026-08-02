@@ -1581,34 +1581,46 @@ class RTCClient private constructor(
         MessageProcessor.enqueueMessage(remoteUserId, receivedMessage)
     }
 
+    /**
+     * Serialises sends on this client's data channel. Several dispatch workers
+     * can share one RTCClient, and without this each of them queued a chunk
+     * believing on its own that the buffer threshold was respected, so the
+     * queue grew to a multiple of the intended size.
+     */
+    private val sendMutex = Mutex()
+
     suspend fun sendData(data: ByteArray): Boolean {
         try {
-            return dataChannel?.let { channel ->
-                var stateAttempts = 0
-                while (channel.state() == DataChannel.State.CONNECTING && stateAttempts < 10) {
-                    debugLine("sendData", "Channel is CONNECTING, waiting for OPEN... attempt $stateAttempts")
-                    delay(100)
-                    stateAttempts++
-                }
+            return sendMutex.withLock {
+                dataChannel?.let { channel ->
+                    var stateAttempts = 0
+                    while (channel.state() == DataChannel.State.CONNECTING && stateAttempts < 10) {
+                        debugLine("sendData", "Channel is CONNECTING, waiting for OPEN... attempt $stateAttempts")
+                        delay(100)
+                        stateAttempts++
+                    }
 
-                if (channel.state() == DataChannel.State.OPEN) {
-                    val dataToSend = java.nio.ByteBuffer.wrap(data)
+                    if (channel.state() == DataChannel.State.OPEN) {
+                        val dataToSend = java.nio.ByteBuffer.wrap(data)
 
-                    var adaptiveDelay = 15L
-                    var attempts = 0
+                        var adaptiveDelay = 15L
+                        var attempts = 0
 
 
-                    val maxBufferSize = 200000
+                        val maxBufferSize = 200000
 
-                    val bufferTimeout = 15000L
-                    val startTime = System.currentTimeMillis()
-                    // -----------------------------
+                        val bufferTimeout = 15000L
+                        val startTime = System.currentTimeMillis()
+                        // -----------------------------
 
-                    debugLine("sendData", "Initial buffered amount: ${channel.bufferedAmount()}")
+                        debugLine("sendData", "Initial buffered amount: ${channel.bufferedAmount()}")
 
-                    if (channel.send(DataChannel.Buffer(dataToSend, true))) {
-                        debugLine("sendData", "Buffered amount after sending: ${channel.bufferedAmount()}")
-
+                        // Drain first, queue after. Queueing first meant every
+                        // chunk landed on top of an already full buffer, and a
+                        // buffer that had stopped draining kept being fed while
+                        // we waited on it. On a low bandwidth path that standing
+                        // queue is what starves the connectivity checks and gets
+                        // the connection declared dead.
                         while (channel.bufferedAmount() > maxBufferSize) {
 
                             if (System.currentTimeMillis() - startTime > bufferTimeout) {
@@ -1623,22 +1635,24 @@ class RTCClient private constructor(
                             attempts++
                         }
 
-                        debugLine("sendData", "Data sent successfully after $attempts attempts with final buffered amount: ${channel.bufferedAmount()}")
-                        true
+                        if (channel.send(DataChannel.Buffer(dataToSend, true))) {
+                            debugLine("sendData", "Data sent successfully after $attempts attempts with final buffered amount: ${channel.bufferedAmount()}")
+                            true
+                        } else {
+                            debugLine("sendData", "Send failed")
+                            isIceFault = true
+                            false
+                        }
                     } else {
-                        debugLine("sendData", "Send failed")
+                        debugLine("sendData", "Cannot send data, data channel is: ${channel.state()}")
                         isIceFault = true
                         false
                     }
-                } else {
-                    debugLine("sendData", "Cannot send data, data channel is: ${channel.state()}")
+                } ?: run {
+                    debugLine("sendData", "Data channel is null")
                     isIceFault = true
                     false
                 }
-            } ?: run {
-                debugLine("sendData", "Data channel is null")
-                isIceFault = true
-                false
             }
         } catch (ex: Exception) {
             debugLine("sendData", "Send Data failed with Exception: ${ex.message}")
