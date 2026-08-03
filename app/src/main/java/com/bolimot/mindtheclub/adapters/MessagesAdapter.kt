@@ -479,17 +479,24 @@ class MessagesAdapter(private val listener: OnItemClickListener,
     }
 
     fun updateMessageStatus(messageId: String, newStatus: String) {
-        val index = snapshot().indexOfFirst { it?.messageId == messageId }
+        // Read through the snapshot, not getItem(). getItem() registers an
+        // access hint and moves Paging's anchorPosition to that index. A read
+        // receipt for an old message sits far up the list, so the next refresh
+        // (any Message row change invalidates the PagingSource) would reload
+        // the window around that old index and make the chat jump.
+        val items = snapshot()
+        val index = items.indexOfFirst { it?.messageId == messageId }
         if (index != -1) {
-            getItem(index)?.status = newStatus
+            items[index]?.status = newStatus
             notifyItemChanged(index, PAYLOAD_STATUS)
         }
     }
 
     fun updateMessageReaction(messageId: String, emoji: String){
-        val index = snapshot().indexOfFirst { it?.messageId == messageId }
+        val items = snapshot()
+        val index = items.indexOfFirst { it?.messageId == messageId }
         if (index != -1) {
-            getItem(index)?.reaction = emoji
+            items[index]?.reaction = emoji
             notifyItemChanged(index, PAYLOAD_REACTION)
         }
     }
