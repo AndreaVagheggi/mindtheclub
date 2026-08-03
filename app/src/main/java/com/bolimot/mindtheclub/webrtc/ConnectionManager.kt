@@ -29,6 +29,14 @@ class ConnectionManager {
 
     private val lastConnectFailure = ConcurrentHashMap<String, Long>()
 
+    // Newest wins among queued data connections. Every dataCall carries a fresh
+    // signalling room id and the other side abandons that room after
+    // PEER_TIMEOUT_MS, so a request overtaken while waiting on the mutex can only
+    // join a room nobody is in any more. The mutex is FIFO, which without this
+    // made us always process the OLDEST, and therefore the deadest, room id: on
+    // 3 Aug it left the two phones one or more rooms apart for ten minutes.
+    private val latestDataChannelId = ConcurrentHashMap<String, String>()
+
     private val dispatchContentHint = ConcurrentHashMap<String, String>()
 
     fun setDispatchContentHint(remoteUserId: String, contentKey: String) {
@@ -115,7 +123,18 @@ class ConnectionManager {
         val mutex = webRTConnectMutexes.computeIfAbsent(remoteUserId) { Mutex() }
         this.remoteUserId = remoteUserId
 
+        // Registered before queueing on the mutex, so a request arriving later
+        // supersedes the ones already waiting. Calls are deliberately excluded:
+        // they carry ManagedTelecom state that an early return would leave stuck
+        // in PENDING, and they never produce the burst of room ids this guards.
+        if (dataOnly) latestDataChannelId[remoteUserId] = channelId
+
         return mutex.withLock {
+
+            if (dataOnly && latestDataChannelId[remoteUserId] != channelId) {
+                debugLine(tag, "Superseded while queued: channelId=$channelId for $remoteUserId is stale, skipping")
+                return@withLock RTCClientResult.RTCClientGeneralFailure
+            }
 
             // The cooldown throttles OUR attempts to reach a peer that looks offline.
             // It must never gate an answer: initiator = false means the peer contacted

@@ -72,6 +72,7 @@ import com.bolimot.mindtheclub.voip.CallService
 import com.bolimot.mindtheclub.voip.receiveCallEventFromPeer
 import com.bolimot.mindtheclub.voip.shutdownRTC
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
+import com.bolimot.mindtheclub.works.DispatchWorker
 import com.bolimot.mindtheclub.works.contentTag
 import com.bolimot.mindtheclub.works.submitDispatchWorker
 import com.bolimot.mindtheclub.works.submitSendMessageWorker
@@ -352,6 +353,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             Notify.SEND_ME -> {
                 debugLine(tag, "I am sending a message: $channelId to requester $fromUserId")
+                // The requester is demonstrably awake, it just asked us for this
+                // message. A cooldown armed moments ago by a failed attempt would
+                // otherwise make the dispatch below defer for up to 45 seconds
+                // against a peer that is sitting there waiting.
+                DispatchWorker.clearUnreachableCooldown(applicationContext, fromUserId)
                 channelId?.let { payload ->
                     appScope.launch {
                         // Optional "#low,high" suffix (same format as someMissing): the

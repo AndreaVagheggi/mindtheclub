@@ -31,7 +31,7 @@ class DispatchWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
-    private val sharedPreferences = context.getSharedPreferences("DispatchWorkerPrefs", Context.MODE_PRIVATE)
+    private val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private lateinit var internalStateKey: String
     private lateinit var messageKey: String
     private lateinit var attemptCountKey: String
@@ -52,6 +52,29 @@ class DispatchWorker(
         private const val TARGET_COOLDOWN_MS = 15_000L
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "DispatchWorkerChannel"
+        private const val PREFS_NAME = "DispatchWorkerPrefs"
+
+        /**
+         * Drops the unreachable cooldown for [peerId].
+         *
+         * The cooldown throttles our attempts towards a peer that stayed silent,
+         * and until now only expiry or a successful delivery could lift it. But an
+         * FCM coming from that peer proves it is awake and its process is running,
+         * which is stronger evidence than the silence that armed the cooldown in
+         * the first place. Without this a sendMe landing right after a failed cycle
+         * was refused by our own throttle: on 3 Aug that cost 61 seconds while the
+         * peer was actively asking for the message.
+         */
+        fun clearUnreachableCooldown(context: Context, peerId: String) {
+            if (peerId.isEmpty()) return
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (prefs.getLong("offline_$peerId", 0L) == 0L) return
+            prefs.edit {
+                remove("offline_$peerId")
+                remove("cooldown_$peerId")
+            }
+            debugLine2("clearUnreachableCooldown", "Peer $peerId proved alive, cooldown cleared")
+        }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {

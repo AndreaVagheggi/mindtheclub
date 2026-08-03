@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
@@ -23,10 +24,20 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.bolimot.mindtheclub.functions.getInboxDao
+import java.util.concurrent.atomic.AtomicInteger
 
 class DataSyncService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val tag = "DataSyncService"
+
+    // Several dataCall wake-ups can land while one sync is still running, each one
+    // arriving as its own onStartCommand. stopSelf() from whichever finishes first
+    // used to tear the service down under the others: on 3 Aug the service was
+    // destroyed one second after a second attempt had started, leaving it to run
+    // with no foreground protection at all.
+    private val activeJobs = AtomicInteger(0)
+
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         const val ACTION_START_SYNC = "com.bolimot.mindtheclub.ACTION_START_SYNC"
@@ -40,6 +51,16 @@ class DataSyncService : Service() {
         // Bounded so a stale unprocessable inbox row can never pin the service.
         private const val ASSEMBLY_GRACE_MS = 120_000L
         private const val MAX_SYNC_MS = 10 * 60 * 1000L
+        // A foreground service does NOT keep the CPU awake. Without this lock the
+        // device suspends between FCM wake-ups and every coroutine timer in the
+        // connection path stops advancing, because delay() runs on a monotonic
+        // clock that does not count suspend time. Measured on 3 Aug: a 20s ICE
+        // budget took 216s and a 45s peer timeout took 331s, so this device joined
+        // the signalling room minutes after the sender had abandoned it. The
+        // timeout is only a leak guard, the lock is released as soon as the last
+        // job ends; it must outlive MAX_SYNC_MS or a long transfer would lose the
+        // CPU halfway through.
+        private const val WAKE_LOCK_TIMEOUT_MS = MAX_SYNC_MS + 60_000L
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -50,8 +71,13 @@ class DataSyncService : Service() {
             val remoteUserId = intent.getStringExtra(EXTRA_REMOTE_USER_ID)
 
             if (channelId != null && remoteUserId != null) {
-                startForegroundSync(channelId, remoteUserId)
-                startWebRTC(channelId, remoteUserId)
+                // When the foreground promotion is refused the work has already been
+                // handed to WorkManager, so starting it here too would run the same
+                // sync twice against the same peer.
+                if (startForegroundSync(channelId, remoteUserId)) {
+                    acquireWakeLock()
+                    startWebRTC(channelId, remoteUserId)
+                }
             } else {
                 debugLine(tag, "Missing extras, stopping.")
                 stopSelf()
@@ -60,7 +86,8 @@ class DataSyncService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startForegroundSync(rtcChannelId: String, remoteUserId: String) {
+    /** Returns false when the service could not be promoted and the work was handed to WorkManager. */
+    private fun startForegroundSync(rtcChannelId: String, remoteUserId: String): Boolean {
         val channelId = "sync_channel"
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -101,8 +128,8 @@ class DataSyncService : Service() {
             } catch (e: ForegroundServiceStartNotAllowedException) {
                 debugLine(tag, "FGS blocked (BOOT_COMPLETED context), falling back to WorkManager: ${e.message}")
                 DataSyncWorker.enqueue(applicationContext, rtcChannelId, remoteUserId)
-                stopSelf()
-                return
+                if (activeJobs.get() == 0) stopSelf()
+                return false
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, 0)
@@ -110,15 +137,18 @@ class DataSyncService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
         debugLine(tag, "NOTIF_FIRED id=$NOTIFICATION_ID source=DataSyncService peer=$remoteUserId")
+        return true
     }
 
     private fun startWebRTC(channelId: String, remoteUserId: String) {
+        // Counted before the launch, so a second onStartCommand arriving right now
+        // can never observe an empty queue and stop the service from under us.
+        activeJobs.incrementAndGet()
         serviceScope.launch {
             try {
                 val existing = ConnectionManager.instance.getExistingClient(remoteUserId)
                 if (existing != null && existing.rtcClient.isConnected() && existing.rtcClient.isDataChannelOpen()) {
                     debugLine(tag, "Already connected to $remoteUserId with open data channel. Ignoring new dataCall.")
-                    stopSelf()
                     return@launch
                 }
 
@@ -139,15 +169,52 @@ class DataSyncService : Service() {
                     debugLine(tag, "WebRTC Connected. Monitoring data channel activity.")
                     awaitTransferComplete(remoteUserId)
                 } else {
-                    debugLine(tag, "WebRTC Failed to connect ($result). Stopping service immediately.")
+                    debugLine(tag, "WebRTC Failed to connect ($result).")
                 }
 
             } catch (e: Exception) {
                 debugLine(tag, "WebRTC Exception: ${e.message}")
             } finally {
-                stopSelf()
+                val remaining = activeJobs.decrementAndGet()
+                if (remaining <= 0) {
+                    releaseWakeLock()
+                    stopSelf()
+                } else {
+                    debugLine(tag, "Job finished, $remaining still running, keeping service alive")
+                }
             }
         }
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        try {
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "MindTheClub:DataSync"
+            ).apply {
+                setReferenceCounted(false)
+                acquire(WAKE_LOCK_TIMEOUT_MS)
+            }
+            debugLine(tag, "Wake lock acquired")
+        } catch (e: Exception) {
+            debugLine(tag, "Wake lock acquire failed: ${e.message}")
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                    debugLine(tag, "Wake lock released")
+                }
+            }
+        } catch (e: Exception) {
+            debugLine(tag, "Wake lock release failed: ${e.message}")
+        }
+        wakeLock = null
     }
 
     private suspend fun awaitTransferComplete(remoteUserId: String) {
@@ -219,6 +286,9 @@ class DataSyncService : Service() {
     override fun onDestroy() {
         debugLine(tag, "NOTIF_CLEARED id=$NOTIFICATION_ID source=DataSyncService")
         debugLine(tag, "Service destroyed")
+        // Belt and braces: the normal release happens when the last job ends, this
+        // covers a destroy coming from the system instead.
+        releaseWakeLock()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
