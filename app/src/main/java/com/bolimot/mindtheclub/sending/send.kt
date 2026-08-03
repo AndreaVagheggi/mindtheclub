@@ -217,7 +217,12 @@ fun sendMessageWork(
     }
 
     val contentResolver = context.contentResolver
-    val chunkSize = 100000
+    // Raw bytes per chunk. On the wire each one becomes about 4/3 of this after
+    // Base64, plus the Outbox metadata, so 40 KB here is roughly 55 KB queued.
+    // Kept small on purpose: a relayed path has a fraction of the bandwidth of a
+    // direct one, and large chunks built a standing send queue there that
+    // starved the connectivity checks and had the connection declared dead.
+    val chunkSize = 40000
     val maxChunksPerTable = 100
     var tableCounter = 1
 

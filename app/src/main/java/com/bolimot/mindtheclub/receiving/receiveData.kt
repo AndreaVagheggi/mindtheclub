@@ -75,6 +75,21 @@ suspend fun receiveData(remoteUserId: String,
         debugLine("receiveData", "Received messageId: ${newMessage.messageId} Sequence No.: ${newMessage.sequenceNo}")
     }
 
+    // Chunks are matched by (contentKey, sequenceNo) alone, so a transfer that
+    // gets re-split with a different chunk size would keep the already stored
+    // chunks of the old split and mix the two, producing a silently corrupt
+    // file. A totalNo that no longer matches is the signal that this happened:
+    // the partial set is worthless, drop it and rebuild from this chunk on.
+    val storedTotal = inboxDao.getTotalChunksByContent(newMessage.contentKey)
+    if (storedTotal > 0 && storedTotal != newMessage.totalNo) {
+        val dropped = inboxDao.deleteByContent(newMessage.contentKey)
+        debugLine(
+            "receiveData",
+            "Chunking changed for ${newMessage.contentKey} (stored totalNo=$storedTotal, " +
+                    "incoming=${newMessage.totalNo}): dropped $dropped stale chunk(s)"
+        )
+    }
+
     if(insertIfNotExists(newMessage, inboxDao)) {
         if (newMessage.sequenceNo == 1 && newMessage.totalNo > 1) {
             insertReceivingPlaceholder(newMessage)

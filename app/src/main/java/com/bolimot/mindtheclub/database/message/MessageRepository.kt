@@ -223,6 +223,11 @@ class MessageRepository(private val messageDao: MessageDao) {
     private fun deleteLinkedFiles(message: Message): Boolean {
         var result = true
 
+        // A profile message points at "<peerId>.jpg", the file the contact's
+        // avatar is still using: it belongs to the peer, not to the message.
+        // Deleting the message must not take the avatar with it.
+        if (message.type == Type.PROFILE) return true
+
         try {
             if (message.type != Type.MULTIPLE_IMAGES) {
                 val uriString = message.uri
