@@ -109,16 +109,26 @@
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintEnd_toEndOf="parent" />
 
+                        <!-- Horizontal chain: each button takes exactly half the card.
+                             Both used to be 0dp with a single horizontal constraint, which
+                             ConstraintLayout cannot resolve, so each grew to its natural text
+                             width from its own edge and the two overlapped as soon as the
+                             translated labels got long (it, de, fr). layout_weight was left
+                             over from a LinearLayout and did nothing here. -->
                         <Button
                             android:id="@+id/view"
                             style="?attr/borderlessButtonStyle"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:maxLines="2"
                             android:textAllCaps="false"
                             app:layout_constraintTop_toBottomOf="@+id/divider"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toStartOf="@+id/add"
                             android:layout_marginStart="8dp"
                             android:text="@string/view_profile"
                             android:textColor="@color/primary_dark"
@@ -130,10 +140,14 @@
                             style="?attr/borderlessButtonStyle"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:maxLines="2"
                             android:textAllCaps="false"
                             app:layout_constraintTop_toBottomOf="@+id/divider"
                             app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintStart_toEndOf="@+id/view"
                             app:layout_constraintEnd_toEndOf="parent"
                             android:layout_marginEnd="8dp"
                             android:text="@string/add_contact"

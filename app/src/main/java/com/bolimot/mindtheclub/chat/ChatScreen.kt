@@ -2679,7 +2679,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 }
             }
         }
-        messagesAdapter.addOnPagesUpdatedListener(forceLoadListener)
+        // Registered once. It used to be added twice, which made the forced page
+        // loading run at double rate and, worse, left it registered for ever:
+        // removeOnPagesUpdatedListener drops a single registration per call.
         messagesAdapter.addOnPagesUpdatedListener(forceLoadListener)
     }
 

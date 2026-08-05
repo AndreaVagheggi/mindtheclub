@@ -25,11 +25,15 @@ interface MessageDao{
         val originalSenderId: String
     )
 
+    // uid breaks ties on date. Paging addresses pages by absolute offset, so the
+    // ordering has to be total: with date alone SQLite is free to return equally
+    // dated rows in a different order from one LIMIT/OFFSET query to the next, and
+    // a row at a page boundary then gets served twice or skipped.
     @Query("""
     SELECT * FROM Message
     WHERE (fromUserId = :myUserId AND toUserId = :remoteUserId)
        OR (fromUserId = :remoteUserId AND toUserId = :myUserId)
-     ORDER BY date DESC
+     ORDER BY date DESC, uid DESC
     """)
     fun getMessagesPagingSource(myUserId: String, remoteUserId: String): PagingSource<Int, Message>
 
@@ -88,7 +92,7 @@ interface MessageDao{
     WHERE ((fromUserId = :myUserId AND toUserId = :remoteUserId) 
        OR (fromUserId = :remoteUserId AND toUserId = :myUserId))
     AND text LIKE '%' || :query || '%'
-    ORDER BY date DESC
+    ORDER BY date DESC, uid DESC
 """)
     fun getFilteredMessagesPagingSource(
         myUserId: String,
