@@ -175,11 +175,19 @@
 
     </androidx.cardview.widget.CardView>
 
+    <!--
+        The elevation keeps the controls above the 2dp layer that appears when the peer
+        turns their camera off: the full screen background would otherwise paint straight
+        over them, leaving the call with no reachable buttons at all. The 4dp and 6dp on
+        the children below are relative to this container, so they cannot do that job.
+        Stays under the 10dp hold and reconnecting overlays, which must cover everything.
+    -->
     <LinearLayout
         android:id="@+id/bottom_controls_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:baselineAligned="false"
+        android:elevation="8dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="24dp"

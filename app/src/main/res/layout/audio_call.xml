@@ -117,10 +117,18 @@
 
     </FrameLayout>
 
+    <!--
+        Kept above the 2dp layer used by the profile picture and any full screen art, so
+        nothing can ever paint over the controls and leave the call with no reachable
+        buttons. The 4dp and 6dp on the children below are relative to this container, so
+        they cannot do that job. Stays under the 10dp hold and reconnecting overlays,
+        which must cover everything.
+    -->
     <LinearLayout
         android:id="@+id/bottom_controls_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:elevation="8dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="24dp"
