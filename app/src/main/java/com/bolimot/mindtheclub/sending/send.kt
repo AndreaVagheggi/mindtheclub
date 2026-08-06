@@ -53,7 +53,11 @@ fun sendMessage(message: MessageData) {
     }
     // First real peer message starts the 30-day trial clock (activation-based
     // trial: downloads that never engage cost nothing and are never gated).
-    TrialManager.markActivated(App.context())
+    // Contact acquisition and profile broadcasts also travel through here as
+    // Type.PROFILE messages: that housekeeping must not start the clock.
+    if (TrialManager.startsTrial(message.type)) {
+        TrialManager.markActivated(App.context())
+    }
     if(message.toUserId.startsWith("group")){
         sendGroupMessage(message)
     } else {

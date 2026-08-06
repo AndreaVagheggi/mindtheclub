@@ -4,6 +4,7 @@ import android.content.Context
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
+import com.bolimot.mindtheclub.tools.Type
 import java.util.concurrent.TimeUnit
 
 /**
@@ -23,6 +24,30 @@ object TrialManager {
     const val REMINDER_DAYS = 7
 
     enum class State { NOT_STARTED, ACTIVE, EXPIRED }
+
+    /**
+     * Message types the user actually authored. Deliberately an allow-list: contact
+     * acquisition and profile updates exchange Type.PROFILE messages under the hood,
+     * and that housekeeping traffic must never start the clock. Anything not listed
+     * here (PROFILE, REACTION, and the locally generated MISSED_CALL / GROUP entries)
+     * is system traffic as far as the trial is concerned.
+     */
+    private val ACTIVATING_TYPES = setOf(
+        Type.TEXT,
+        Type.IMAGE,
+        Type.VIDEO,
+        Type.MULTIPLE_IMAGES,
+        Type.STICKER,
+        Type.GIF,
+        Type.WEB,
+        Type.AUDIO,
+        Type.FILE,
+        Type.CONTACT
+    )
+
+    /** True when sending this message type counts as the user engaging with the app. */
+    fun startsTrial(messageType: String?): Boolean =
+        messageType != null && ACTIVATING_TYPES.contains(messageType)
 
     /** Called on the first real outgoing message. Idempotent. */
     fun markActivated(context: Context) {
