@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
+import com.bolimot.mindtheclub.BuildConfig
+import com.bolimot.mindtheclub.functions.debugLine
 
 class CustomLinearLayoutManager(context: Context) : LinearLayoutManager(context) {
 
@@ -11,9 +13,21 @@ class CustomLinearLayoutManager(context: Context) : LinearLayoutManager(context)
         return true
     }
 
+    override fun scrollToPosition(position: Int) {
+        logScroll("scrollToPosition", position)
+        super.scrollToPosition(position)
+    }
+
+    override fun scrollToPositionWithOffset(position: Int, offset: Int) {
+        logScroll("scrollToPositionWithOffset(offset=$offset)", position)
+        super.scrollToPositionWithOffset(position, offset)
+    }
+
     override fun smoothScrollToPosition(
         recyclerView: RecyclerView, state: RecyclerView.State?, position: Int
     ) {
+        logScroll("smoothScrollToPosition", position)
+
         val smoothScroller = object : LinearSmoothScroller(recyclerView.context) {
 
             override fun getVerticalSnapPreference(): Int {
@@ -25,4 +39,34 @@ class CustomLinearLayoutManager(context: Context) : LinearLayoutManager(context)
         smoothScroller.targetPosition = position
         startSmoothScroll(smoothScroller)
     }
+
+    /**
+     * Diagnostic probe for the chat jumping to the top and back down.
+     *
+     * Every programmatic scroll in the app goes through the layout manager, so
+     * intercepting these three entry points catches all of them, including any
+     * call site not accounted for. The target position alone already names the
+     * culprit: near itemCount - 1 is the page preloader, 0 is one of the
+     * scroll-to-bottom paths, anything else is a targeted scrollTo. The caller
+     * line is taken from the stack; proguard-rules.pro keeps LineNumberTable,
+     * so it survives R8 even though the class name does not.
+     *
+     * Logging only, no behaviour change, and compiled out of normal release
+     * builds through ENABLE_DEBUG_TOOLS.
+     */
+    private fun logScroll(kind: String, position: Int) {
+        if (!BuildConfig.ENABLE_DEBUG_TOOLS) return
+        val caller = Throwable().stackTrace.firstOrNull {
+            it.className.startsWith("com.bolimot.mindtheclub") &&
+                    !it.className.contains("CustomLinearLayoutManager")
+        }
+        debugLine(
+            "ScrollProbe",
+            "$kind -> $position (itemCount=$itemCount, firstVisible=$firstVisiblePosition) " +
+                    "from ${caller?.className}.${caller?.methodName}:${caller?.lineNumber}"
+        )
+    }
+
+    private val firstVisiblePosition: Int
+        get() = try { findFirstVisibleItemPosition() } catch (e: Exception) { -1 }
 }
