@@ -296,21 +296,31 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         return true
     }
 
+    /**
+     * WhatsApp behaviour: the camera stays available while the composer is empty, even with the
+     * keyboard open. It only steps aside once the user actually starts typing.
+     */
+    private fun updateCameraVisibility() {
+        if (isAssistantChat || isRecording) return
+
+        camera.visibility = if (editText.text.isNullOrEmpty()) {
+            ImageButton.VISIBLE
+        } else {
+            ImageButton.INVISIBLE
+        }
+    }
+
     override fun onImeVisibilityChanged(visible: Boolean) {
         if (visible) {
             keyboardIsVisible = true
-            // attach stays visible — camera hides (WhatsApp behaviour)
-            if (!isAssistantChat) camera.visibility = ImageButton.INVISIBLE
         } else {
             keyboardIsVisible = false
-            if (!isAssistantChat) {
-                camera.visibility = ImageButton.VISIBLE
-                if (editText.text.isNullOrEmpty()) {
-                    microphone.visibility = ImageButton.VISIBLE
-                }
+            if (!isAssistantChat && editText.text.isNullOrEmpty()) {
+                microphone.visibility = ImageButton.VISIBLE
             }
             editText.setRichContentEnabled(true)
         }
+        updateCameraVisibility()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -588,6 +598,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
                     handleTypingState()
                 }
+
+                // attach stays visible — camera hides only once there is text (WhatsApp behaviour)
+                updateCameraVisibility()
             }
 
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -614,21 +627,15 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 if (isKeyboardVisible) {
                     keyboardIsVisible = true
 
-                    // attach stays visible — camera hides (WhatsApp behaviour)
-                    camera.visibility = ImageButton.INVISIBLE
-
                 } else {
                     keyboardIsVisible = false
 
-                    if (!isAssistantChat) {
-                        camera.visibility = ImageButton.VISIBLE
-
-                        if (editText.text.isNullOrEmpty()) {
-                            microphone.visibility = ImageButton.VISIBLE
-                        }
+                    if (!isAssistantChat && editText.text.isNullOrEmpty()) {
+                        microphone.visibility = ImageButton.VISIBLE
                     }
                     editText.setRichContentEnabled(true)
                 }
+                updateCameraVisibility()
             }
         }
 
