@@ -253,7 +253,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             in listOf(CallEvent.ACCEPT, CallEvent.REJECT, CallEvent.BUSY, CallEvent.CLOSE, CallEvent.VIDEO_ON,
                 CallEvent.VIDEO_OFF,CallEvent.CANCEL, CallEvent.FAILED, CallEvent.NO_ANSWER, CallEvent.HELD,
-                CallEvent.UNHELD, CallEvent.CONNECTION_FAILED) -> {
+                CallEvent.UNHELD, CallEvent.CONNECTION_FAILED, CallEvent.VIDEO_UPGRADE_REQUEST,
+                CallEvent.VIDEO_UPGRADE_ACCEPT, CallEvent.VIDEO_UPGRADE_REJECT) -> {
                 debugLine(tag, "Received video call control message: $channelId")
 
                 appScope.launch {

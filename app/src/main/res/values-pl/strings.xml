@@ -323,4 +323,14 @@
     <string name="battery_steps_vivo">1. Ustawienia, Bateria, Zarządzanie zużyciem energii w tle\n2. Zezwól MindTheClub na działanie w tle\n3. Ustawienia, Więcej ustawień, Aplikacje, Autostart, włącz MindTheClub</string>
     <string name="battery_steps_huawei">1. Ustawienia, Bateria, Uruchamianie aplikacji\n2. Znajdź MindTheClub i wyłącz Zarządzaj automatycznie\n3. Włącz Uruchamianie automatyczne, Uruchamianie pomocnicze i Działanie w tle</string>
     <string name="battery_steps_generic">1. Ustawienia, Aplikacje, MindTheClub, Bateria\n2. Wybierz Bez ograniczeń lub usuń znalezione ograniczenia\n3. Jeśli telefon ma menedżera autostartu, zezwól tam również na MindTheClub</string>
+
+    <!-- Switching an ongoing audio call to a video call -->
+    <string name="switch_to_video">Przełącz na rozmowę wideo</string>
+    <string name="switch_to_video_question">Czy chcesz przełączyć na rozmowę wideo?</string>
+    <string name="switch_to_video_request">%1$s chce przełączyć na rozmowę wideo</string>
+    <string name="switch_to_video_accept">Akceptuj</string>
+    <string name="switch_to_video_waiting">Oczekiwanie na odpowiedź…</string>
+    <string name="switch_to_video_declined">%1$s nie zgadza się na rozmowę wideo</string>
+    <string name="switch_to_video_no_answer">Brak odpowiedzi na prośbę o rozmowę wideo</string>
+    <string name="switch_to_video_failed">Nie można przełączyć na rozmowę wideo</string>
 </resources>

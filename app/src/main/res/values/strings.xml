@@ -321,4 +321,14 @@
     <string name="battery_steps_vivo">1. Settings, Battery, Background power consumption management\n2. Allow MindTheClub to run in the background\n3. Settings, More settings, Applications, Autostart, turn on MindTheClub</string>
     <string name="battery_steps_huawei">1. Settings, Battery, App launch\n2. Find MindTheClub and turn off Manage automatically\n3. Turn on Auto launch, Secondary launch and Run in background</string>
     <string name="battery_steps_generic">1. Settings, Apps, MindTheClub, Battery\n2. Choose Unrestricted, or remove any restriction you find\n3. If your phone has an autostart or startup manager, allow MindTheClub there too</string>
+
+    <!-- Switching an ongoing audio call to a video call -->
+    <string name="switch_to_video">Switch to video call</string>
+    <string name="switch_to_video_question">Do you want to switch to a video call?</string>
+    <string name="switch_to_video_request">%1$s wants to switch to a video call</string>
+    <string name="switch_to_video_accept">Accept</string>
+    <string name="switch_to_video_waiting">Waiting for an answer…</string>
+    <string name="switch_to_video_declined">%1$s declined the video call</string>
+    <string name="switch_to_video_no_answer">No answer to your video call request</string>
+    <string name="switch_to_video_failed">Could not switch to a video call</string>
 </resources>

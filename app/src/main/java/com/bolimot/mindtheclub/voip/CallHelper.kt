@@ -138,6 +138,18 @@ fun receiveCallEventFromPeer(action: String, callId: String) {
             debugLine(tag, "Call remotely turned off video")
             ConnectionManager.instance.notifyRemoteVideoState(isPaused = true)
         }
+        CallEvent.VIDEO_UPGRADE_REQUEST -> {
+            debugLine(tag, "Peer asks to switch to a video call")
+            ConnectionManager.instance.notifyVideoUpgradeEvent(CallEvent.VIDEO_UPGRADE_REQUEST)
+        }
+        CallEvent.VIDEO_UPGRADE_ACCEPT -> {
+            debugLine(tag, "Peer accepted the switch to a video call")
+            ConnectionManager.instance.notifyVideoUpgradeEvent(CallEvent.VIDEO_UPGRADE_ACCEPT)
+        }
+        CallEvent.VIDEO_UPGRADE_REJECT -> {
+            debugLine(tag, "Peer declined the switch to a video call")
+            ConnectionManager.instance.notifyVideoUpgradeEvent(CallEvent.VIDEO_UPGRADE_REJECT)
+        }
         CallEvent.HELD -> {
             debugLine(tag, "Call remotely held")
             ManagedTelecom.isRemotelyHeldMutable.value = true

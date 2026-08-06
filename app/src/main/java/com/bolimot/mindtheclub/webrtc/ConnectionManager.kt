@@ -86,6 +86,11 @@ class ConnectionManager {
     private val _remoteVideoState = MutableSharedFlow<Boolean>()
     val remoteVideoState = _remoteVideoState.asSharedFlow()
 
+    // Audio to video upgrade handshake, carried as CallEvent values. Buffered because
+    // the peer's answer can land while the call screen is being swapped.
+    private val _videoUpgradeEvents = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val videoUpgradeEvents = _videoUpgradeEvents.asSharedFlow()
+
     private val tag = "ConnectionManager"
 
     private var isVideoCall = false
@@ -93,6 +98,12 @@ class ConnectionManager {
     fun notifyRemoteVideoState(isPaused: Boolean) {
         scope.launch {
             _remoteVideoState.emit(isPaused)
+        }
+    }
+
+    fun notifyVideoUpgradeEvent(event: String) {
+        scope.launch {
+            _videoUpgradeEvents.emit(event)
         }
     }
 

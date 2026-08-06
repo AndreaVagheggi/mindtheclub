@@ -324,4 +324,14 @@
     <string name="battery_steps_vivo">1. Ajustes, Batería, Gestión del consumo en segundo plano\n2. Permite que MindTheClub funcione en segundo plano\n3. Ajustes, Más ajustes, Aplicaciones, Inicio automático, activa MindTheClub</string>
     <string name="battery_steps_huawei">1. Ajustes, Batería, Inicio de aplicaciones\n2. Busca MindTheClub y desactiva Gestionar automáticamente\n3. Activa Inicio automático, Inicio secundario y Ejecutar en segundo plano</string>
     <string name="battery_steps_generic">1. Ajustes, Aplicaciones, MindTheClub, Batería\n2. Elige Sin restricciones, o quita las limitaciones que encuentres\n3. Si tu teléfono tiene un gestor de inicio automático, permite MindTheClub también ahí</string>
+
+    <!-- Switching an ongoing audio call to a video call -->
+    <string name="switch_to_video">Cambiar a videollamada</string>
+    <string name="switch_to_video_question">¿Quieres cambiar a una videollamada?</string>
+    <string name="switch_to_video_request">%1$s quiere cambiar a una videollamada</string>
+    <string name="switch_to_video_accept">Aceptar</string>
+    <string name="switch_to_video_waiting">Esperando respuesta…</string>
+    <string name="switch_to_video_declined">%1$s ha rechazado la videollamada</string>
+    <string name="switch_to_video_no_answer">Sin respuesta a tu solicitud de videollamada</string>
+    <string name="switch_to_video_failed">No se ha podido cambiar a videollamada</string>
 </resources>

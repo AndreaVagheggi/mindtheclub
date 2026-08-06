@@ -158,6 +158,17 @@
                     android:scaleType="centerInside"
                     app:tint="#FFFFFF" />
 
+                <ImageButton
+                    android:id="@+id/switch_to_video"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/switch_to_video"
+                    android:src="@drawable/video_on"
+                    android:scaleType="centerInside"
+                    app:tint="#FFFFFF" />
+
                 <!-- PiP Button -->
                 <ImageButton
                     android:id="@+id/pip_mode"

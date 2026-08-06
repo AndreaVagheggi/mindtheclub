@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.cardview.widget.CardView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -66,6 +67,7 @@ class VideoCall : BaseActivity() {
     private lateinit var connectingText: TextView
     private lateinit var profilePic: ShapeableImageView
     private lateinit var background: ShapeableImageView
+    private lateinit var rootContainer: ConstraintLayout
     private lateinit var rtcClient: RTCClient
 
     private var isCaller: Boolean = false
@@ -164,6 +166,7 @@ class VideoCall : BaseActivity() {
         connectingText = findViewById(R.id.connecting_text)
         background = findViewById(R.id.background)
         profilePic = findViewById(R.id.profilePic)
+        rootContainer = findViewById(R.id.container)
 
         lifecycleScope.launch {
             val remotePeer = peerViewModel.getPeer(remoteUserId!!)
@@ -199,6 +202,15 @@ class VideoCall : BaseActivity() {
                             profilePic.visibility = View.GONE
                             background.visibility = View.GONE
                         }
+                    }
+
+                    // The picture just changed under the user. Surfacing the controls
+                    // puts the same choice in front of them, to drop their own camera or
+                    // keep sending, instead of leaving it behind a tap they have no
+                    // reason to try.
+                    if (videoCallScreenActive) {
+                        showToolbarWithAnimation()
+                        startHideToolbarTimer()
                     }
                 }
             }
@@ -498,16 +510,26 @@ class VideoCall : BaseActivity() {
 
         startHideToolbarTimer()
 
-        remoteVideoView.setOnClickListener {
-            if (videoCallScreenActive) {
-                if (isToolbarVisible) {
-                    hideToolbarWithAnimation()
-                    cancelHideToolbarTimer()
-                } else {
-                    showToolbarWithAnimation()
-                    startHideToolbarTimer()
-                }
-            }
+        val toggle = View.OnClickListener { toggleToolbar() }
+
+        // The renderer is GONE for as long as the peer's camera is off, and a GONE view
+        // takes no touches. With the toggle living only there, the controls could never
+        // be recovered once they had auto hidden: no camera button, no speaker, not even
+        // hang up. The root container is present in every state, so it carries the same
+        // toggle for the camera off case.
+        remoteVideoView.setOnClickListener(toggle)
+        rootContainer.setOnClickListener(toggle)
+    }
+
+    private fun toggleToolbar() {
+        if (!videoCallScreenActive) return
+
+        if (isToolbarVisible) {
+            hideToolbarWithAnimation()
+            cancelHideToolbarTimer()
+        } else {
+            showToolbarWithAnimation()
+            startHideToolbarTimer()
         }
     }
 

@@ -321,4 +321,14 @@
     <string name="battery_steps_vivo">1. Impostazioni, Batteria, Gestione consumo in background\n2. Consenti a MindTheClub di funzionare in background\n3. Impostazioni, Altre impostazioni, Applicazioni, Avvio automatico, attiva MindTheClub</string>
     <string name="battery_steps_huawei">1. Impostazioni, Batteria, Avvio app\n2. Trova MindTheClub e disattiva Gestisci automaticamente\n3. Attiva Avvio automatico, Avvio secondario ed Esecuzione in background</string>
     <string name="battery_steps_generic">1. Impostazioni, App, MindTheClub, Batteria\n2. Scegli Senza restrizioni, oppure togli le limitazioni che trovi\n3. Se il telefono ha una gestione avvio automatico, abilita MindTheClub anche li</string>
+
+    <!-- Switching an ongoing audio call to a video call -->
+    <string name="switch_to_video">Passa a videochiamata</string>
+    <string name="switch_to_video_question">Vuoi passare a una videochiamata?</string>
+    <string name="switch_to_video_request">%1$s vuole passare a una videochiamata</string>
+    <string name="switch_to_video_accept">Accetta</string>
+    <string name="switch_to_video_waiting">In attesa di risposta…</string>
+    <string name="switch_to_video_declined">%1$s ha rifiutato la videochiamata</string>
+    <string name="switch_to_video_no_answer">Nessuna risposta alla tua richiesta di videochiamata</string>
+    <string name="switch_to_video_failed">Impossibile passare alla videochiamata</string>
 </resources>

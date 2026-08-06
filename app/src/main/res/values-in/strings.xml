@@ -324,4 +324,14 @@
     <string name="battery_steps_vivo">1. Pengaturan, Baterai, Manajemen konsumsi daya latar belakang\n2. Izinkan MindTheClub berjalan di latar belakang\n3. Pengaturan, Pengaturan lainnya, Aplikasi, Mulai otomatis, aktifkan MindTheClub</string>
     <string name="battery_steps_huawei">1. Pengaturan, Baterai, Peluncuran aplikasi\n2. Cari MindTheClub dan matikan Kelola otomatis\n3. Aktifkan Peluncuran otomatis, Peluncuran sekunder, dan Berjalan di latar belakang</string>
     <string name="battery_steps_generic">1. Pengaturan, Aplikasi, MindTheClub, Baterai\n2. Pilih Tanpa batasan, atau hapus batasan yang Anda temukan\n3. Jika ponsel Anda punya manajer mulai otomatis, izinkan MindTheClub di sana juga</string>
+
+    <!-- Switching an ongoing audio call to a video call -->
+    <string name="switch_to_video">Beralih ke panggilan video</string>
+    <string name="switch_to_video_question">Apakah Anda ingin beralih ke panggilan video?</string>
+    <string name="switch_to_video_request">%1$s ingin beralih ke panggilan video</string>
+    <string name="switch_to_video_accept">Terima</string>
+    <string name="switch_to_video_waiting">Menunggu jawaban…</string>
+    <string name="switch_to_video_declined">%1$s menolak panggilan video</string>
+    <string name="switch_to_video_no_answer">Tidak ada jawaban atas permintaan panggilan video Anda</string>
+    <string name="switch_to_video_failed">Tidak dapat beralih ke panggilan video</string>
 </resources>

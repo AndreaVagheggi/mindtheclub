@@ -221,11 +221,19 @@ class RTCClient private constructor(
                 isInitiator = initiator
                 debugLine("Initialize", "Initiator: $isInitiator")
 
-                if(video && !onlyData) {
-                    val eglSuccess = createEglContextWithRetry()
+                // Every media call prepares the EGL context, audio ones included. The
+                // shared context can only be handed to the PeerConnectionFactory at
+                // creation time, and the factory cannot be rebuilt without dropping the
+                // PeerConnection, so an audio call that never made one could only be
+                // upgraded to video through a slower non-shared path. Failing to get a
+                // context is fatal for a video call; an audio call still goes through and
+                // simply loses the ability to be upgraded later.
+                if(!onlyData) {
+                    val eglSuccess = createEglContextWithRetry(fatal = video)
                     if (!eglSuccess) {
                         debugLine("Initialize", "Failed to create EGL context")
-                        return@launch
+                        if (video) return@launch
+                        debugLine("Initialize", "Audio call proceeds without EGL, video upgrade unavailable")
                     }
                 }
 
@@ -386,9 +394,14 @@ class RTCClient private constructor(
         }
     }
 
+    /**
+     * @param fatal when false the failure is reported but no CONNECTION_FAILED event is
+     * emitted, so an audio call that cannot get a GPU context still connects.
+     */
     private suspend fun createEglContextWithRetry(
         maxAttempts: Int = 3,
-        delayMs: Long = 200L
+        delayMs: Long = 200L,
+        fatal: Boolean = true
     ): Boolean {
         repeat(maxAttempts) { attempt ->
             try {
@@ -424,11 +437,13 @@ class RTCClient private constructor(
 
                 if (attempt == maxAttempts - 1) {
                     debugLine("Initialize", "All EGL creation attempts failed")
-                    emitWebRtcControlEvent(
-                        CallEvent.CONNECTION_FAILED,
-                        remoteUserId,
-                        "Failed to create EGL context after $maxAttempts attempts: ${e.message}"
-                    )
+                    if (fatal) {
+                        emitWebRtcControlEvent(
+                            CallEvent.CONNECTION_FAILED,
+                            remoteUserId,
+                            "Failed to create EGL context after $maxAttempts attempts: ${e.message}"
+                        )
+                    }
                     return false
                 }
 
@@ -757,7 +772,9 @@ class RTCClient private constructor(
                 if(!onlyData) {
                     setupBitrateAdaptation()
                     hasAudio = true
-                    hasVideo = video
+                    // Not just the type the call started as: an audio call upgraded to
+                    // video keeps its camera across an ICE restart.
+                    hasVideo = video || localVideoTrack != null
                 }
             }
 
@@ -1257,83 +1274,16 @@ class RTCClient private constructor(
         }
 
         if (video) {
-            debugLine("RTCClient", "Creating video capturer")
-            videoCapturer = createCameraVideoCapturer(context)
+            val failure = createAndAddVideoTrack()
 
-            if (videoCapturer == null) {
-                debugLine("RTCClient", "Video capturer is null")
-                localMediaSetupDeferred.completeExceptionally(Exception("Video capturer is null"))
+            if (failure != null) {
+                localMediaSetupDeferred.completeExceptionally(Exception(failure))
                 return
-            } else {
-                debugLine("RTCClient", "Video capturer created")
             }
 
-            videoCapturer?.let { capturer ->
-                val videoSource = peerConnectionFactory?.createVideoSource(capturer.isScreencast)
-
-                if (videoSource == null) {
-                    debugLine("RTCClient", "Video source creation failed")
-                    localMediaSetupDeferred.completeExceptionally(Exception("Video source creation failed"))
-                    return
-                } else {
-                    debugLine("RTCClient", "Video source created")
-                }
-
-                val originalObserver = videoSource.capturerObserver
-
-                val customObserver = object : CapturerObserver {
-                    override fun onCapturerStarted(success: Boolean) {
-                        originalObserver.onCapturerStarted(success)
-                        debugLine("RTCClient", "Video capturer reported started: $success")
-                    }
-                    override fun onFrameCaptured(frame: VideoFrame) {
-                        originalObserver.onFrameCaptured(frame)
-                    }
-                    override fun onCapturerStopped() {
-                        debugLine("RTCClient", "Video capturer reported stopped")
-                        originalObserver.onCapturerStopped()
-                    }
-                }
-
-                surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglContext)
-                if (surfaceTextureHelper == null) {
-                    debugLine("RTCClient", "Surface texture helper creation failed")
-                    localMediaSetupDeferred.completeExceptionally(Exception("Surface texture helper creation failed"))
-                    return
-                }
-                try {
-                    capturer.initialize(surfaceTextureHelper, context, customObserver)
-                    debugLine("RTCClient", "Video capturer initialized")
-                } catch (e: Exception) {
-                    debugLine("RTCClient", "Error initializing video capturer: ${e.message}")
-                }
-
-                try {
-                    if (isLowEndDevice()) {
-                        capturer.startCapture(480, 270, 15)
-                        debugLine("RTCClient", "Started video capture in low-end mode")
-                    } else {
-                        capturer.startCapture(1280, 720, 30)
-                        debugLine("RTCClient", "Started video capture in high-quality mode")
-                    }
-                } catch (e: Exception) {
-                    debugLine("RTCClient", "Error starting video capture: ${e.message}")
-                }
-
-                localVideoTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
-
-                if (localVideoTrack != null) {
-                    localVideoTrack?.setEnabled(true)
-                    connection?.addTrack(localVideoTrack, listOf("ARDAMS"))
-                    debugLine("RTCClient", "Video track created successfully")
-                } else {
-                    debugLine("RTCClient", "Video track creation failed")
-                }
-
-                if (!localMediaSetupDeferred.isCompleted) {
-                    localMediaSetupDeferred.complete(Unit)
-                    debugLine("RTCClient", "Local media setup deferred completed after video track addition")
-                }
+            if (!localMediaSetupDeferred.isCompleted) {
+                localMediaSetupDeferred.complete(Unit)
+                debugLine("RTCClient", "Local media setup deferred completed after video track addition")
             }
         } else {
             if (!localMediaSetupDeferred.isCompleted) {
@@ -1341,6 +1291,184 @@ class RTCClient private constructor(
                 debugLine("RTCClient", "Local media setup deferred completed for audio only")
             }
         }
+    }
+
+    /**
+     * Builds the camera capture pipeline and attaches the local video track to the
+     * PeerConnection. Shared by the initial setup of a video call and by the mid-call
+     * upgrade of an audio one, so both produce an identical capture and encode path.
+     *
+     * @return null when the pipeline is usable, otherwise the reason it could not be
+     * built. A null video track is reported through the log only, matching the original
+     * behaviour where a call carried on without a camera rather than failing outright.
+     */
+    private fun createAndAddVideoTrack(): String? {
+        debugLine("RTCClient", "Creating video capturer")
+        videoCapturer = createCameraVideoCapturer(context)
+
+        val capturer = videoCapturer ?: run {
+            debugLine("RTCClient", "Video capturer is null")
+            return "Video capturer is null"
+        }
+        debugLine("RTCClient", "Video capturer created")
+
+        val videoSource = peerConnectionFactory?.createVideoSource(capturer.isScreencast)
+
+        if (videoSource == null) {
+            debugLine("RTCClient", "Video source creation failed")
+            return "Video source creation failed"
+        }
+        debugLine("RTCClient", "Video source created")
+
+        val originalObserver = videoSource.capturerObserver
+
+        val customObserver = object : CapturerObserver {
+            override fun onCapturerStarted(success: Boolean) {
+                originalObserver.onCapturerStarted(success)
+                debugLine("RTCClient", "Video capturer reported started: $success")
+            }
+            override fun onFrameCaptured(frame: VideoFrame) {
+                originalObserver.onFrameCaptured(frame)
+            }
+            override fun onCapturerStopped() {
+                debugLine("RTCClient", "Video capturer reported stopped")
+                originalObserver.onCapturerStopped()
+            }
+        }
+
+        surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglContext)
+        if (surfaceTextureHelper == null) {
+            debugLine("RTCClient", "Surface texture helper creation failed")
+            return "Surface texture helper creation failed"
+        }
+
+        try {
+            capturer.initialize(surfaceTextureHelper, context, customObserver)
+            debugLine("RTCClient", "Video capturer initialized")
+        } catch (e: Exception) {
+            debugLine("RTCClient", "Error initializing video capturer: ${e.message}")
+        }
+
+        try {
+            if (isLowEndDevice()) {
+                capturer.startCapture(480, 270, 15)
+                debugLine("RTCClient", "Started video capture in low-end mode")
+            } else {
+                capturer.startCapture(1280, 720, 30)
+                debugLine("RTCClient", "Started video capture in high-quality mode")
+            }
+        } catch (e: Exception) {
+            debugLine("RTCClient", "Error starting video capture: ${e.message}")
+        }
+
+        localVideoTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
+
+        if (localVideoTrack != null) {
+            localVideoTrack?.setEnabled(true)
+            connection?.addTrack(localVideoTrack, listOf("ARDAMS"))
+            hasVideo = true
+            isVideoCall = true
+            debugLine("RTCClient", "Video track created successfully")
+        } else {
+            debugLine("RTCClient", "Video track creation failed")
+        }
+
+        return null
+    }
+
+    /**
+     * Turns an established audio call into a video one by adding a camera track to the
+     * live PeerConnection. Only the local side is touched: the peer sees nothing until
+     * [renegotiateForVideo] re-offers, so both ends can add their track first and settle
+     * the whole upgrade in a single offer/answer exchange.
+     *
+     * Safe to call twice: a call that already carries video reports success and does
+     * nothing.
+     */
+    fun enableLocalVideo(): Boolean {
+        if (onlyData) {
+            debugLine("RTCClient", "enableLocalVideo: data-only client, nothing to do")
+            return false
+        }
+
+        if (localVideoTrack != null) {
+            debugLine("RTCClient", "enableLocalVideo: video track already present")
+            localVideoTrack?.setEnabled(true)
+            return true
+        }
+
+        if (connection == null || peerConnectionFactory == null) {
+            debugLine("RTCClient", "enableLocalVideo: no live connection, cannot add video")
+            return false
+        }
+
+        if (eglContext == null) {
+            debugLine("RTCClient", "enableLocalVideo: no EGL context, this call cannot carry video")
+            return false
+        }
+
+        val failure = createAndAddVideoTrack()
+        if (failure != null) {
+            debugLine("RTCClient", "enableLocalVideo failed: $failure")
+            return false
+        }
+
+        return localVideoTrack != null
+    }
+
+    /**
+     * Re-offers the session now that a video track has been added mid-call. Only the
+     * side that asked for the upgrade calls this; the other side answers through the
+     * ordinary [handleOffer] path, with its own track already in place.
+     */
+    fun renegotiateForVideo() {
+        clientScope.launch {
+            if (connection == null || cleanedUp || isClosing) {
+                debugLine("RTCClient", "renegotiateForVideo: no live connection, aborting")
+                return@launch
+            }
+
+            // The signalling socket stays open for the whole of a media call, but a
+            // transient failure can have torn it down: without it the offer never
+            // reaches the peer and the upgrade would hang.
+            if (socket == null && !reopenSignaling()) {
+                debugLine("RTCClient", "renegotiateForVideo: signalling channel unavailable, aborting")
+                return@launch
+            }
+
+            // The initial negotiation latched this guard, and the upgrade brings a
+            // second answer that would otherwise be dropped.
+            isAnswerHandled.set(false)
+
+            sendVideoUpgradeOffer()
+        }
+    }
+
+    /**
+     * Deliberately separate from [sendOffer]: that one claims the initiator role and
+     * moves the ICE state, which would leave both ends believing they drive ICE
+     * restarts. An upgrade only renegotiates media on an already connected session.
+     */
+    private fun sendVideoUpgradeOffer() {
+        debugLine("RTCClient", "Sending video upgrade offer")
+
+        val mediaConstraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToSendVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToSendAudio", "true"))
+        }
+
+        connection?.createOffer(object : SdpObserver by DefaultSdpObserver() {
+            override fun onCreateSuccess(sessionDescription: SessionDescription) {
+                debugLine("RTCClient", "Video upgrade offer created: ${sessionDescription.type}")
+                connection?.setLocalDescription(DefaultSdpObserver(), sessionDescription)
+                sendSignal(SignalingMessage(sessionDescription.type.canonicalForm(), sessionDescription.description, null))
+            }
+            override fun onCreateFailure(error: String?) {
+                debugLine("RTCClient", "Video upgrade offer creation failed: $error")
+            }
+        }, mediaConstraints)
     }
 
     fun refreshLocalVideo() {

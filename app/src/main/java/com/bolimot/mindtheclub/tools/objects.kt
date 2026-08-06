@@ -97,6 +97,12 @@ object CallEvent {
     const val VIDEO_ON = "videoOn"
     const val VIDEO_OFF = "videoOff"
     const val CONNECTION_BUSY = "connectionBusy"
+
+    // Mid-call switch from audio to video. The peer is asked first, because
+    // accepting turns their camera on.
+    const val VIDEO_UPGRADE_REQUEST = "videoUpgradeRequest"
+    const val VIDEO_UPGRADE_ACCEPT = "videoUpgradeAccept"
+    const val VIDEO_UPGRADE_REJECT = "videoUpgradeReject"
 }
 
 object CallEventBus {
