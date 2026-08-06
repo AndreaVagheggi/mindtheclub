@@ -2,12 +2,19 @@ package com.bolimot.mindtheclub.functions
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
+import android.app.AppOpsManager
+import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.os.Process
 import android.provider.Settings
+import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.bolimot.mindtheclub.R
@@ -47,6 +54,108 @@ fun openNotificationSettings(context: Context) {
         context.startActivity(intent)
     } catch (e: Exception) {
         debugLine("permissionsHelper", "Notification settings not available, falling back: ${e.message}")
+        openAppSettings(context)
+    }
+}
+
+/**
+ * Whether this handset can do Picture in Picture at all.
+ *
+ * PiP is an optional platform feature, not a guarantee: budget ROMs ship without it, and
+ * some of those still show the per-app PiP toggle in settings with nothing behind it. A
+ * device that answers false here can never enter PiP, so the control is hidden rather
+ * than left to fail on every tap.
+ */
+fun deviceSupportsPip(context: Context): Boolean =
+    context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+/**
+ * Everything the system weighs when it decides whether to grant Picture in Picture,
+ * sampled at the moment it refused.
+ *
+ * enterPictureInPictureMode() reports refusal by returning false rather than throwing, so
+ * a refusal otherwise leaves no trace at all and the button simply looks dead. Each field
+ * below maps to one of the conditions in the platform's own check, plus the device
+ * identity, because a refusal on one handset and not another is the whole question.
+ */
+fun describePipAvailability(activity: ComponentActivity): String {
+    val device = "${Build.MANUFACTURER} ${Build.MODEL} api${Build.VERSION.SDK_INT}"
+
+    val hasFeature = activity.packageManager
+        .hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+    if (!hasFeature) return "$device: device does not declare FEATURE_PICTURE_IN_PICTURE"
+
+    val appOp = try {
+        val appOps = activity.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
+        when (appOps?.let { readPipAppOp(it, activity.packageName) }) {
+            null -> "unavailable"
+            AppOpsManager.MODE_ALLOWED -> "allowed"
+            AppOpsManager.MODE_IGNORED -> "DENIED in settings"
+            AppOpsManager.MODE_ERRORED -> "errored"
+            AppOpsManager.MODE_DEFAULT -> "default"
+            else -> "mode unknown"
+        }
+    } catch (e: Exception) {
+        "unreadable: ${e.message}"
+    }
+
+    val keyguardLocked = try {
+        (activity.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked
+    } catch (e: Exception) {
+        null
+    }
+
+    val powerSave = try {
+        (activity.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isPowerSaveMode
+    } catch (e: Exception) {
+        null
+    }
+
+    val lockTask = try {
+        val am = activity.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        am?.lockTaskModeState
+    } catch (e: Exception) {
+        null
+    }
+
+    return "$device: feature=yes, appOp=$appOp, " +
+            "lifecycle=${activity.lifecycle.currentState}, " +
+            "keyguardLocked=$keyguardLocked, powerSaveMode=$powerSave, " +
+            "lockTaskState=$lockTask, alreadyInPip=${activity.isInPictureInPictureMode}, " +
+            "multiWindow=${activity.isInMultiWindowMode}"
+}
+
+private fun readPipAppOp(appOps: AppOpsManager, packageName: String): Int =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_PICTURE_IN_PICTURE, Process.myUid(), packageName
+        )
+    } else {
+        @Suppress("DEPRECATION")
+        appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_PICTURE_IN_PICTURE, Process.myUid(), packageName
+        )
+    }
+
+/**
+ * Opens the system Picture in Picture special access page for this app.
+ *
+ * The action is spelled out rather than taken from [Settings]: the platform keeps
+ * ACTION_PICTURE_IN_PICTURE_SETTINGS hidden from the public SDK, so the constant will not
+ * compile even though the action itself resolves on any device that ships the screen.
+ * Devices that do not are covered by the fallback to the app details page.
+ */
+private const val ACTION_PICTURE_IN_PICTURE_SETTINGS = "android.settings.PICTURE_IN_PICTURE_SETTINGS"
+
+fun openPipSettings(context: Context) {
+    val intent = Intent(ACTION_PICTURE_IN_PICTURE_SETTINGS)
+        .setData(Uri.fromParts("package", context.packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        debugLine("permissionsHelper", "PiP settings not available, falling back: ${e.message}")
         openAppSettings(context)
     }
 }

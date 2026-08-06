@@ -28,6 +28,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.describePipAvailability
+import com.bolimot.mindtheclub.functions.deviceSupportsPip
 import com.bolimot.mindtheclub.functions.ensureCallPermissions
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.wakeUpPhone
@@ -171,6 +173,11 @@ class AudioCall : BaseActivity() {
         background = findViewById(R.id.container)
         onHoldOnOff = findViewById(R.id.on_hold_on_off)
         switchToVideo = findViewById(R.id.switch_to_video)
+
+        if (!deviceSupportsPip(this)) {
+            debugLine(tag, "Device does not support Picture in Picture, hiding the button")
+            btnPip.visibility = View.GONE
+        }
 
         lifecycleScope.launch {
             val remotePeer = peerViewModel.getPeer(remoteUserId!!)
@@ -482,6 +489,9 @@ class AudioCall : BaseActivity() {
         upgradeDialog = null
 
         val intent = Intent(this, VideoCall::class.java).apply {
+            // Without this the framework treats the handover as the user walking away and
+            // fires onUserLeaveHint, which would send this screen into PiP on its way out.
+            addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
             putExtra("remoteUserId", remoteUserId)
             putExtra("callId", callId)
             putExtra("isCaller", isCaller)
@@ -527,6 +537,10 @@ class AudioCall : BaseActivity() {
     }
 
     private fun enterPipMode() {
+        // onUserLeaveHint calls this on every Home press, so without the guard a device
+        // with no PiP support would log a refusal each time the user leaves the call.
+        if (!deviceSupportsPip(this)) return
+
         try {
             val aspectRatio = Rational(9, 16)
             val pipParams = PictureInPictureParams.Builder()
@@ -535,7 +549,13 @@ class AudioCall : BaseActivity() {
 
             debugLine(tag, "Attempting to enter Picture-in-Picture mode.")
             connectionManager.isClosing = false
-            enterPictureInPictureMode(pipParams)
+
+            // The system reports a refusal by returning false, not by throwing. Ignoring
+            // it left a button that looked dead and said nothing in the log.
+            val entered = enterPictureInPictureMode(pipParams)
+            if (!entered) {
+                debugLine(tag, "System refused PiP: ${describePipAvailability(this)}")
+            }
         } catch (e: Exception) {
             debugLine(tag, "Failed to enter PiP mode: ${e.message}")
         }

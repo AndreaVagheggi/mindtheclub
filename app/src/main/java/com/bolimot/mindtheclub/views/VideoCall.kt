@@ -26,6 +26,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.describePipAvailability
+import com.bolimot.mindtheclub.functions.deviceSupportsPip
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.isLowEndDevice
 import com.bolimot.mindtheclub.functions.wakeUpPhone
@@ -167,6 +169,11 @@ class VideoCall : BaseActivity() {
         background = findViewById(R.id.background)
         profilePic = findViewById(R.id.profilePic)
         rootContainer = findViewById(R.id.container)
+
+        if (!deviceSupportsPip(this)) {
+            debugLine(tag, "Device does not support Picture in Picture, hiding the button")
+            btnPip.visibility = View.GONE
+        }
 
         lifecycleScope.launch {
             val remotePeer = peerViewModel.getPeer(remoteUserId!!)
@@ -440,6 +447,10 @@ class VideoCall : BaseActivity() {
     }
 
     private fun enterPipMode() {
+        // onUserLeaveHint calls this on every Home press, so without the guard a device
+        // with no PiP support would log a refusal each time the user leaves the call.
+        if (!deviceSupportsPip(this)) return
+
         try {
             val aspectRatio = Rational(9, 16)
             val pipParams = PictureInPictureParams.Builder()
@@ -448,7 +459,13 @@ class VideoCall : BaseActivity() {
 
             debugLine("VideoCall", "Attempting to enter Picture-in-Picture mode.")
             connectionManager.isClosing = false
-            enterPictureInPictureMode(pipParams)
+
+            // The system reports a refusal by returning false, not by throwing. Ignoring
+            // it left a button that looked dead and said nothing in the log.
+            val entered = enterPictureInPictureMode(pipParams)
+            if (!entered) {
+                debugLine("VideoCall", "System refused PiP: ${describePipAvailability(this)}")
+            }
         } catch (e: Exception) {
             debugLine("VideoCall", "Failed to enter PiP mode: ${e.message}")
         }
