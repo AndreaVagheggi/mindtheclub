@@ -36,6 +36,16 @@ private val WAKE_TYPES = setOf(
     Notify.CANCEL_TRANSFER,
     Notify.GROUP,
     Notify.GROUP_REMOVED,
+    // Failure-only recovery signals, added 8 Aug. They fire exclusively when a
+    // transfer arrived broken (missing chunks), so their volume is near zero in
+    // normal operation and they cannot strain the high-priority budget the way
+    // the per-message chatter (completed/allReceived/Seen) did before 9 Jul.
+    // They belong here by this set's own criterion: someMissing does the same
+    // job as sendMe, which has always been in the set — at normal priority a
+    // dozing sender saw them 5 to 25 minutes late and re-sent into a dead
+    // channel each time (Romy, 7 Aug: 46 minutes for 5 chunks).
+    Notify.SOME_MISSING,
+    Notify.ALL_MISSING,
 )
 
 suspend fun fcmSendInstant(

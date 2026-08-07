@@ -20,6 +20,7 @@ import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
 import com.bolimot.mindtheclub.works.AssembleMessageWorker
 import com.bolimot.mindtheclub.works.StalePlaceholderCheckWorker
+import com.bolimot.mindtheclub.works.logSoakArrival
 import kotlinx.serialization.json.Json
 
 private val jsonParser = Json { ignoreUnknownKeys = true }
@@ -71,6 +72,7 @@ suspend fun receiveData(remoteUserId: String,
 
     if(newMessage.content.isEmpty()){
         debugLine("receiveData", "Received text message: ${newMessage.text}")
+        logSoakArrival(newMessage.text, newMessage.date)
     } else {
         debugLine("receiveData", "Received messageId: ${newMessage.messageId} Sequence No.: ${newMessage.sequenceNo}")
     }

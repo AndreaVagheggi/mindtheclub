@@ -6,6 +6,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
@@ -26,6 +27,12 @@ class InboxRecoveryWorker(
         private const val UNIQUE_WORK_NAME = "InboxRecoveryWorker"
         private const val INTERVAL_MINUTES = 15L
         private const val TAG = "InboxRecovery"
+
+        // Pass 3 bounds. Younger sets are still being fed by the reactive
+        // someMissing path; older ones are dead transfers whose chunks would
+        // otherwise pin the DataSyncService "assembly pending" loop for ever.
+        private const val MIN_ORPHAN_AGE_MS = 5 * 60 * 1000L
+        private const val MAX_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000L
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<InboxRecoveryWorker>(
@@ -100,7 +107,12 @@ class InboxRecoveryWorker(
                             continue
                         }
 
-                        val originalSender = msg.originalSenderId
+                        // originalSenderId is only populated for group messages. For a
+                        // 1:1 the placeholder's fromUserId IS the sender, so fall back
+                        // to it: without this the whole pass silently skipped every
+                        // stalled 1:1 transfer and only groups ever got re-solicited.
+                        val originalSender = msg.originalSenderId?.takeIf { it.isNotEmpty() }
+                            ?: msg.fromUserId.takeIf { !it.startsWith("group") }
                         if (!originalSender.isNullOrEmpty()) {
                             // Resume-aware: report the missing range so the sender can
                             // re-send only those chunks (see the PENDING/SEND_ME handlers).
@@ -113,7 +125,7 @@ class InboxRecoveryWorker(
                             debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $originalSender (missing: ${missingRange ?: "all"})")
                             notifyRemotePeer(originalSender, msg.messageId, Notify.SEND_ME, missingRange)
                         } else {
-                            debugLine(TAG, "RECEIVING ${msg.messageId} has no originalSenderId, skipping")
+                            debugLine(TAG, "RECEIVING ${msg.messageId} has no resolvable sender, skipping")
                         }
                     } catch (e: Exception) {
                         debugLine(TAG, "Failed to process RECEIVING ${msg.messageId}: ${e.message}")
@@ -122,6 +134,57 @@ class InboxRecoveryWorker(
             }
         } catch (e: Exception) {
             debugLine(TAG, "Failed to query RECEIVING messages: ${e.message}")
+        }
+
+        // Pass 3: incomplete chunk sets with NO Message row. Profiles never create
+        // a receiving placeholder (receiveData skips Type.PROFILE on purpose, a
+        // profile must not show as a bubble in the chat), so a profile interrupted
+        // mid-transfer was invisible to pass 2 and had exactly one recovery shot:
+        // the reactive someMissing sent when the peer's `completed` arrived. If
+        // that single round failed, the contact sat on "Pending" forever, which is
+        // what stuck Romy at 36/41 chunks on 7 Aug. This pass makes the receiver
+        // re-solicit ANY orphan incomplete set every run, same cadence and same
+        // resume-aware sendMe as pass 2.
+        try {
+            val orphanIds = inboxDao.getDistinctMessageIds()
+            for (messageId in orphanIds) {
+                try {
+                    if (isProcessingActive(messageId)) continue
+                    if (CancelledTransferRegistry.isCancelled(applicationContext, messageId)) continue
+
+                    val firstChunk = inboxDao.getFirstMessage(messageId) ?: continue
+                    val ck = contentKeyOf(firstChunk)
+                    val count = inboxDao.countChunksByContent(ck)
+                    val total = inboxDao.getTotalChunksByContent(ck)
+                    if (count <= 0 || count >= total) continue // complete sets are pass 1 territory
+
+                    // Sets with a Message row are pass 2 territory; asking twice per
+                    // run would double the sendMe traffic for the same transfer.
+                    val placeholderKey = firstChunk.groupId.ifEmpty { firstChunk.messageId }
+                    if (messageDao.getMessage(placeholderKey) != null) continue
+
+                    val age = System.currentTimeMillis() - firstChunk.date
+                    if (age > MAX_ORPHAN_AGE_MS) {
+                        val dropped = inboxDao.deleteByContent(ck)
+                        debugLine(TAG, "Orphan set $messageId expired (${age / 3600000}h old), dropped $dropped chunk(s)")
+                        continue
+                    }
+                    if (age < MIN_ORPHAN_AGE_MS) continue // in flight, the reactive path is still hot
+
+                    val sender = firstChunk.originalSenderId?.takeIf { it.isNotEmpty() }
+                        ?: firstChunk.fromUserId
+                    if (sender.startsWith("group")) continue
+
+                    val missing = missingChunksByContent(inboxDao, ck) ?: continue
+                    val missingRange = if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
+                    debugLine(TAG, "Orphan set $messageId (${firstChunk.type}) stalled at $count/$total, sending sendMe to $sender (missing: ${missingRange ?: "all"})")
+                    notifyRemotePeer(sender, messageId, Notify.SEND_ME, missingRange)
+                } catch (e: Exception) {
+                    debugLine(TAG, "Failed to process orphan set $messageId: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            debugLine(TAG, "Failed to query orphan sets: ${e.message}")
         }
 
         // Status import required. Suppress unused warning on the imported symbol.

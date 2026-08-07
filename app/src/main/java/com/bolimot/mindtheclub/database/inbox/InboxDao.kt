@@ -19,6 +19,9 @@ interface InboxDao{
     @Query("SELECT messageId FROM Inbox GROUP BY messageId HAVING COUNT(*) = MAX(totalNo)")
     suspend fun getCompleteMessageIds(): List<String>
 
+    @Query("SELECT DISTINCT messageId FROM Inbox")
+    suspend fun getDistinctMessageIds(): List<String>
+
     @Insert
     suspend fun insert(inbox: Inbox): Long
 

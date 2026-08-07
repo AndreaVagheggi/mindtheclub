@@ -23,6 +23,7 @@ import com.bolimot.mindtheclub.views.OnboardingActivity
 import com.bolimot.mindtheclub.works.AppCheckWorker
 import com.bolimot.mindtheclub.works.InboxRecoveryWorker
 import com.bolimot.mindtheclub.works.PendingRetryWorker
+import com.bolimot.mindtheclub.works.SoakTestWorker
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.Dispatchers
@@ -172,6 +173,11 @@ class MainActivity : BaseActivity() {
 
         PendingRetryWorker.schedule(this)
         InboxRecoveryWorker.schedule(this)
+
+        // No-op unless BuildConfig.SOAK_TEST, i.e. anywhere but a debug build.
+        App.instance!!.applicationScope.launch(Dispatchers.IO) {
+            SoakTestWorker.schedule(applicationContext)
+        }
 
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
             getPeerViewModel().requestMissingProfilePictures()

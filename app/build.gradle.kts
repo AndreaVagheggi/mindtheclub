@@ -45,8 +45,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1015
-        versionName = "Release 1.15" +
+        versionCode = 1016
+        versionName = "Release 1.16" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "")
 
@@ -57,6 +57,14 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         buildConfigField("Boolean", "SENTRY_ENABLED", sentryEnabled.toString())
         buildConfigField("Boolean", "NO_PAY", noPay.toString())
         manifestPlaceholders["sentryAutoInit"] = sentryEnabled.toString()
+
+        // Soak test: a fake text message sent to the single paired contact every
+        // 30 minutes, to measure delivery latency without waiting for a real
+        // tester to write. Default false here and set to true ONLY in the debug
+        // build type, so it can never reach a bundle. Deliberately NOT tied to
+        // ENABLE_DEBUG_TOOLS, which is also true in a release built with
+        // -PreleaseLogging=true, i.e. exactly the build that goes to testers.
+        buildConfigField("Boolean", "SOAK_TEST", "false")
     }
 
     @Suppress("UnstableApiUsage")
@@ -90,6 +98,9 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", "true")
+            // The only build type where the soak test runs. Installed from Android
+            // Studio onto the two dedicated handsets, never packaged into a bundle.
+            buildConfigField("Boolean", "SOAK_TEST", "true")
         }
 
         getByName("release") {
@@ -113,6 +124,10 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             )
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("debug")
+            // initWith copies buildConfigField from debug, including SOAK_TEST=true.
+            // Put it back to false explicitly: this type is for checking R8 output,
+            // not for soaking.
+            buildConfigField("Boolean", "SOAK_TEST", "false")
         }
 
         create("staging") {
@@ -122,6 +137,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             isDebuggable = true
             applicationIdSuffix = ".staging"
             buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", "true")
+            buildConfigField("Boolean", "SOAK_TEST", "false")
         }
     }
 

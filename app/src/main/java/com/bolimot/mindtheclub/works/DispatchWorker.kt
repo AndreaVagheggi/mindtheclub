@@ -55,25 +55,37 @@ class DispatchWorker(
         private const val PREFS_NAME = "DispatchWorkerPrefs"
 
         /**
-         * Drops the unreachable cooldown for [peerId].
-         *
-         * The cooldown throttles our attempts towards a peer that stayed silent,
-         * and until now only expiry or a successful delivery could lift it. But an
-         * FCM coming from that peer proves it is awake and its process is running,
-         * which is stronger evidence than the silence that armed the cooldown in
-         * the first place. Without this a sendMe landing right after a failed cycle
-         * was refused by our own throttle: on 3 Aug that cost 61 seconds while the
-         * peer was actively asking for the message.
+         * Cooldown override window after a peer proves it is alive, see [markPeerAlive].
+         * Long enough to cover the first retry ladder steps (10s, 20s), short enough
+         * that a peer that answered once and went back to sleep is not hammered.
          */
-        fun clearUnreachableCooldown(context: Context, peerId: String) {
+        private const val PROOF_OF_LIFE_MS = 60_000L
+
+        /**
+         * Records that [peerId] just proved it is awake (it sent us an FCM asking
+         * for a message), so the unreachable cooldown must not block dispatches
+         * towards it.
+         *
+         * This is deliberately a timestamp CHECKED at cooldown time, not a removal
+         * of the cooldown keys. The first version only removed the keys, and lost
+         * a race observed on Noemi's 7 Aug log: the incoming sendMe replaces the
+         * in-flight DispatchWorker for the same message, the replaced attempt dies
+         * with GENERAL_FAILURE a moment later and re-arms the cooldown AFTER the
+         * clear, and the fresh dispatch then sat on "recently unreachable" for
+         * 23 minutes. A proof-of-life timestamp wins regardless of arrival order.
+         *
+         * The keys are still removed as immediate relief; the timestamp is the
+         * authoritative guard.
+         */
+        fun markPeerAlive(context: Context, peerId: String) {
             if (peerId.isEmpty()) return
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            if (prefs.getLong("offline_$peerId", 0L) == 0L) return
             prefs.edit {
+                putLong("alive_$peerId", System.currentTimeMillis())
                 remove("offline_$peerId")
                 remove("cooldown_$peerId")
             }
-            debugLine2("clearUnreachableCooldown", "Peer $peerId proved alive, cooldown cleared")
+            debugLine2("markPeerAlive", "Peer $peerId proved alive, cooldown overridden for ${PROOF_OF_LIFE_MS / 1000}s")
         }
     }
 
@@ -141,8 +153,16 @@ class DispatchWorker(
         val cooldownMs = sharedPreferences.getLong("cooldown_$toUserId", TARGET_COOLDOWN_MS)
 
         if (lastFailure > 0 && System.currentTimeMillis() - lastFailure < cooldownMs) {
-            debugLine2("doWork", "Target $toUserId recently unreachable, deferring retry for $messageId")
-            return Result.retry()
+            // A peer that just asked us for a message is awake by definition: its
+            // proof of life outranks any cooldown, even one armed a moment later
+            // by an attempt this very request cancelled (see markPeerAlive).
+            val provedAliveAt = sharedPreferences.getLong("alive_$toUserId", 0L)
+            if (System.currentTimeMillis() - provedAliveAt < PROOF_OF_LIFE_MS) {
+                debugLine2("doWork", "Cooldown overridden for $toUserId, peer proved alive ${(System.currentTimeMillis() - provedAliveAt) / 1000}s ago")
+            } else {
+                debugLine2("doWork", "Target $toUserId recently unreachable, deferring retry for $messageId")
+                return Result.retry()
+            }
         }
 
         var newState = NEW
