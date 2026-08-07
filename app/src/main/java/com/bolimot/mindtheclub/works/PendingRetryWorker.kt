@@ -6,10 +6,18 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
+import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.getInboxDao
+import com.bolimot.mindtheclub.functions.getMessageDao
+import com.bolimot.mindtheclub.functions.resolveContentKey
+import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.tools.Notify
+import com.bolimot.mindtheclub.tools.Status
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
@@ -82,11 +90,18 @@ class PendingRetryWorker(
     }
 
     override suspend fun doWork(): Result {
+        retryOutgoing()
+        retryIncoming()
+        return Result.success()
+    }
+
+    /** Messages WE owe a peer: re-send the `pending` FCM. Behaviour unchanged. */
+    private suspend fun retryOutgoing() {
         val entries = PendingMessageTracker.getAll(applicationContext)
 
         if (entries.isEmpty()) {
             debugLine("PendingRetryWorker", "No pending messages to retry")
-            return Result.success()
+            return
         }
 
         debugLine("PendingRetryWorker", "Found ${entries.size} pending message(s) to check")
@@ -121,8 +136,102 @@ class PendingRetryWorker(
             notifyRemotePeer(entry.toUserId, entry.messageKey, "pending")
             PendingMessageTracker.updateRetry(applicationContext, entry)
         }
+    }
 
-        return Result.success()
+    /**
+     * Messages a peer owes US: re-issue the sendMe.
+     *
+     * The PENDING handler answers a `pending` FCM with one sendMe. If that single
+     * round fails, and it does (a dropped signalling socket is enough), nothing
+     * used to survive it on this side and the message waited for the sender's own
+     * ladder, up to 13 hours.
+     *
+     * Arrival is detected here, by looking the message up, rather than by hooking
+     * the receive path: one query per pass leaves the hot path untouched and an
+     * entry can never outlive the message it waits for. Worst case it lingers one
+     * extra pass, costing nothing, because the check runs before any FCM is sent.
+     */
+    private suspend fun retryIncoming() {
+        val entries = IncomingPendingTracker.getAll(applicationContext)
+        if (entries.isEmpty()) return
+
+        debugLine("IncomingPending", "Checking ${entries.size} owed message(s)")
+
+        val messageDao = getMessageDao(applicationContext)
+        val inboxDao = getInboxDao(applicationContext)
+        val now = System.currentTimeMillis()
+
+        for (entry in entries) {
+            val message = try {
+                messageDao.getMessage(entry.messageId)
+            } catch (e: Exception) {
+                debugLine("IncomingPending", "Lookup failed for ${entry.messageId}: ${e.message}")
+                null
+            }
+
+            if (message != null && message.status != Status.RECEIVING) {
+                IncomingPendingTracker.remove(
+                    applicationContext, entry.messageId, entry.fromUserId, "arrived"
+                )
+                continue
+            }
+
+            if (now - entry.createdAt > IncomingPendingTracker.MAX_AGE_MS) {
+                IncomingPendingTracker.remove(
+                    applicationContext, entry.messageId, entry.fromUserId, "expired"
+                )
+                continue
+            }
+
+            if (entry.retryCount >= IncomingPendingTracker.MAX_RETRIES) {
+                IncomingPendingTracker.remove(
+                    applicationContext, entry.messageId, entry.fromUserId, "retry cap reached"
+                )
+                continue
+            }
+
+            if (now - entry.lastRetryAt < IncomingPendingTracker.getBackoffDelay(entry.retryCount)) {
+                continue
+            }
+
+            // Same resume-aware logic as the PENDING handler: ask only for what is
+            // actually missing, and ask for nothing when every chunk is already here.
+            val missing = try {
+                val contentKey = if (message != null) {
+                    contentKeyOf(
+                        entry.messageId,
+                        message.chatGroupId,
+                        message.originalSenderId,
+                        message.date
+                    )
+                } else {
+                    resolveContentKey(inboxDao, entry.messageId)
+                }
+                missingChunksByContent(inboxDao, contentKey)
+            } catch (e: Exception) {
+                debugLine("IncomingPending", "Chunk check failed for ${entry.messageId}: ${e.message}")
+                emptyList()
+            }
+
+            if (missing == null) {
+                IncomingPendingTracker.remove(
+                    applicationContext, entry.messageId, entry.fromUserId, "all chunks present"
+                )
+                continue
+            }
+
+            val missingRange =
+                if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
+
+            debugLine(
+                "IncomingPending",
+                "Re-requesting ${entry.messageId} from ${entry.fromUserId} " +
+                        "(retry #${entry.retryCount + 1}/${IncomingPendingTracker.MAX_RETRIES})"
+            )
+            notifyRemotePeer(entry.fromUserId, entry.messageId, Notify.SEND_ME, missingRange)
+            IncomingPendingTracker.updateRetry(applicationContext, entry)
+            delay(500L)
+        }
     }
 }
 

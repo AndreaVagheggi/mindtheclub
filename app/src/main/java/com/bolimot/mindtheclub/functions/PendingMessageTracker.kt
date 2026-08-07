@@ -134,20 +134,27 @@ object PendingMessageTracker {
 
     /**
      * Returns the minimum delay (ms) before the next retry based on retry count.
-     * Backoff schedule: 10min → 30min → 1h → 2h → 6h (capped).
+     * Backoff schedule: 10min → 20min → 45min → 1.5h → 3h → 4h (capped).
      *
      * The first steps MUST be short: a message can be lost at the very last hop
      * (receiver's process frozen/killed right as the WebRTC payload arrived, so
      * nothing was persisted) and this schedule is the sender-side safety net that
      * redelivers it. With the previous 6h first step, a lost message looked
      * "never sent" for a whole working day.
+     *
+     * The tail was tightened after 6 Aug, where the old 6h cap meant a peer that
+     * was merely asleep got asked again only the next morning. The change is kept
+     * modest on purpose: every retry costs a Cloudflare signalling room, and the
+     * receiver now retries too (see IncomingPendingTracker), so the two ladders
+     * add up.
      */
     fun getBackoffDelay(retryCount: Int): Long = when {
-        retryCount <= 0 -> 10 * 60 * 1000L        // 10 min (next worker pass)
-        retryCount == 1 -> 30 * 60 * 1000L        // 30 min
-        retryCount == 2 -> 60 * 60 * 1000L        // 1 hour
-        retryCount == 3 -> 2 * 60 * 60 * 1000L    // 2 hours
-        else            -> 6 * 60 * 60 * 1000L    // 6 hours (capped)
+        retryCount <= 0 -> 10 * 60 * 1000L         // 10 min (next worker pass)
+        retryCount == 1 -> 20 * 60 * 1000L         // 20 min
+        retryCount == 2 -> 45 * 60 * 1000L         // 45 min
+        retryCount == 3 -> 90 * 60 * 1000L         // 1.5 hours
+        retryCount == 4 -> 3 * 60 * 60 * 1000L     // 3 hours
+        else            -> 4 * 60 * 60 * 1000L     // 4 hours (capped)
     }
 
     private fun parseEntry(json: String): PendingEntry {

@@ -25,6 +25,7 @@ import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
+import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.appIsForeground
 import com.bolimot.mindtheclub.functions.batchTablesExists
@@ -316,6 +317,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         if (missingRange != null) {
                             debugLine(tag, "Partial state for $msgId: requesting chunks $missingRange (${missing.size} missing)")
                         }
+
+                        // Remember that this message is owed to us, so PendingRetryWorker
+                        // can ask again. The sendMe below can fail silently (a dropped
+                        // signalling socket is enough) and until now nothing on this side
+                        // survived that failure: recovery depended entirely on the sender.
+                        IncomingPendingTracker.record(applicationContext, msgId, fromUserId)
 
                         if (!chatGroupId.isNullOrEmpty()) {
                             debugLine(tag, "Group pending for $chatGroupId, fanning out sendMe")
