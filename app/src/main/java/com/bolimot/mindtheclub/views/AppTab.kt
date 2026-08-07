@@ -57,6 +57,8 @@ import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Share
 import com.bolimot.mindtheclub.viewModel.PeerViewModel
+import com.bolimot.mindtheclub.voip.ManagedTelecom
+import com.bolimot.mindtheclub.voip.isCallInProgress
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.badge.BadgeDrawable
@@ -235,6 +237,11 @@ class AppTab : BaseActivity() {
             .cancel(DataSyncService.NOTIFICATION_ID)
         debugLine("AppTab", "isClosing = ${ConnectionManager.instance.isClosing}, startedForCallOnly = $startedForCallOnly")
         if(ConnectionManager.instance.isClosing && startedForCallOnly){
+            if (ManagedTelecom.pendingCallFlow.value != null || isCallInProgress()) {
+                debugLine("AppTab", "Close skipped: a call is pending or in progress.")
+                startedForCallOnly = false
+                return
+            }
             lifecycleScope.launch {
                 if (!fcmSending) {
                     debugLine("AppTab", "fcmSending is false, closing immediately.")
@@ -246,6 +253,12 @@ class AppTab : BaseActivity() {
                         while (fcmSending) {
                             delay(100)
                         }
+                    }
+
+                    if (ManagedTelecom.pendingCallFlow.value != null || isCallInProgress()) {
+                        debugLine("AppTab", "Wait finished, but a call is pending or in progress. Not closing.")
+                        startedForCallOnly = false
+                        return@launch
                     }
 
                     debugLine("AppTab", "Wait finished or timed out. Closing now.")

@@ -141,6 +141,8 @@
         <activity
             android:name=".views.IncomingCall"
             android:launchMode="singleTop"
+            android:taskAffinity="com.bolimot.mindtheclub.incomingcall"
+            android:excludeFromRecents="true"
             android:screenOrientation="portrait"
             tools:ignore="DiscouragedApi,LockedOrientationActivity"
             android:theme="@style/MindTheClub" />

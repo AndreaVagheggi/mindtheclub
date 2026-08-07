@@ -441,6 +441,11 @@ class VideoCall : BaseActivity() {
         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) setFullScreen()
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         enterPipMode()

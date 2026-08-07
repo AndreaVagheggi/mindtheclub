@@ -68,6 +68,18 @@ class IncomingCall : BaseActivity() {
         }
     }
 
+    private fun setFullScreen(){
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val insetsController = WindowInsetsControllerCompat(window, window.decorView)
+        insetsController.hide(WindowInsetsCompat.Type.systemBars())
+        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) setFullScreen()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         wakeUpPhone()
         super.onCreate(savedInstanceState)
@@ -96,10 +108,7 @@ class IncomingCall : BaseActivity() {
 
         setContentView(R.layout.call_screen)
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = WindowInsetsControllerCompat(window, window.decorView)
-        insetsController.hide(WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        setFullScreen()
 
         observeCallState()
 
