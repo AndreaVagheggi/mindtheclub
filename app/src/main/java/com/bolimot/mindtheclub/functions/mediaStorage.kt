@@ -14,6 +14,85 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/**
+ * Public folders where received media are stored, see saveMediaToPublicStorage
+ * and saveFileToPublicDownloads. Used to find a file again by name after a
+ * restore on another phone.
+ */
+private val PUBLIC_MEDIA_FOLDERS = listOf(
+    Environment.DIRECTORY_PICTURES to false,
+    Environment.DIRECTORY_MOVIES to true,
+    Environment.DIRECTORY_DOWNLOADS to false,
+)
+
+/**
+ * The DISPLAY_NAME behind [uriString], or null when it is not a resolvable
+ * media uri.
+ *
+ * Received media live in the public MediaStore, so their uri is a
+ * content://media/... row id that is meaningless on any other device. The file
+ * NAME however survives the phone migration together with the file itself, and
+ * is what lets [findPublicMediaByName] re-attach the row after a restore.
+ */
+fun displayNameOfMediaUri(context: Context, uriString: String?): String? {
+    if (uriString.isNullOrEmpty()) return null
+    return try {
+        val uri = Uri.parse(uriString)
+        when (uri.scheme) {
+            "content" -> context.contentResolver.query(
+                uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null
+            )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+            "file" -> uri.lastPathSegment
+            else -> null
+        }
+    } catch (e: Exception) {
+        debugLine("displayNameOfMediaUri", "Failed for $uriString: ${e.message}")
+        null
+    }
+}
+
+/**
+ * Looks for [fileName] inside the app's public media folders and returns its
+ * uri on THIS device, or null when the file did not travel with the user.
+ *
+ * This is the restore-side half of the media re-attachment: the standard
+ * Android phone migration copies the public folders, so the bytes are already
+ * there under the same name, only the MediaStore row id changed.
+ */
+fun findPublicMediaByName(context: Context, fileName: String): Uri? {
+    if (fileName.isEmpty()) return null
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        for ((dir, _) in PUBLIC_MEDIA_FOLDERS) {
+            val f = File(Environment.getExternalStoragePublicDirectory(dir), "MindTheClub/$fileName")
+            if (f.exists()) return Uri.fromFile(f)
+        }
+        return null
+    }
+
+    val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} = ?"
+    val projection = arrayOf(MediaStore.MediaColumns._ID)
+
+    for ((dir, isVideo) in PUBLIC_MEDIA_FOLDERS) {
+        val collection = when {
+            dir == Environment.DIRECTORY_DOWNLOADS -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            isVideo -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            else -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+        try {
+            context.contentResolver.query(
+                collection, projection, selection, arrayOf(fileName, "$dir/MindTheClub/"), null
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    return ContentUris.withAppendedId(collection, c.getLong(0))
+                }
+            }
+        } catch (e: Exception) {
+            debugLine("findPublicMediaByName", "Query failed in $dir: ${e.message}")
+        }
+    }
+    return null
+}
+
 private fun deleteExistingMediaFile(
     context: Context,
     fileName: String,

@@ -6,9 +6,13 @@ import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.functions.InstallationIdentity
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.displayNameOfMediaUri
+import com.bolimot.mindtheclub.functions.findPublicMediaByName
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
+import com.bolimot.mindtheclub.functions.splitToList
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.tools.Type
 import kotlinx.serialization.json.Json
 import android.util.Base64
 import java.io.ByteArrayOutputStream
@@ -61,6 +65,21 @@ object BackupManager {
                 }
             }
 
+            // Names only, never bytes: see BackupData.mediaFileNames.
+            val mediaNames = mutableMapOf<String, String>()
+            for (message in messages) {
+                val uriValue = message.uri
+                if (uriValue.isEmpty()) continue
+                val names = if (message.type == Type.MULTIPLE_IMAGES) {
+                    splitToList(uriValue).map { displayNameOfMediaUri(context, it) ?: "" }
+                } else {
+                    listOf(displayNameOfMediaUri(context, uriValue) ?: "")
+                }
+                if (names.any { it.isNotEmpty() }) {
+                    mediaNames[message.messageId] = names.joinToString(",")
+                }
+            }
+
             val backupData = BackupData(
                 userId = MySelf.userId() ?: "",
                 privateId = MySelf.privateId(),
@@ -78,6 +97,7 @@ object BackupManager {
                 selfPictureMiniBase64 = selfPicMiniBase64,
                 peerPictures = peerPics,
                 identityKeyset = KeyManager.exportIdentityKeyset(),
+                mediaFileNames = mediaNames,
             )
 
             val jsonBytes = json.encodeToString(BackupData.serializer(), backupData)
@@ -171,14 +191,24 @@ object BackupManager {
                 }
             }
 
+            var mediaReattached = 0
             for (message in backupData.messages) {
                 try {
                     if (!db.messageDao().messageExists(message.messageId)) {
-                        db.messageDao().insert(message.copy(uid = 0))
+                        // Re-attach the media before inserting: the uri from the
+                        // old phone points at a MediaStore row that does not
+                        // exist here, while the file itself is in the public
+                        // folders under the same name (see mediaFileNames).
+                        val rebuilt = reattachMedia(context, message, backupData.mediaFileNames)
+                        if (rebuilt != message.uri) mediaReattached++
+                        db.messageDao().insert(message.copy(uid = 0, uri = rebuilt))
                     }
                 } catch (e: Exception) {
                     debugLine(TAG, "Message restore skip: ${e.message}")
                 }
+            }
+            if (backupData.mediaFileNames.isNotEmpty()) {
+                debugLine(TAG, "Media re-attached for $mediaReattached of ${backupData.mediaFileNames.size} media message(s)")
             }
 
             for (reaction in backupData.reactions) {
@@ -228,6 +258,38 @@ object BackupManager {
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {
         setPreference(AUTO_BACKUP_ENABLED_KEY, if (enabled) "true" else "false", context)
+    }
+
+    /**
+     * Returns the uri [message] should carry on THIS device, looking each of its
+     * media files up by name in the public folders.
+     *
+     * Falls back to the original uri whenever the name is unknown or the file did
+     * not travel: a bubble that still points at nothing is no worse than before,
+     * while a wrong rewrite would be. Same-phone restores keep working because
+     * the lookup then finds the very same file.
+     */
+    private fun reattachMedia(
+        context: Context,
+        message: com.bolimot.mindtheclub.database.message.Message,
+        mediaFileNames: Map<String, String>
+    ): String {
+        val original = message.uri
+        if (original.isEmpty()) return original
+        val stored = mediaFileNames[message.messageId] ?: return original
+
+        return if (message.type == Type.MULTIPLE_IMAGES) {
+            val uris = splitToList(original)
+            val names = splitToList(stored)
+            if (names.size != uris.size) return original
+            uris.mapIndexed { i, u ->
+                names[i].takeIf { it.isNotEmpty() }
+                    ?.let { findPublicMediaByName(context, it)?.toString() } ?: u
+            }.joinToString(",")
+        } else {
+            stored.takeIf { it.isNotEmpty() }
+                ?.let { findPublicMediaByName(context, it)?.toString() } ?: original
+        }
     }
 
     private fun readUriToBase64(context: Context, uriString: String?): String? {

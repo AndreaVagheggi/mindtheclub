@@ -36,4 +36,12 @@ data class BackupData(
     // (7 Aug). Only ever present inside the AES-GCM encrypted envelope; null in
     // backups made by older versions, which restore data only, as before.
     val identityKeyset: String? = null,
+    // messageId -> public file name of that message's media, for received media
+    // only. The bytes are NOT in the backup: they live in the phone's public
+    // folders (Pictures/Movies/Download + MindTheClub) and travel with the
+    // standard Android phone migration. What does not travel is the MediaStore
+    // row id inside the uri, so the chat bubbles would point at nothing; this
+    // map lets the restore find each file again by name. A few KB in total.
+    // For multipleImages the value is a comma separated list, matching uri.
+    val mediaFileNames: Map<String, String> = emptyMap(),
 )
