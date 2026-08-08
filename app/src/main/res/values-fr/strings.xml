@@ -333,4 +333,16 @@
     <string name="switch_to_video_declined">%1$s a refusé l\'appel vidéo</string>
     <string name="switch_to_video_no_answer">Pas de réponse à votre demande d\'appel vidéo</string>
     <string name="switch_to_video_failed">Impossible de passer en appel vidéo</string>
+    <string name="key_change_title">Le code de sécurité a changé</string>
+    <string name="key_change_message">%1$s a peut-être changé de téléphone ou réinstallé l\'application, son code de sécurité est donc différent maintenant. Pour en être sûr, faites la vérification directement avec votre contact, puis acceptez la nouvelle identité pour continuer à échanger.</string>
+    <string name="key_change_accept">Accepter la nouvelle identité</string>
+    <string name="key_change_later">Pas maintenant</string>
+    <string name="key_change_accepted">Nouvelle identité acceptée</string>
+    <string name="key_change_failed">Impossible de vérifier la nouvelle identité, réessayez plus tard</string>
+    <string name="backup_password_short">Le mot de passe doit contenir au moins 8 caractères</string>
+    <string name="identity_moved_title">Identité transférée</string>
+    <string name="identity_moved_message">Votre identité MindTheClub est maintenant active sur un autre téléphone, cet appareil a donc été mis en pause pour ne pas perdre de messages entre les deux. Pour utiliser MindTheClub de nouveau sur ce téléphone, faites une sauvegarde sur l\'autre téléphone et restaurez la ici.</string>
+    <string name="identity_moved_retry">Vérifier encore</string>
+    <string name="identity_moved_close">Fermer</string>
+    <string name="identity_moved_still">Cette identité est toujours active sur un autre téléphone</string>
 </resources>

@@ -2,7 +2,9 @@ package com.bolimot.mindtheclub.backup
 
 import android.content.Context
 import android.net.Uri
+import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
+import com.bolimot.mindtheclub.functions.InstallationIdentity
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
@@ -75,6 +77,7 @@ object BackupManager {
                 selfPictureBase64 = selfPicBase64,
                 selfPictureMiniBase64 = selfPicMiniBase64,
                 peerPictures = peerPics,
+                identityKeyset = KeyManager.exportIdentityKeyset(),
             )
 
             val jsonBytes = json.encodeToString(BackupData.serializer(), backupData)
@@ -118,6 +121,26 @@ object BackupManager {
             backupData.privateId?.let { setPreference(MySelf.PRIVATE_ID_KEY, it, context) }
             backupData.name?.let { setPreference(MySelf.NAME_KEY, it, context) }
             backupData.bio?.let { setPreference("myBio", it, context) }
+
+            // Identity first, data second. Restoring the keyset makes this phone
+            // BE the old one. The Firestore side (publicKey, FCM token and the
+            // installationId ownership marker) is claimed right after by
+            // forceTokenSyncAfterRestore in the calling activity, which reads
+            // the CURRENT Firestore token and presents it as ownership proof;
+            // publishing from here with this install's own token would be
+            // rejected by the cloud function's oldToken check. Backups from
+            // older app versions carry no keyset: data restores as before.
+            var identityRestored = false
+            backupData.identityKeyset?.let { keyset ->
+                identityRestored = KeyManager.importIdentityKeyset(keyset, context)
+                if (identityRestored) {
+                    // This phone owns the identity now: lift any earlier pause.
+                    InstallationIdentity.clearDeactivated(context)
+                    debugLine(TAG, "Identity keyset restored")
+                } else {
+                    debugLine(TAG, "Identity keyset restore FAILED, this install keeps its own identity")
+                }
+            }
 
             val restoredPicUri = saveBase64ToFile(context, backupData.selfPictureBase64, "restored_pic.jpg")
             if (restoredPicUri != null) {
@@ -185,7 +208,8 @@ object BackupManager {
             }
 
             val summary = "Restored: ${backupData.peers.size} contacts, " +
-                                    "${backupData.messages.size} messages"
+                    "${backupData.messages.size} messages" +
+                    if (identityRestored) ", identity" else ""
 
             debugLine(TAG, summary)
             summary

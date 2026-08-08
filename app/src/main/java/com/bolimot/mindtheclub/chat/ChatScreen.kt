@@ -89,6 +89,7 @@ import com.bolimot.mindtheclub.functions.extractUrl
 import com.bolimot.mindtheclub.functions.fetchWebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.PeerIdentityChange
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
@@ -1024,6 +1025,50 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         if (remoteUserId.startsWith("group")) {
             loadGroupPicture()
         }
+
+        maybeShowKeyChangeDialog()
+    }
+
+    private var keyChangeDialogShowing = false
+
+    /**
+     * Surfaces a pending identity change for this peer (they reinstalled or
+     * changed phone, so their published key no longer matches the verified
+     * one). Until the user decides, sends to this peer cannot be sealed with a
+     * key they can read, so the dialog reappears on every open of this chat.
+     * Accepting is the ONLY path that stores the new key: nothing in the app
+     * updates a changed key silently.
+     */
+    private fun maybeShowKeyChangeDialog() {
+        if (remoteUserId.startsWith("group")) return
+        if (isAssistantChat || NoteToSelf.isNoteToSelf(remoteUserId)) return
+        if (keyChangeDialogShowing) return
+        if (PeerIdentityChange.pending(this, remoteUserId) == null) return
+
+        keyChangeDialogShowing = true
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.key_change_title))
+            .setMessage(getString(R.string.key_change_message, name))
+            .setPositiveButton(getString(R.string.key_change_accept)) { _, _ ->
+                lifecycleScope.launch {
+                    val ok = PeerIdentityChange.acceptNewIdentity(this@ChatScreen, remoteUserId)
+                    keyChangeDialogShowing = false
+                    if (ok) {
+                        showToast(getString(R.string.key_change_accepted), this@ChatScreen)
+                        // Refresh the pairing in both directions: our profile
+                        // reaches them sealed with the key they can now read.
+                        getPeerViewModel().sendMyProfileToRemotePeer(remoteUserId)
+                    } else {
+                        showToast(getString(R.string.key_change_failed), this@ChatScreen)
+                    }
+                }
+            }
+            .setNegativeButton(getString(R.string.key_change_later)) { dialog, _ ->
+                keyChangeDialogShowing = false
+                dialog.dismiss()
+            }
+            .setOnCancelListener { keyChangeDialogShowing = false }
+            .show()
     }
 
     override fun onPostResume() {

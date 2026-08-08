@@ -1,6 +1,7 @@
 package com.bolimot.mindtheclub.start
 
 import com.bolimot.mindtheclub.firebase.updateMyFcmToken
+import com.bolimot.mindtheclub.functions.InstallationIdentity
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.setPreference
@@ -35,6 +36,13 @@ fun initApplication(): String {
 
 suspend fun syncFirebaseTokenInBackground(myUserId: String) {
     try {
+        val context = App.context()
+
+        if (InstallationIdentity.isDeactivated(context)) {
+            debugLine("initFirebase", "Identity moved to another phone, skipping token sync")
+            return
+        }
+
         val freshToken = FirebaseMessaging.getInstance().token.await()
         val storedToken = MySelf.fcmTokenGet()
         val isDocInFirestore = checkUserDocumentExists(myUserId)
@@ -42,11 +50,30 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
 
         debugLine("initFirebase", "Sync Check: Fresh=$freshToken, Stored=$storedToken, InFirestore=$isDocInFirestore, HasPublicKey=$hasPublicKey")
 
+        // One installation per identity. A remote id that exists and is not
+        // ours means another install (a restored backup on a new phone) took
+        // this identity over: deactivate instead of fighting for delivery.
+        // Only a successfully READ different id triggers this; null (doc from
+        // an older app version) means unclaimed, and errors change nothing.
+        val remoteInstallation = if (isDocInFirestore) fetchRemoteInstallationId(myUserId) else null
+        val myInstallation = InstallationIdentity.get(context)
+        if (remoteInstallation != null && remoteInstallation != myInstallation) {
+            debugLine("initFirebase", "Identity owned by installation $remoteInstallation, not mine ($myInstallation). Deactivating this phone.")
+            InstallationIdentity.markDeactivated(context)
+            val intent = android.content.Intent(context, com.bolimot.mindtheclub.views.IdentityMovedActivity::class.java)
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            return
+        }
+
         val needsUpdate = when {
             storedToken == null -> true
             freshToken != storedToken -> true
             !isDocInFirestore -> true
             !hasPublicKey -> true
+            // Unclaimed doc (pre installationId app version): claim it, the
+            // update below writes our id alongside the token.
+            remoteInstallation == null && isDocInFirestore -> true
             else -> false
         }
 
@@ -75,8 +102,10 @@ suspend fun forceTokenSyncAfterRestore(userId: String) {
 
         if (freshToken == firestoreToken) {
             MySelf.fcmTokenSet(freshToken)
-            debugLine("initFirebase", "Restore sync: tokens already match, stored locally")
-            return
+            debugLine("initFirebase", "Restore sync: tokens already match")
+            // Do NOT return: a restore may have replaced the local identity
+            // (same phone reinstall keeps the same token), so publicKey and
+            // installationId in Firestore still have to be refreshed below.
         }
 
         // Pass the actual Firestore token as oldToken so the Cloud Function accepts it
@@ -107,6 +136,18 @@ suspend fun checkUserDocumentExists(userId: String): Boolean {
     } catch (e: Exception) {
         debugLine("checkUserDocumentExists", "Error checking document existence: ${e.message}")
         false
+    }
+}
+
+/** The installation id currently stamped on the user's document, or null. */
+suspend fun fetchRemoteInstallationId(userId: String): String? {
+    if (userId.isBlank()) return null
+    return try {
+        val doc = Firebase.firestore.collection("users").document(userId).get().await()
+        doc.getString("installationId")?.takeIf { it.isNotEmpty() }
+    } catch (e: Exception) {
+        debugLine("initFirebase", "fetchRemoteInstallationId failed: ${e.message}")
+        null
     }
 }
 

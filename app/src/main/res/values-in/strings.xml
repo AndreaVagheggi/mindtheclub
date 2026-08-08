@@ -334,4 +334,16 @@
     <string name="switch_to_video_declined">%1$s menolak panggilan video</string>
     <string name="switch_to_video_no_answer">Tidak ada jawaban atas permintaan panggilan video Anda</string>
     <string name="switch_to_video_failed">Tidak dapat beralih ke panggilan video</string>
+    <string name="key_change_title">Kode keamanan berubah</string>
+    <string name="key_change_message">%1$s mungkin telah mengganti ponsel atau memasang ulang aplikasi, jadi kode keamanannya sekarang berbeda. Jika ingin yakin, periksa langsung dengan kontak Anda, lalu terima identitas baru untuk terus berkirim pesan.</string>
+    <string name="key_change_accept">Terima identitas baru</string>
+    <string name="key_change_later">Nanti saja</string>
+    <string name="key_change_accepted">Identitas baru diterima</string>
+    <string name="key_change_failed">Identitas baru tidak dapat diverifikasi, coba lagi nanti</string>
+    <string name="backup_password_short">Kata sandi minimal 8 karakter</string>
+    <string name="identity_moved_title">Identitas dipindahkan</string>
+    <string name="identity_moved_message">Identitas MindTheClub Anda sekarang aktif di ponsel lain, jadi perangkat ini dijeda agar tidak ada pesan yang hilang di antara keduanya. Untuk menggunakan MindTheClub lagi di ponsel ini, buat cadangan di ponsel satunya lalu pulihkan di sini.</string>
+    <string name="identity_moved_retry">Periksa lagi</string>
+    <string name="identity_moved_close">Tutup</string>
+    <string name="identity_moved_still">Identitas ini masih aktif di ponsel lain</string>
 </resources>

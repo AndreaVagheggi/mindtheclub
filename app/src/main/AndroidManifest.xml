@@ -102,6 +102,7 @@
             android:parentActivityName=".chat.ChatScreen" />
 
         <activity android:name=".views.GroupMembersActivity" />
+        <activity android:name=".views.IdentityMovedActivity" android:exported="false" />
 
         <activity android:name=".chat.SelectPeersForGroup" />
 

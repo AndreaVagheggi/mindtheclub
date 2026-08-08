@@ -48,6 +48,25 @@ object KeyManager {
                 return false
             }
             if (fingerprintOf(publicKey) != expectedFingerprint) {
+                // The caller's expectation (an old QR, a stale contact card) can
+                // lag behind an identity the user has ALREADY explicitly accepted
+                // through the key change dialog. If the key we hold for this peer
+                // is the very key Firestore serves, there is nothing to verify or
+                // store: report success so retrying workers converge instead of
+                // looping on a stale expectation for ever (the Sofia case).
+                val storedKey = com.bolimot.mindtheclub.functions.getPeerDao(context)
+                    .getPeer(userId)?.publicKey
+                if (!storedKey.isNullOrEmpty() && fingerprintOf(storedKey) == fingerprintOf(publicKey)) {
+                    debugLine("KeyManager", "Expected fingerprint is stale but stored key matches Firestore for $userId, treating as verified.")
+                    return true
+                }
+                // A mismatch against an EXISTING contact is the changed phone
+                // signal: never store silently, record it so the chat surfaces
+                // the explicit accept dialog.
+                if (storedKey != null) {
+                    com.bolimot.mindtheclub.functions.PeerIdentityChange
+                        .record(context, userId, fingerprintOf(publicKey))
+                }
                 debugLine("KeyManager", "Fingerprint MISMATCH for $userId. Not storing.")
                 return false
             }
@@ -91,6 +110,94 @@ object KeyManager {
             debugLine("KeyManager", "getMyPublicKey failed: ${e.message}")
             null
         }
+    }
+
+    /**
+     * Serializes the full identity keyset, PRIVATE key included, for the app's
+     * password encrypted backup. This is the one piece a plain data backup can
+     * never carry: the keyset at rest is sealed by an Android Keystore master
+     * key that never leaves the device, so restoring the database alone yields
+     * a phone that reads its old messages but owns a brand new identity (seen
+     * first hand on 7 Aug). InsecureSecretKeyAccess is Tink's official escape
+     * hatch for exactly this; the caller MUST only ever put the result inside
+     * the AES-GCM backup envelope, never on disk in the clear.
+     */
+    @Synchronized
+    fun exportIdentityKeyset(): String? {
+        return try {
+            ensureRegistered()
+            TinkJsonProtoKeysetFormat.serializeKeyset(
+                keysetHandle(),
+                com.google.crypto.tink.InsecureSecretKeyAccess.get()
+            )
+        } catch (e: Exception) {
+            debugLine("KeyManager", "exportIdentityKeyset failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Replaces this device's identity with the keyset carried by a restored
+     * backup, so the user keeps being who they were on the old phone.
+     *
+     * The keyset is re-sealed with THIS device's Keystore master key and written
+     * into the exact SharedPreferences slot AndroidKeysetManager reads, in the
+     * hex-of-EncryptedKeyset format its reader expects (serializeEncryptedKeyset
+     * with empty associated data is the documented equivalent of the legacy
+     * writer). The next keysetHandle() call picks it up with no further changes.
+     *
+     * Returns true only after verifying the round trip: the public key now
+     * derived on this device must match the imported keyset's.
+     */
+    @Synchronized
+    fun importIdentityKeyset(keysetJson: String, context: Context = App.context()): Boolean {
+        return try {
+            ensureRegistered()
+            val handle = TinkJsonProtoKeysetFormat.parseKeyset(
+                keysetJson,
+                com.google.crypto.tink.InsecureSecretKeyAccess.get()
+            )
+            val expectedPublic = TinkJsonProtoKeysetFormat
+                .serializeKeysetWithoutSecret(handle.publicKeysetHandle)
+
+            // Touching the current keyset first guarantees the Keystore master
+            // key exists before we ask for its Aead.
+            keysetHandle(context)
+            val masterAead = com.google.crypto.tink.integration.android
+                .AndroidKeystoreKmsClient().getAead(MASTER_KEY_URI)
+
+            val encrypted = com.google.crypto.tink.TinkProtoKeysetFormat
+                .serializeEncryptedKeyset(handle, masterAead, ByteArray(0))
+
+            val deviceContext = context.createDeviceProtectedStorageContext()
+            val written = deviceContext
+                .getSharedPreferences(PREF_FILE_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEYSET_NAME, toHex(encrypted))
+                .commit()
+            if (!written) {
+                debugLine("KeyManager", "importIdentityKeyset: prefs write failed")
+                return false
+            }
+
+            val roundTrip = getMyPublicKey()
+            val ok = roundTrip != null && fingerprintOf(roundTrip) == fingerprintOf(expectedPublic)
+            debugLine(
+                "KeyManager",
+                if (ok) "Identity keyset imported, fingerprint ${fingerprintOf(expectedPublic)}"
+                else "importIdentityKeyset round trip FAILED"
+            )
+            ok
+        } catch (e: Exception) {
+            debugLine("KeyManager", "importIdentityKeyset failed: ${e.message}")
+            false
+        }
+    }
+
+    private fun toHex(bytes: ByteArray): String {
+        val sb = StringBuilder(bytes.size * 2)
+        for (b in bytes) sb.append(String.format("%02x", b))
+        return sb.toString()
     }
 
     fun fingerprintOf(publicKey: String): String {

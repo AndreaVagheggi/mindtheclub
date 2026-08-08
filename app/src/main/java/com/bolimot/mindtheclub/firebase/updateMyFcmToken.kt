@@ -16,7 +16,11 @@ suspend fun updateMyFcmToken(
         "userId" to userId,
         "newToken" to newToken,
         "oldToken" to oldToken,
-        "publicKey" to KeyManager.getMyPublicKey()
+        "publicKey" to KeyManager.getMyPublicKey(),
+        // Ownership marker: whichever installation last synced owns the
+        // identity; every other one deactivates itself on its next start.
+        "installationId" to com.bolimot.mindtheclub.functions.InstallationIdentity
+            .get(com.bolimot.mindtheclub.start.App.context())
     )
 
     debugLine("updateMyFcmToken", "Trying to update token, with callable")

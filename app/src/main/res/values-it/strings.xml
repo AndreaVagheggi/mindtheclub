@@ -331,4 +331,16 @@
     <string name="switch_to_video_declined">%1$s ha rifiutato la videochiamata</string>
     <string name="switch_to_video_no_answer">Nessuna risposta alla tua richiesta di videochiamata</string>
     <string name="switch_to_video_failed">Impossibile passare alla videochiamata</string>
+    <string name="key_change_title">Codice di sicurezza cambiato</string>
+    <string name="key_change_message">%1$s potrebbe aver cambiato telefono o reinstallato la app, quindi il suo codice di sicurezza ora è diverso. Se vuoi esserne certo, verificalo direttamente con il tuo contatto, poi accetta la nuova identità per continuare a scrivervi.</string>
+    <string name="key_change_accept">Accetta nuova identità</string>
+    <string name="key_change_later">Non ora</string>
+    <string name="key_change_accepted">Nuova identità accettata</string>
+    <string name="key_change_failed">Impossibile verificare la nuova identità, riprova più tardi</string>
+    <string name="backup_password_short">La password deve avere almeno 8 caratteri</string>
+    <string name="identity_moved_title">Identità trasferita</string>
+    <string name="identity_moved_message">La tua identità MindTheClub è ora attiva su un altro telefono, quindi questo dispositivo è stato messo in pausa per evitare di perdere messaggi tra i due. Per usare di nuovo MindTheClub su questo telefono, fai un backup sull\'altro telefono e ripristinalo qui.</string>
+    <string name="identity_moved_retry">Ricontrolla</string>
+    <string name="identity_moved_close">Chiudi</string>
+    <string name="identity_moved_still">Questa identità è ancora attiva su un altro telefono</string>
 </resources>

@@ -30,4 +30,10 @@ data class BackupData(
     val selfPictureBase64: String? = null,
     val selfPictureMiniBase64: String? = null,
     val peerPictures: Map<String, String> = emptyMap(),
+    // Full Tink identity keyset, PRIVATE key included. This is what lets a
+    // restore keep the user's identity across phones: without it the new device
+    // generates a fresh keypair and every contact silently stops decrypting
+    // (7 Aug). Only ever present inside the AES-GCM encrypted envelope; null in
+    // backups made by older versions, which restore data only, as before.
+    val identityKeyset: String? = null,
 )

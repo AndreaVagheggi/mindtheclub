@@ -334,4 +334,16 @@
     <string name="switch_to_video_declined">%1$s hat den Videoanruf abgelehnt</string>
     <string name="switch_to_video_no_answer">Keine Antwort auf deine Anfrage für einen Videoanruf</string>
     <string name="switch_to_video_failed">Wechsel zum Videoanruf nicht möglich</string>
+    <string name="key_change_title">Sicherheitscode geändert</string>
+    <string name="key_change_message">%1$s hat vielleicht das Telefon gewechselt oder die App neu installiert, deshalb ist der Sicherheitscode jetzt anders. Zur Sicherheit kannst du ihn direkt mit deinem Kontakt überprüfen, danach akzeptiere die neue Identität, um weiter zu schreiben.</string>
+    <string name="key_change_accept">Neue Identität akzeptieren</string>
+    <string name="key_change_later">Nicht jetzt</string>
+    <string name="key_change_accepted">Neue Identität akzeptiert</string>
+    <string name="key_change_failed">Die neue Identität konnte nicht überprüft werden, versuche es später erneut</string>
+    <string name="backup_password_short">Das Passwort muss mindestens 8 Zeichen haben</string>
+    <string name="identity_moved_title">Identität umgezogen</string>
+    <string name="identity_moved_message">Deine MindTheClub Identität ist jetzt auf einem anderen Telefon aktiv, deshalb wurde dieses Gerät pausiert, damit keine Nachrichten zwischen den beiden verloren gehen. Um MindTheClub wieder auf diesem Telefon zu nutzen, erstelle auf dem anderen Telefon ein Backup und stelle es hier wieder her.</string>
+    <string name="identity_moved_retry">Erneut prüfen</string>
+    <string name="identity_moved_close">Schließen</string>
+    <string name="identity_moved_still">Diese Identität ist noch auf einem anderen Telefon aktiv</string>
 </resources>

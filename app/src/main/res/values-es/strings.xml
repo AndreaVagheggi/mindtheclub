@@ -334,4 +334,16 @@
     <string name="switch_to_video_declined">%1$s ha rechazado la videollamada</string>
     <string name="switch_to_video_no_answer">Sin respuesta a tu solicitud de videollamada</string>
     <string name="switch_to_video_failed">No se ha podido cambiar a videollamada</string>
+    <string name="key_change_title">El código de seguridad ha cambiado</string>
+    <string name="key_change_message">Es posible que %1$s haya cambiado de teléfono o reinstalado la aplicación, por eso su código de seguridad ahora es diferente. Si quieres estar seguro, veríficalo directamente con tu contacto, luego acepta la nueva identidad para seguir escribiendo.</string>
+    <string name="key_change_accept">Aceptar nueva identidad</string>
+    <string name="key_change_later">Ahora no</string>
+    <string name="key_change_accepted">Nueva identidad aceptada</string>
+    <string name="key_change_failed">No se pudo verificar la nueva identidad, inténtalo más tarde</string>
+    <string name="backup_password_short">La contraseña debe tener al menos 8 caracteres</string>
+    <string name="identity_moved_title">Identidad trasladada</string>
+    <string name="identity_moved_message">Tu identidad de MindTheClub ahora está activa en otro teléfono, por eso este dispositivo se ha puesto en pausa para no perder mensajes entre los dos. Para volver a usar MindTheClub en este teléfono, haz una copia de seguridad en el otro teléfono y restaurála aquí.</string>
+    <string name="identity_moved_retry">Comprobar de nuevo</string>
+    <string name="identity_moved_close">Cerrar</string>
+    <string name="identity_moved_still">Esta identidad sigue activa en otro teléfono</string>
 </resources>

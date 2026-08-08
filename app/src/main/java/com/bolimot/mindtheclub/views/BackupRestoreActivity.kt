@@ -124,6 +124,14 @@ class BackupRestoreActivity : BaseActivity() {
                     return@setPositiveButton
                 }
 
+                // The backup now carries the identity private key: a weak
+                // password would make the file the easiest way to steal an
+                // identity. Enforced on creation only, restore accepts any.
+                if (isBackup && password.length < 8) {
+                    showToast(getString(R.string.backup_password_short), this)
+                    return@setPositiveButton
+                }
+
                 if (isBackup && password != confirm) {
                     showToast(getString(R.string.passwords_do_not_match), this)
                     return@setPositiveButton

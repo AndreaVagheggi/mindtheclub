@@ -220,13 +220,26 @@ class MessageRepository(private val messageDao: MessageDao) {
         return result
     }
 
-    private fun deleteLinkedFiles(message: Message): Boolean {
+    private suspend fun deleteLinkedFiles(message: Message): Boolean {
         var result = true
 
         // A profile message points at "<peerId>.jpg", the file the contact's
         // avatar is still using: it belongs to the peer, not to the message.
         // Deleting the message must not take the avatar with it.
         if (message.type == Type.PROFILE) return true
+
+        // Same aliasing, different carrier: a shared contact card (type=contact,
+        // sender side) puts the live "<peerId>.jpg" avatar in its uri, not a
+        // copy. The per-type guard above missed it, and on 8 Aug deleting a chat
+        // deleted a card message and took ANOTHER contact's avatar with it. This
+        // check is generic on purpose: no file that is the avatar of a peer that
+        // still exists is ever deleted together with a message, whatever type
+        // carries it. Receiver-side copies (guid or "full<id>.dat" names) never
+        // match a peer id, so normal cleanup is untouched.
+        if (isLivePeerAvatar(message.uri)) {
+            debugLine("deleteLinkedFiles", "Uri is the live avatar of an existing peer, not deleting: ${message.uri}")
+            return true
+        }
 
         try {
             if (message.type != Type.MULTIPLE_IMAGES) {
@@ -269,6 +282,19 @@ class MessageRepository(private val messageDao: MessageDao) {
         }
 
         return result
+    }
+
+    /** True when [uriString] points at "<peerId>.jpg" for a peer that still exists. */
+    private suspend fun isLivePeerAvatar(uriString: String): Boolean {
+        if (uriString.isEmpty() || !uriString.endsWith(".jpg")) return false
+        val candidateId = uriString.substringAfterLast('/').removeSuffix(".jpg")
+        if (candidateId.isEmpty()) return false
+        return try {
+            com.bolimot.mindtheclub.functions.getPeerDao(App.context()).getPeer(candidateId) != null
+        } catch (e: Exception) {
+            debugLine("deleteLinkedFiles", "Avatar check failed for $uriString: ${e.message}")
+            false
+        }
     }
 
     private fun getPreviewFileName(uri: Uri): Uri {

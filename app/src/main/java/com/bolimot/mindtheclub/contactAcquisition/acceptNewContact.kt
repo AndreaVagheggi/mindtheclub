@@ -48,8 +48,29 @@ suspend fun autoAcceptRequestDocument(
     if (!requestAcceptInFlight.add(userId)) return false
 
     try {
-        // Don't downgrade an existing contact back to a new/pending request.
-        if (getPeerViewModel().getPeer(userId) != null) return false
+        // Don't downgrade an existing contact back to a new/pending request, and
+        // NEVER auto-accept a key change: with no server to trust, a silently
+        // swapped key is indistinguishable from an attack. But a request from a
+        // peer we already know, carrying a DIFFERENT key fingerprint, is exactly
+        // what a contact who changed phone looks like: record it so the chat
+        // surfaces the explicit accept dialog instead of dying silently.
+        val existingPeer = getPeerViewModel().getPeer(userId)
+        if (existingPeer != null) {
+            try {
+                val enc = doc.getBoolean("enc") == true
+                val incomingFp = if (enc) doc.getString("fingerprint")
+                    ?.let { com.bolimot.mindtheclub.crypto.KeyManager.decrypt(it) } else null
+                val storedFp = existingPeer.publicKey?.takeIf { it.isNotEmpty() }
+                    ?.let { com.bolimot.mindtheclub.crypto.KeyManager.fingerprintOf(it) }
+                if (!incomingFp.isNullOrEmpty() && storedFp != null && incomingFp != storedFp) {
+                    com.bolimot.mindtheclub.functions.PeerIdentityChange
+                        .record(context, userId, incomingFp)
+                }
+            } catch (e: Exception) {
+                debugLine("autoAcceptRequest", "Key change check failed for $userId: ${e.message}")
+            }
+            return false
+        }
 
         val isEnc = doc.getBoolean("enc") == true
         fun unseal(v: String?): String? =

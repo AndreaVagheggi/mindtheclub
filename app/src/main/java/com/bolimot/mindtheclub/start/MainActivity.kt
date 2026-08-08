@@ -164,6 +164,14 @@ class MainActivity : BaseActivity() {
     private fun startApplication() {
         debugLine("StartApplication", "Starting application.")
 
+        // This installation lost the identity to another phone: stay paused.
+        // The moved screen has its own re-check, nothing else may run here.
+        if (com.bolimot.mindtheclub.functions.InstallationIdentity.isDeactivated(this)) {
+            startActivity(Intent(this, com.bolimot.mindtheclub.views.IdentityMovedActivity::class.java))
+            finish()
+            return
+        }
+
         val myUserId = initApplication()
 
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
