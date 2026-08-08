@@ -333,4 +333,16 @@
     <string name="switch_to_video_declined">%1$s nie zgadza się na rozmowę wideo</string>
     <string name="switch_to_video_no_answer">Brak odpowiedzi na prośbę o rozmowę wideo</string>
     <string name="switch_to_video_failed">Nie można przełączyć na rozmowę wideo</string>
+    <string name="key_change_title">Kod bezpieczeństwa się zmienił</string>
+    <string name="key_change_message">%1$s mógł zmienić telefon lub ponownie zainstalować aplikację, dlatego jego kod bezpieczeństwa jest teraz inny. Jeśli chcesz mieć pewność, zweryfikuj go bezpośrednio ze swoim kontaktem, a potem zaakceptuj nową tożsamość, aby dalej pisać.</string>
+    <string name="key_change_accept">Zaakceptuj nową tożsamość</string>
+    <string name="key_change_later">Nie teraz</string>
+    <string name="key_change_accepted">Nowa tożsamość zaakceptowana</string>
+    <string name="key_change_failed">Nie udało się zweryfikować nowej tożsamości, spróbuj później</string>
+    <string name="backup_password_short">Hasło musi mieć co najmniej 8 znaków</string>
+    <string name="identity_moved_title">Tożsamość przeniesiona</string>
+    <string name="identity_moved_message">Twoja tożsamość MindTheClub jest teraz aktywna na innym telefonie, dlatego to urządzenie zostało wstrzymane, aby nie gubić wiadomości między nimi. Aby znów używać MindTheClub na tym telefonie, zrób kopię zapasową na drugim telefonie i przywróć ją tutaj.</string>
+    <string name="identity_moved_retry">Sprawdź ponownie</string>
+    <string name="identity_moved_close">Zamknij</string>
+    <string name="identity_moved_still">Ta tożsamość jest nadal aktywna na innym telefonie</string>
 </resources>
