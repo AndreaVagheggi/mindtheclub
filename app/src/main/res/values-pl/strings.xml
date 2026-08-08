@@ -345,4 +345,5 @@
     <string name="identity_moved_retry">Sprawdź ponownie</string>
     <string name="identity_moved_close">Zamknij</string>
     <string name="identity_moved_still">Ta tożsamość jest nadal aktywna na innym telefonie</string>
+    <string name="identity_moved_restore">Przywróć kopię zapasową</string>
 </resources>

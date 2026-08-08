@@ -109,7 +109,8 @@ object BackupManager {
                 output.write(encrypted)
             } ?: throw IllegalStateException("Cannot open output stream")
 
-            debugLine(TAG, "Backup created: ${peers.size} peers, ${messages.size} messages, ${reactions.size} reactions, ${blockedUsers.size} blocked")
+            val hasIdentity = backupData.identityKeyset != null
+            debugLine(TAG, "Backup created: ${peers.size} peers, ${messages.size} messages, ${reactions.size} reactions, ${blockedUsers.size} blocked, identity=${if (hasIdentity) "YES (${KeyManager.getMyPublicKeyFingerprint()})" else "NO"}")
             true
         } catch (e: Exception) {
             debugLine(TAG, "Backup failed: ${e.message}")
@@ -237,9 +238,17 @@ object BackupManager {
                 }
             }
 
+            // The identity outcome is spelled out, not implied: a restore that
+            // silently kept the phone's own identity is the failure that breaks
+            // every contact, and it must be visible on screen without reading
+            // a log. Three distinct states, never ambiguous.
+            val identityNote = when {
+                identityRestored -> "IDENTITY RESTORED (${KeyManager.getMyPublicKeyFingerprint()})"
+                backupData.identityKeyset != null -> "IDENTITY RESTORE FAILED"
+                else -> "NO IDENTITY IN BACKUP (made by an older version)"
+            }
             val summary = "Restored: ${backupData.peers.size} contacts, " +
-                    "${backupData.messages.size} messages" +
-                    if (identityRestored) ", identity" else ""
+                    "${backupData.messages.size} messages\n$identityNote"
 
             debugLine(TAG, summary)
             summary

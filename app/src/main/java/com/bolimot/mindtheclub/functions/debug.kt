@@ -52,13 +52,22 @@ fun debugLine4(function: String, message: String) {
 
 private val logChannel = kotlinx.coroutines.channels.Channel<String>(capacity = 256, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
 
+/**
+ * Fixed working file name. It used to be derived from MySelf.name(), captured
+ * ONCE per process in this lazy block: a fresh install logged to
+ * "unknown_user.txt" and a restore changed the name mid-process, so the export
+ * (which re-reads the name) looked for a file that did not exist and the most
+ * interesting minutes of any test were silently unreachable. The user's name is
+ * still used for the exported copy, so attachments stay sorted per tester.
+ */
+private const val LOG_FILE_NAME = "mtc_debug_log.txt"
+
 private val logWriter: Unit by lazy {
     App.instance!!.applicationScope.launch(Dispatchers.IO) {
         val dateFormat = SimpleDateFormat("dd/MM HH:mm:ss", Locale.getDefault())
         val context = App.context()
         val deviceContext = context.createDeviceProtectedStorageContext()
-        val safeName = MySelf.name()?.trim() ?: "unknown_user"
-        val logFile = File(deviceContext.filesDir, "$safeName.txt")
+        val logFile = File(deviceContext.filesDir, LOG_FILE_NAME)
 
         for (message in logChannel) {
             try {
@@ -81,16 +90,27 @@ fun exportLogToVisibleStorage() {
     App.instance!!.applicationScope.launch(Dispatchers.IO) {
         try {
             val context = App.context()
-            val filename = "${MySelf.name()?.trim()}.txt"
-
             val deviceContext = context.createDeviceProtectedStorageContext()
-            val sourceFile = File(deviceContext.filesDir, filename)
 
+            var sourceFile = File(deviceContext.filesDir, LOG_FILE_NAME)
             if (!sourceFile.exists()) {
-                debugLine("EXPORT", "Source file not found in DE storage.")
-                return@launch
+                // Fall back to the legacy per-user name so logs already
+                // accumulated by testers on older builds are not lost.
+                val legacy = File(deviceContext.filesDir, "${MySelf.name()?.trim()}.txt")
+                val legacyUnknown = File(deviceContext.filesDir, "unknown_user.txt")
+                sourceFile = when {
+                    legacy.exists() -> legacy
+                    legacyUnknown.exists() -> legacyUnknown
+                    else -> {
+                        debugLine("EXPORT", "No log file found in DE storage.")
+                        return@launch
+                    }
+                }
+                debugLine("EXPORT", "Using legacy log file ${sourceFile.name}")
             }
 
+            // The attachment keeps the user's name so the mailbox stays sorted.
+            val filename = "${MySelf.name()?.trim() ?: "unknown_user"}.txt"
             val destFile = File(context.filesDir, "exported_$filename")
             sourceFile.copyTo(destFile, overwrite = true)
 

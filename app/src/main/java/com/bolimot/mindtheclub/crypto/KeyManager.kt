@@ -169,8 +169,17 @@ object KeyManager {
             val encrypted = com.google.crypto.tink.TinkProtoKeysetFormat
                 .serializeEncryptedKeyset(handle, masterAead, ByteArray(0))
 
-            val deviceContext = context.createDeviceProtectedStorageContext()
-            val written = deviceContext
+            // MUST be applicationContext, not the device-protected context used
+            // by keysetHandle(): AndroidKeysetManager resolves the prefs file
+            // through context.getApplicationContext() internally, and calling
+            // that on a device-protected context yields the Application, i.e.
+            // CREDENTIAL-protected storage. Writing to the device-protected file
+            // instead put the imported keyset where Tink never looks, so the
+            // import silently did nothing and the phone kept its own identity
+            // (the 8 Aug transfer failure: every signal from the peer then failed
+            // to decrypt). Same file, same lowercase hex-of-EncryptedKeyset as
+            // SharedPrefKeysetWriter.
+            val written = context.applicationContext
                 .getSharedPreferences(PREF_FILE_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putString(KEYSET_NAME, toHex(encrypted))

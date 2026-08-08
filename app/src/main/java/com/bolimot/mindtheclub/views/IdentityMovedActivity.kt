@@ -57,6 +57,17 @@ class IdentityMovedActivity : AppCompatActivity() {
             setPadding(0, dp(24), 0, dp(32))
         })
 
+        // The message tells the user to restore a backup here, so the restore
+        // screen must be reachable FROM here: MainActivity gates everything
+        // behind the deactivation check, so Options (and with it Backup and
+        // restore) cannot be opened while this screen is up.
+        root.addView(Button(this).apply {
+            text = getString(R.string.identity_moved_restore)
+            setOnClickListener {
+                startActivity(Intent(this@IdentityMovedActivity, BackupRestoreActivity::class.java))
+            }
+        })
+
         root.addView(Button(this).apply {
             text = getString(R.string.identity_moved_retry)
             setOnClickListener { checkAgain() }
@@ -70,6 +81,26 @@ class IdentityMovedActivity : AppCompatActivity() {
         setContentView(root)
     }
 
+    /**
+     * Coming back from the restore screen: a restore that carried the identity
+     * clears the deactivation itself (BackupManager), so this local check is
+     * enough to let the user straight back into the app, with no network call.
+     */
+    override fun onResume() {
+        super.onResume()
+        if (!InstallationIdentity.isDeactivated(this)) {
+            debugLine("IdentityMoved", "Deactivation cleared by restore, resuming normally")
+            goToMainActivity()
+        }
+    }
+
+    private fun goToMainActivity() {
+        val intent = Intent(this, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        startActivity(intent)
+        finish()
+    }
+
     private fun checkAgain() {
         lifecycleScope.launch {
             val userId = MySelf.userId()
@@ -78,10 +109,7 @@ class IdentityMovedActivity : AppCompatActivity() {
             if (remote == null || remote == mine) {
                 debugLine("IdentityMoved", "Ownership back on this installation, reactivating")
                 InstallationIdentity.clearDeactivated(this@IdentityMovedActivity)
-                val intent = Intent(this@IdentityMovedActivity, MainActivity::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                startActivity(intent)
-                finish()
+                goToMainActivity()
             } else {
                 showToast(getString(R.string.identity_moved_still), this@IdentityMovedActivity)
             }

@@ -346,4 +346,5 @@
     <string name="identity_moved_retry">Periksa lagi</string>
     <string name="identity_moved_close">Tutup</string>
     <string name="identity_moved_still">Identitas ini masih aktif di ponsel lain</string>
+    <string name="identity_moved_restore">Pulihkan cadangan</string>
 </resources>

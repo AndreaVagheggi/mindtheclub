@@ -345,4 +345,5 @@
     <string name="identity_moved_retry">Verificar novamente</string>
     <string name="identity_moved_close">Fechar</string>
     <string name="identity_moved_still">Esta identidade ainda está ativa em outro telefone</string>
+    <string name="identity_moved_restore">Restaurar um backup</string>
 </resources>

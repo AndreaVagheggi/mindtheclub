@@ -343,4 +343,5 @@
     <string name="identity_moved_retry">Ricontrolla</string>
     <string name="identity_moved_close">Chiudi</string>
     <string name="identity_moved_still">Questa identità è ancora attiva su un altro telefono</string>
+    <string name="identity_moved_restore">Ripristina un backup</string>
 </resources>

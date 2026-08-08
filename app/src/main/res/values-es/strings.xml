@@ -346,4 +346,5 @@
     <string name="identity_moved_retry">Comprobar de nuevo</string>
     <string name="identity_moved_close">Cerrar</string>
     <string name="identity_moved_still">Esta identidad sigue activa en otro teléfono</string>
+    <string name="identity_moved_restore">Restaurar una copia de seguridad</string>
 </resources>
