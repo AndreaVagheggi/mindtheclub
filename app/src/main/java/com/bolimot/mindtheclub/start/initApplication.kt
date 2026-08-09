@@ -1,5 +1,6 @@
 package com.bolimot.mindtheclub.start
 
+import com.bolimot.mindtheclub.billing.TrialManager
 import com.bolimot.mindtheclub.firebase.updateMyFcmToken
 import com.bolimot.mindtheclub.functions.InstallationIdentity
 import com.bolimot.mindtheclub.functions.debugLine
@@ -55,7 +56,15 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
         // this identity over: deactivate instead of fighting for delivery.
         // Only a successfully READ different id triggers this; null (doc from
         // an older app version) means unclaimed, and errors change nothing.
-        val remoteInstallation = if (isDocInFirestore) fetchRemoteInstallationId(myUserId) else null
+        // One read serves both checks: the ownership marker and the trial anchor.
+        val userDoc = if (isDocInFirestore) fetchUserDoc(myUserId) else null
+        val remoteInstallation = userDoc?.getString("installationId")?.takeIf { it.isNotEmpty() }
+
+        // The trial belongs to the identity, so a phone that starts up with a
+        // later start date than the one published adopts the earlier one. This
+        // is what stops "uninstall, restore, 30 more days" from working.
+        TrialManager.adoptStartedAt(context, userDoc?.getLong("trialStartedAt"))
+
         val myInstallation = InstallationIdentity.get(context)
         if (remoteInstallation != null && remoteInstallation != myInstallation) {
             debugLine("initFirebase", "Identity owned by installation $remoteInstallation, not mine ($myInstallation). Deactivating this phone.")
@@ -139,17 +148,20 @@ suspend fun checkUserDocumentExists(userId: String): Boolean {
     }
 }
 
-/** The installation id currently stamped on the user's document, or null. */
-suspend fun fetchRemoteInstallationId(userId: String): String? {
+/** The user's own Firestore document, or null when unreadable. */
+suspend fun fetchUserDoc(userId: String): com.google.firebase.firestore.DocumentSnapshot? {
     if (userId.isBlank()) return null
     return try {
-        val doc = Firebase.firestore.collection("users").document(userId).get().await()
-        doc.getString("installationId")?.takeIf { it.isNotEmpty() }
+        Firebase.firestore.collection("users").document(userId).get().await()
     } catch (e: Exception) {
-        debugLine("initFirebase", "fetchRemoteInstallationId failed: ${e.message}")
+        debugLine("initFirebase", "fetchUserDoc failed: ${e.message}")
         null
     }
 }
+
+/** The installation id currently stamped on the user's document, or null. */
+suspend fun fetchRemoteInstallationId(userId: String): String? =
+    fetchUserDoc(userId)?.getString("installationId")?.takeIf { it.isNotEmpty() }
 
 suspend fun checkUserPublicKeyExists(userId: String): Boolean {
     if (userId.isBlank()) {

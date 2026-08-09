@@ -49,6 +49,37 @@ object TrialManager {
     fun startsTrial(messageType: String?): Boolean =
         messageType != null && ACTIVATING_TYPES.contains(messageType)
 
+    /** Epoch millis when the clock started, or null when never activated. */
+    fun startedAt(context: Context): Long? =
+        getPreference(PREF_TRIAL_STARTED_AT, context)?.toLongOrNull()
+
+    /**
+     * Anchors the trial to the earliest known start, never the latest.
+     *
+     * Two sources feed this: a restored backup and the copy published on the
+     * user's Firestore document. Both travel with the IDENTITY, so changing
+     * phone carries the clock along instead of resetting it, which is what used
+     * to grant an endless free ride through backup, restore, repeat.
+     *
+     * Only earlier values are accepted, so a stale or hostile source can never
+     * shorten someone's trial by claiming a later start; values in the future
+     * are rejected outright, so a corrupt timestamp cannot expire a legitimate
+     * user on the spot. Never sets the pending start notice: that belongs to the
+     * real activation, not to a sync.
+     */
+    fun adoptStartedAt(context: Context, candidate: Long?) {
+        if (candidate == null || candidate <= 0L) return
+        // A minute of slack absorbs clock skew between devices.
+        if (candidate > System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1)) {
+            debugLine("TrialManager", "Ignoring trial start in the future: $candidate")
+            return
+        }
+        val current = startedAt(context)
+        if (current != null && current <= candidate) return
+        setPreference(PREF_TRIAL_STARTED_AT, candidate.toString(), context)
+        debugLine("TrialManager", "Trial start adopted: $candidate (was ${current ?: "not started"})")
+    }
+
     /** Called on the first real outgoing message. Idempotent. */
     fun markActivated(context: Context) {
         if (getPreference(PREF_TRIAL_STARTED_AT, context) == null) {

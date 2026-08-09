@@ -2,6 +2,7 @@ package com.bolimot.mindtheclub.backup
 
 import android.content.Context
 import android.net.Uri
+import com.bolimot.mindtheclub.billing.TrialManager
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.functions.InstallationIdentity
@@ -98,6 +99,7 @@ object BackupManager {
                 peerPictures = peerPics,
                 identityKeyset = KeyManager.exportIdentityKeyset(),
                 mediaFileNames = mediaNames,
+                trialStartedAt = TrialManager.startedAt(context),
             )
 
             val jsonBytes = json.encodeToString(BackupData.serializer(), backupData)
@@ -142,6 +144,11 @@ object BackupManager {
             backupData.privateId?.let { setPreference(MySelf.PRIVATE_ID_KEY, it, context) }
             backupData.name?.let { setPreference(MySelf.NAME_KEY, it, context) }
             backupData.bio?.let { setPreference("myBio", it, context) }
+
+            // The trial clock belongs to the identity, not to the handset: a
+            // restore must carry it over, or changing phone (or just
+            // uninstalling and restoring) would grant a fresh 30 days for ever.
+            TrialManager.adoptStartedAt(context, backupData.trialStartedAt)
 
             // Identity first, data second. Restoring the keyset makes this phone
             // BE the old one. The Firestore side (publicKey, FCM token and the

@@ -44,4 +44,9 @@ data class BackupData(
     // map lets the restore find each file again by name. A few KB in total.
     // For multipleImages the value is a comma separated list, matching uri.
     val mediaFileNames: Map<String, String> = emptyMap(),
+    // When the 30-day trial clock started, epoch millis. Without it a phone
+    // change silently handed out a brand new trial, and the same trick worked by
+    // just uninstalling and restoring. Null in backups made before this field
+    // existed, and null when the user never activated: both restore as before.
+    val trialStartedAt: Long? = null,
 )

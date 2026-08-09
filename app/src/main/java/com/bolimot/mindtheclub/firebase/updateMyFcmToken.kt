@@ -20,7 +20,11 @@ suspend fun updateMyFcmToken(
         // Ownership marker: whichever installation last synced owns the
         // identity; every other one deactivates itself on its next start.
         "installationId" to com.bolimot.mindtheclub.functions.InstallationIdentity
-            .get(com.bolimot.mindtheclub.start.App.context())
+            .get(com.bolimot.mindtheclub.start.App.context()),
+        // Trial anchor tied to the identity: the cloud function only ever keeps
+        // the EARLIEST value, so a reinstall cannot buy a fresh 30 days.
+        "trialStartedAt" to com.bolimot.mindtheclub.billing.TrialManager
+            .startedAt(com.bolimot.mindtheclub.start.App.context())
     )
 
     debugLine("updateMyFcmToken", "Trying to update token, with callable")
