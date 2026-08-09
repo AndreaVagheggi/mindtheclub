@@ -30,19 +30,28 @@ class NewPeerDialog : DialogFragment() {
 
     private val finishOnAccept: Boolean by lazy { arguments?.getBoolean(ARG_FINISH_ON_ACCEPT, true) ?: true }
 
+    private val resultKey: String? by lazy { arguments?.getString(ARG_RESULT_KEY) }
+
     companion object {
         private const val ARG_USER_ID = "userId"
         private const val ARG_NAME = "name"
         private const val ARG_BIO = "bio"
         private const val ARG_FINGERPRINT = "fingerprint"
         private const val ARG_FINISH_ON_ACCEPT = "finishOnAccept"
+        private const val ARG_RESULT_KEY = "resultKey"
+
+        // Opt-in fragment result: hosts that pass this key as resultKey are told
+        // when the user accepted, so they can react (e.g. leave the chat for the
+        // contact list). Hosts that pass no key are not notified at all.
+        const val RESULT_CONTACT_ACCEPTED = "newPeerAccepted"
 
         fun newInstance(
             userId: String,
             name: String,
             bio: String?,
             fingerprint: String? = null,
-            finishOnAccept: Boolean = true
+            finishOnAccept: Boolean = true,
+            resultKey: String? = null
         ): NewPeerDialog {
             return NewPeerDialog().apply {
                 arguments = Bundle().apply {
@@ -51,6 +60,7 @@ class NewPeerDialog : DialogFragment() {
                     putString(ARG_BIO, bio)
                     putString(ARG_FINGERPRINT, fingerprint)
                     putBoolean(ARG_FINISH_ON_ACCEPT, finishOnAccept)
+                    putString(ARG_RESULT_KEY, resultKey)
                 }
             }
         }
@@ -95,6 +105,12 @@ class NewPeerDialog : DialogFragment() {
 
             WorkManager.getInstance(fragmentActivity.applicationContext)
                 .enqueue(workRequest)
+
+            // Notify the host before dismissing, while the fragment is still
+            // attached to its manager.
+            resultKey?.let { key ->
+                parentFragmentManager.setFragmentResult(key, Bundle())
+            }
 
             dialog.dismiss()
 

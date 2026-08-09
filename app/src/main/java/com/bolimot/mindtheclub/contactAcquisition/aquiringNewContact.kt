@@ -12,7 +12,8 @@ suspend fun acquiringNewContact(userId: String,
                                 fingerprint: String?,
                                 context: Context,
                                 supportFragmentManager: FragmentManager,
-                                finishOnAccept: Boolean = true) {
+                                finishOnAccept: Boolean = true,
+                                resultKey: String? = null) {
 
     val existing = getPeerViewModel().getPeer(userId)
 
@@ -40,6 +41,6 @@ suspend fun acquiringNewContact(userId: String,
         return
     }
 
-    val dialog = NewPeerDialog.newInstance(userId, name, bio, fingerprint, finishOnAccept)
+    val dialog = NewPeerDialog.newInstance(userId, name, bio, fingerprint, finishOnAccept, resultKey)
     dialog.show(supportFragmentManager, "confirmNewPeer")
 }

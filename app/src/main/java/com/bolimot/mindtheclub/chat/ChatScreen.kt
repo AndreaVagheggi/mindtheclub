@@ -735,6 +735,18 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             }
         })
 
+        // A contact accepted from a shared contact card belongs to the contact
+        // list: leave the chat and show it there, exactly as back navigation does.
+        supportFragmentManager.setFragmentResultListener(
+            NewPeerDialog.RESULT_CONTACT_ACCEPTED,
+            this
+        ) { _, _ ->
+            val intent = Intent(this@ChatScreen, AppTab::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            startActivity(intent)
+            finish()
+        }
+
         profilePic.setOnClickListener {
             val intent = Intent(this, PeerView::class.java).apply {
                 putExtra("userId", remoteUserId)
@@ -1812,7 +1824,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 fingerprint = fingerprint,
                 context = this@ChatScreen,
                 supportFragmentManager = supportFragmentManager,
-                finishOnAccept = false
+                finishOnAccept = false,
+                resultKey = NewPeerDialog.RESULT_CONTACT_ACCEPTED
             )
         }
     }
