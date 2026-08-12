@@ -56,14 +56,22 @@ class CustomLinearLayoutManager(context: Context) : LinearLayoutManager(context)
      */
     private fun logScroll(kind: String, position: Int) {
         if (!BuildConfig.ENABLE_DEBUG_TOOLS) return
-        val caller = Throwable().stackTrace.firstOrNull {
-            it.className.startsWith("com.bolimot.mindtheclub") &&
-                    !it.className.contains("CustomLinearLayoutManager")
-        }
+        // R8 renames every class, ours and androidx alike, so no package name
+        // filter survives a release build: the first version of this probe
+        // matched on "com.bolimot.mindtheclub" and logged null.null:null for
+        // every event. The only name reliable at runtime is our own, taken
+        // from javaClass. Skip our frames, keep the next three raw: the line
+        // numbers survive R8 (-keepattributes LineNumberTable) and mapping.txt
+        // turns the names back into sources.
+        val self = javaClass.name
+        val callers = Throwable().stackTrace
+            .asSequence()
+            .filter { it.className != self }
+            .take(3)
+            .joinToString(" <- ")
         debugLine(
             "ScrollProbe",
-            "$kind -> $position (itemCount=$itemCount, firstVisible=$firstVisiblePosition) " +
-                    "from ${caller?.className}.${caller?.methodName}:${caller?.lineNumber}"
+            "$kind -> $position (itemCount=$itemCount, firstVisible=$firstVisiblePosition) from $callers"
         )
     }
 

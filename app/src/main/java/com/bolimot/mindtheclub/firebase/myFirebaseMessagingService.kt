@@ -562,7 +562,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
 
             Notify.TYPING -> {
-                debugLine(tag, "Someone is typing")
+                debugLine(tag, "Someone is typing: $fromUserId (chat ${channelId ?: "1:1"})")
                 val intent = Intent(Broadcast.ACTION_START_TYPING)
                 intent.putExtra("userId", fromUserId)
                 intent.putExtra("chatGroupId", channelId ?: "")
@@ -570,7 +570,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
 
             Notify.STOP_TYPING -> {
-                debugLine(tag, "Someone has stopped typing")
+                debugLine(tag, "Someone has stopped typing: $fromUserId (chat ${channelId ?: "1:1"})")
                 val intent = Intent(Broadcast.ACTION_STOP_TYPING)
                 intent.putExtra("userId", fromUserId)
                 intent.putExtra("chatGroupId", channelId ?: "")
@@ -867,12 +867,29 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         if (appIsForeground()) {
             appScope.launch {
                 try {
-                    val existing = ConnectionManager.instance.getExistingClient(fromUserId)
-                    if (existing != null && existing.rtcClient.isConnected() && existing.rtcClient.isDataChannelOpen()) {
+                    // Claim before destroying anything, exactly as DataSyncService does.
+                    // Without the superseded check the second of two dataCalls arriving
+                    // together tears down the connection the first one just built, and
+                    // a chunked transfer restarts from scratch every few seconds.
+                    ConnectionManager.instance.claimLatestDataChannel(fromUserId, cid)
+
+                    if (ConnectionManager.instance.hasLiveConnection(fromUserId)) {
                         debugLine(tag, "DATA_CALL: already connected to $fromUserId, ignoring.")
                         return@launch
                     }
+
+                    if (ConnectionManager.instance.isSupersededDataChannel(fromUserId, cid)) {
+                        debugLine(tag, "DATA_CALL: $cid superseded before cleanup, nothing to do")
+                        return@launch
+                    }
+
                     try { ConnectionManager.instance.webRTCCleanUp(fromUserId) } catch (e: Exception) { debugLine(tag, "Ignore: ${e.message}") }
+
+                    if (ConnectionManager.instance.isSupersededDataChannel(fromUserId, cid)) {
+                        debugLine(tag, "DATA_CALL: $cid superseded during cleanup, letting the newer one connect")
+                        return@launch
+                    }
+
                     ConnectionManager.instance.webRTCConnect(cid, "", fromUserId, false, applicationContext, video = false, dataOnly = true)
                 } catch (e: Exception) {
                     debugLine(tag, "DATA_CALL foreground connect failed: ${e.message}")

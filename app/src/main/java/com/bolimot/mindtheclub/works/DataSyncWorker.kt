@@ -71,13 +71,25 @@ class DataSyncWorker(
         val remoteUserId = inputData.getString(KEY_REMOTE_USER_ID) ?: return Result.failure()
 
         return try {
-            val existing = ConnectionManager.instance.getExistingClient(remoteUserId)
-            if (existing != null && existing.rtcClient.isConnected() && existing.rtcClient.isDataChannelOpen()) {
+            // Claim before destroying anything, exactly as DataSyncService does.
+            ConnectionManager.instance.claimLatestDataChannel(remoteUserId, channelId)
+
+            if (ConnectionManager.instance.hasLiveConnection(remoteUserId)) {
                 debugLine(TAG, "Already connected to $remoteUserId with open data channel. Skipping.")
                 return Result.success()
             }
 
+            if (ConnectionManager.instance.isSupersededDataChannel(remoteUserId, channelId)) {
+                debugLine(TAG, "dataCall $channelId superseded before cleanup, nothing to do")
+                return Result.success()
+            }
+
             try { ConnectionManager.instance.webRTCCleanUp(remoteUserId) } catch (e: Exception) { debugLine(TAG, "Ignore: ${e.message}") }
+
+            if (ConnectionManager.instance.isSupersededDataChannel(remoteUserId, channelId)) {
+                debugLine(TAG, "dataCall $channelId superseded during cleanup, letting the newer one connect")
+                return Result.success()
+            }
 
             debugLine(TAG, "Starting WebRTC connection for Data Sync (via WorkManager fallback)...")
             val result = ConnectionManager.instance.webRTCConnect(

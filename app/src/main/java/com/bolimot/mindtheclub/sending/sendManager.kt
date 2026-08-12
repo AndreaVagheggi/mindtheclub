@@ -28,6 +28,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * Sends this device's reaction to [message]. An empty [emoji] withdraws it.
+ *
+ * The reaction is a message in its own right and gets its own [guid]: reusing the id of the
+ * message being reacted to made it indistinguishable from that message on the receiving side.
+ * The target is carried in replyId, which is otherwise unused for this type and already travels
+ * the whole path, including the group relay.
+ */
 fun sendReaction(message: Message, emoji: String) {
 
     val isGroup = message.chatGroupId != null
@@ -36,8 +44,8 @@ fun sendReaction(message: Message, emoji: String) {
         uid = 0,
         fromUserId = MySelf.userId()!!,
         toUserId = if (isGroup) message.chatGroupId!! else message.fromUserId,
-        messageId = message.messageId,
-        replyId = "",
+        messageId = guid(),
+        replyId = message.messageId,
         groupId = "",
         groupSize = 0,
         text = emoji,

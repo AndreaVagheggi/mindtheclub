@@ -12,6 +12,7 @@ import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.image.ImageRepository
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.message.MessageRepository
+import com.bolimot.mindtheclub.database.reaction.ReactionManager
 import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.database.video.VideoRepository
 import com.bolimot.mindtheclub.functions.assembleChunksToTempFile
@@ -29,7 +30,6 @@ import com.bolimot.mindtheclub.functions.getImageDao
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
-import com.bolimot.mindtheclub.functions.getMessageViewModel
 import com.bolimot.mindtheclub.functions.getVideoDao
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.resolveContentKey
@@ -55,57 +55,64 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
     val inboxDao = getInboxDao(App.context())
     val inboxMessage = inboxDao.getMessage(messageId)
 
-    val targetMessageId = if (inboxMessage.chatGroupId != null && inboxMessage.groupId.isNotEmpty()) {
-        inboxMessage.groupId
-    } else {
-        messageId
-    }
+    // Reactions carry their target in replyId. Peers on the previous build instead reused the
+    // target's own id, which in a group arrives as groupId because the relay re-mints the id per
+    // member; both are still accepted so a reaction from an older peer is not lost.
+    val targetMessageId = inboxMessage.replyId?.takeIf { it.isNotEmpty() }
+        ?: if (inboxMessage.chatGroupId != null && inboxMessage.groupId.isNotEmpty()) {
+            inboxMessage.groupId
+        } else {
+            messageId
+        }
+
+    // In a group the relay rewrites fromUserId at every hop, so only originalSenderId identifies
+    // who actually reacted.
+    val reactorUserId = inboxMessage.originalSenderId?.takeIf { it.isNotEmpty() }
+        ?: inboxMessage.fromUserId
 
     val messageRepository = getMessageRepository(App.context())
-    val message = messageRepository.getMessage(targetMessageId) ?: return
-    val messageViewModel = getMessageViewModel(MySelf.userId()!!, message.toUserId)
+    messageRepository.getMessage(targetMessageId) ?: return
 
-    if (messageViewModel.updateReaction(targetMessageId, emoji)) {
+    ReactionManager.apply(targetMessageId, reactorUserId, emoji, inboxMessage.date)
 
-        val reactionContentKey = resolveContentKey(inboxDao, messageId)
-        inboxDao.deleteByContent(reactionContentKey)
+    val reactionContentKey = resolveContentKey(inboxDao, messageId)
+    inboxDao.deleteByContent(reactionContentKey)
 
-        ProcessedMessageCache.markProcessed(messageId)
+    ProcessedMessageCache.markProcessed(messageId)
 
-        // A reaction is a group-gossip message like any other type: acknowledge with the
-        // delivery doc id (so the original sender's re-dispatch path engages) and relay it
-        // onward to the remaining group members. Without this, a reaction only reached the
-        // members the sender directly fanned out to (GROUP_DISPATCH_FANOUT).
-        val deliveryId = inboxMessage.chatGroupId?.let {
-            computeDeliveryDocId(it, inboxMessage.originalSenderId ?: "", inboxMessage.date)
-        }
-        notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
-
-        if (deliveryId != null && inboxMessage.originalSenderId != null
-            && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
-            notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
-        }
-
-        propagateGroupMessage(
-            MessageData(
-                fromUserId = inboxMessage.chatGroupId ?: (inboxMessage.originalSenderId ?: inboxMessage.fromUserId),
-                toUserId = MySelf.userId()!!,
-                messageId = messageId,
-                replyId = inboxMessage.replyId,
-                groupId = inboxMessage.groupId,
-                groupSize = inboxMessage.groupSize,
-                text = emoji,
-                textAttached = inboxMessage.textAttached,
-                nameAttached = inboxMessage.nameAttached,
-                uri = "",
-                type = inboxMessage.type,
-                subType = inboxMessage.subType,
-                date = inboxMessage.date,
-                chatGroupId = inboxMessage.chatGroupId,
-                originalSenderId = inboxMessage.originalSenderId
-            )
-        )
+    // A reaction is a group-gossip message like any other type: acknowledge with the
+    // delivery doc id (so the original sender's re-dispatch path engages) and relay it
+    // onward to the remaining group members. Without this, a reaction only reached the
+    // members the sender directly fanned out to (GROUP_DISPATCH_FANOUT).
+    val deliveryId = inboxMessage.chatGroupId?.let {
+        computeDeliveryDocId(it, inboxMessage.originalSenderId ?: "", inboxMessage.date)
     }
+    notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
+
+    if (deliveryId != null && inboxMessage.originalSenderId != null
+        && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+        notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
+    }
+
+    propagateGroupMessage(
+        MessageData(
+            fromUserId = inboxMessage.chatGroupId ?: (inboxMessage.originalSenderId ?: inboxMessage.fromUserId),
+            toUserId = MySelf.userId()!!,
+            messageId = messageId,
+            replyId = inboxMessage.replyId,
+            groupId = inboxMessage.groupId,
+            groupSize = inboxMessage.groupSize,
+            text = emoji,
+            textAttached = inboxMessage.textAttached,
+            nameAttached = inboxMessage.nameAttached,
+            uri = "",
+            type = inboxMessage.type,
+            subType = inboxMessage.subType,
+            date = inboxMessage.date,
+            chatGroupId = inboxMessage.chatGroupId,
+            originalSenderId = inboxMessage.originalSenderId
+        )
+    )
 }
 
 suspend fun receiveText(messageId: String) {
@@ -202,6 +209,9 @@ suspend fun receiveText(messageId: String) {
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
+                // Read on screen right now: mark it so a later relay echo or
+                // sendMe resend cannot notify a message the user already saw.
+                MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
         } else {
@@ -363,6 +373,9 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
+                // Read on screen right now: mark it so a later relay echo or
+                // sendMe resend cannot notify a message the user already saw.
+                MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
         } else {
@@ -531,6 +544,9 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
+                // Read on screen right now: mark it so a later relay echo or
+                // sendMe resend cannot notify a message the user already saw.
+                MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
         } else {
@@ -690,6 +706,9 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
+                // Read on screen right now: mark it so a later relay echo or
+                // sendMe resend cannot notify a message the user already saw.
+                MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
         } else {
@@ -849,6 +868,9 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
+                // Read on screen right now: mark it so a later relay echo or
+                // sendMe resend cannot notify a message the user already saw.
+                MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
         } else {

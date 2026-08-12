@@ -16,6 +16,7 @@ import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 import com.bumptech.glide.Glide
 
 class GroupFileViewHolder(itemView: View, private val listener: MessagesAdapter.OnItemClickListener) : RecyclerView.ViewHolder(itemView) {
@@ -44,6 +45,7 @@ class GroupFileViewHolder(itemView: View, private val listener: MessagesAdapter.
                 itemView.findViewById<TextView>(R.id.fileSize).text = formatFileSize(detailList[2].toLong())
 
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(it.messageId)
                 reaction.text = it.reaction
 
                 val messageTextView = itemView.findViewById<TextView>(R.id.message)

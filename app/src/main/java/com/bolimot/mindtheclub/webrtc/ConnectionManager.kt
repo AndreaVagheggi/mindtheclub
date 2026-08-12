@@ -37,6 +37,45 @@ class ConnectionManager {
     // 3 Aug it left the two phones one or more rooms apart for ten minutes.
     private val latestDataChannelId = ConcurrentHashMap<String, String>()
 
+    /**
+     * Records [channelId] as the newest data request for [remoteUserId].
+     *
+     * Callers MUST do this, and check [isSupersededDataChannel], BEFORE tearing
+     * anything down. The superseded check used to live only inside
+     * webRTCConnect, i.e. after DataSyncService had already run webRTCCleanUp:
+     * every incoming dataCall therefore destroyed whatever was running and only
+     * then discovered its own request was stale. With two media transfers in
+     * flight from the same peer the two dispatch workers kept demolishing each
+     * other, and a 165 chunk photo crawled at a handful of chunks per reconnect
+     * (12 Aug, Raoul's group photos: 101 chunks in 19 minutes, while 7 chunks
+     * arrived in the two seconds right after each reconnect).
+     */
+    fun claimLatestDataChannel(remoteUserId: String, channelId: String) {
+        latestDataChannelId[remoteUserId] = channelId
+    }
+
+    /** True when [channelId] has since been overtaken by a newer data request. */
+    fun isSupersededDataChannel(remoteUserId: String, channelId: String): Boolean =
+        latestDataChannelId[remoteUserId] != channelId
+
+    /**
+     * True when a data connection to [remoteUserId] is usable RIGHT NOW, i.e.
+     * peer connection up and data channel actually open.
+     *
+     * The open data channel is required on purpose. An earlier draft accepted a
+     * merely CONNECTED peer connection, reasoning that a still-negotiating one
+     * was about to become useful. That would have been a deadlock: isConnected()
+     * only reads PeerConnectionState, so a connection whose data channel died or
+     * never opened would report "live" for ever and make every later dataCall
+     * refuse to rebuild it. Being strict here costs nothing: a request that
+     * finds no usable connection falls through to the superseded check, which is
+     * what actually prevents the storm.
+     */
+    fun hasLiveConnection(remoteUserId: String): Boolean {
+        val client = rtcClientsRepository[remoteUserId]?.rtcClient ?: return false
+        return !client.cleanedUp && client.isConnected() && client.isDataChannelOpen()
+    }
+
     private val dispatchContentHint = ConcurrentHashMap<String, String>()
 
     fun setDispatchContentHint(remoteUserId: String, contentKey: String) {

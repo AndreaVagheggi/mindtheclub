@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.bolimot.mindtheclub.functions.getInboxDao
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 class DataSyncService : Service() {
@@ -36,6 +37,15 @@ class DataSyncService : Service() {
     // destroyed one second after a second attempt had started, leaving it to run
     // with no foreground protection at all.
     private val activeJobs = AtomicInteger(0)
+
+    /**
+     * Peers whose transfer already has a watcher. Without this, every dataCall
+     * that finds a live connection would start its own awaitTransferComplete
+     * loop on the same peer: a burst of ten dataCalls during one photo transfer
+     * would leave ten coroutines polling the same data channel for up to
+     * MAX_SYNC_MS each, all of them keeping the service and the wake lock alive.
+     */
+    private val watchedPeers = ConcurrentHashMap.newKeySet<String>()
 
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -146,13 +156,32 @@ class DataSyncService : Service() {
         activeJobs.incrementAndGet()
         serviceScope.launch {
             try {
-                val existing = ConnectionManager.instance.getExistingClient(remoteUserId)
-                if (existing != null && existing.rtcClient.isConnected() && existing.rtcClient.isDataChannelOpen()) {
-                    debugLine(tag, "Already connected to $remoteUserId with open data channel. Ignoring new dataCall.")
+                // Claim first, destroy later. Both guards below MUST run before
+                // webRTCCleanUp: that call tears down the live connection, and
+                // doing it before discovering the request is stale (or that a
+                // perfectly good connection already exists) is what made two
+                // concurrent transfers from the same peer kill each other, one
+                // reconnect at a time.
+                ConnectionManager.instance.claimLatestDataChannel(remoteUserId, channelId)
+
+                if (ConnectionManager.instance.hasLiveConnection(remoteUserId)) {
+                    debugLine(tag, "Live connection to $remoteUserId already in place, reusing it and leaving the transfer alone")
+                    awaitTransferCompleteOnce(remoteUserId)
+                    return@launch
+                }
+
+                if (ConnectionManager.instance.isSupersededDataChannel(remoteUserId, channelId)) {
+                    debugLine(tag, "dataCall $channelId superseded before cleanup, nothing to do")
                     return@launch
                 }
 
                 try { ConnectionManager.instance.webRTCCleanUp(remoteUserId) } catch (e: Exception) { debugLine(tag,"Ignore: ${e.message}") }
+
+                // A newer dataCall may have landed while the cleanup ran.
+                if (ConnectionManager.instance.isSupersededDataChannel(remoteUserId, channelId)) {
+                    debugLine(tag, "dataCall $channelId superseded during cleanup, letting the newer one connect")
+                    return@launch
+                }
 
                 debugLine(tag, "Starting WebRTC connection for Data Sync...")
                 val result = ConnectionManager.instance.webRTCConnect(
@@ -167,7 +196,7 @@ class DataSyncService : Service() {
 
                 if (result is RTCClientResult.Success) {
                     debugLine(tag, "WebRTC Connected. Monitoring data channel activity.")
-                    awaitTransferComplete(remoteUserId)
+                    awaitTransferCompleteOnce(remoteUserId)
                 } else {
                     debugLine(tag, "WebRTC Failed to connect ($result).")
                 }
@@ -215,6 +244,23 @@ class DataSyncService : Service() {
             debugLine(tag, "Wake lock release failed: ${e.message}")
         }
         wakeLock = null
+    }
+
+    /**
+     * Runs [awaitTransferComplete] only when nobody else is already watching
+     * this peer. A job that finds a watcher in place returns at once: the
+     * transfer is being supervised, a second observer would add nothing.
+     */
+    private suspend fun awaitTransferCompleteOnce(remoteUserId: String) {
+        if (!watchedPeers.add(remoteUserId)) {
+            debugLine(tag, "Transfer with $remoteUserId is already being watched, not starting a second watcher")
+            return
+        }
+        try {
+            awaitTransferComplete(remoteUserId)
+        } finally {
+            watchedPeers.remove(remoteUserId)
+        }
     }
 
     private suspend fun awaitTransferComplete(remoteUserId: String) {

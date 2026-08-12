@@ -220,6 +220,9 @@ object BackupManager {
             }
 
             for (reaction in backupData.reactions) {
+                // Backups written before reactions became per-member carry no reactor, so the
+                // row cannot be attributed to anybody and would read as an anonymous member.
+                if (reaction.reactorUserId.isEmpty()) continue
                 try {
                     db.reactionDao().insert(reaction.copy(uid = 0))
                 } catch (e: Exception) {

@@ -14,6 +14,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteFile
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.functions.getReactionRepository
 import com.bolimot.mindtheclub.functions.splitToList
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.App
@@ -196,6 +197,7 @@ class MessageRepository(private val messageDao: MessageDao) {
                 for (message in messages) {
                     deleteLinkedFiles(message)
                     messageDao.deleteMessage(message.messageId)
+                    getReactionRepository(App.context()).deleteReactions(message.messageId)
                     currentPagingSource?.invalidate()
                 }
                 true
@@ -215,6 +217,7 @@ class MessageRepository(private val messageDao: MessageDao) {
                 debugLine("deleteRemotePeerMessages", "There were issues in deleting files for message: ${message.messageId}")
             }
             result = messageDao.deleteMessage(message.messageId) > 0
+            getReactionRepository(App.context()).deleteReactions(message.messageId)
         }
 
         return result

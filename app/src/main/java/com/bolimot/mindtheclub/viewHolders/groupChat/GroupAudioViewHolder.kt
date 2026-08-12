@@ -19,6 +19,7 @@ import com.bolimot.mindtheclub.functions.formatDate
 import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.functions.safeUrl
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
@@ -87,6 +88,7 @@ class GroupAudioViewHolder(
 
                 selectableView = itemView.findViewById(R.id.selectable_area)
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(msg.messageId)
                 reaction.text = msg.reaction
 
                 itemView.findViewById<TextView>(R.id.time_stamp).text = formatMessageTime(msg)

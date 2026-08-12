@@ -19,6 +19,7 @@ import com.bolimot.mindtheclub.functions.formatDate
 import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 import com.bumptech.glide.Glide
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +64,7 @@ class GroupTextViewHolder(itemView: View, private val listener: MessagesAdapter.
                 textAttached.maxWidth = maxBubbleWidth - (16 * itemView.resources.displayMetrics.density).toInt()
 
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(it.messageId)
                 reaction.text = it.reaction
 
                 if (!subType.isNullOrEmpty()) {

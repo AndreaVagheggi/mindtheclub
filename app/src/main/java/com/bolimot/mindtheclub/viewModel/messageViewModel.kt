@@ -152,16 +152,6 @@ class MessageViewModel(
         }
     }
 
-    suspend fun updateReaction(messageId: String, emoji: String): Boolean {
-        val result = withContext(Dispatchers.IO) {
-            repository.updateReaction(messageId, emoji)
-        }
-        if (result) {
-            notifyReactionUpdate(messageId, emoji)
-        }
-        return result
-    }
-
     private suspend fun notifyStatusUpdate(messageId: String, status: String) {
         withContext(Dispatchers.Main) {
             statusUpdate.value = Pair(messageId, status)
@@ -169,11 +159,10 @@ class MessageViewModel(
         }
     }
 
-    private suspend fun notifyReactionUpdate(messageId: String, emoji: String) {
-        withContext(Dispatchers.Main) {
-            reactionUpdate.value = Pair(messageId, emoji)
-            debugLine("notifyReactionUpdate", "Reaction changed to: $emoji")
-        }
+    /** Redraws the pill of [messageId] in the open chat. [pill] is the caption, "" when cleared. */
+    fun notifyReactionUpdate(messageId: String, pill: String) {
+        reactionUpdate.value = Pair(messageId, pill)
+        debugLine("notifyReactionUpdate", "Reaction pill changed to: $pill")
     }
 
     suspend fun getMessage(messageId: String): Message? {

@@ -9,6 +9,36 @@
     android:paddingTop="4dp"
     android:paddingBottom="4dp">
 
+    <!-- Who is typing: shown only in group chats, where anonymous dots say
+         nothing. Populated with the member's picture and name; stays gone in
+         1:1 chats, keeping the historical plain bubble. -->
+    <LinearLayout
+        android:id="@+id/typerRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="2dp"
+        android:visibility="gone">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/typerImage"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/peer"
+            app:shapeAppearance="@style/CircleShape" />
+
+        <TextView
+            android:id="@+id/typerName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_dark" />
+    </LinearLayout>
+
     <androidx.cardview.widget.CardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

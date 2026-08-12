@@ -155,17 +155,24 @@
 
     <TextView
         android:id="@+id/emoji"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:elevation="2dp"
         android:visibility="gone"
         android:gravity="center"
-        android:textSize="18sp"
+        android:textSize="15sp"
         android:textColor="@android:color/black"
-        android:background="@drawable/circle_white_background"
+        android:background="@drawable/reaction_pill_background"
         app:layout_constraintBottom_toBottomOf="@+id/card_message"
         app:layout_constraintStart_toStartOf="@+id/card_message"
         android:layout_marginStart="12dp"
+        android:minWidth="28dp"
+        android:paddingStart="7dp"
+        android:paddingEnd="7dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:clickable="true"
+        android:focusable="true"
         android:layout_marginBottom="-16dp" />
 
 

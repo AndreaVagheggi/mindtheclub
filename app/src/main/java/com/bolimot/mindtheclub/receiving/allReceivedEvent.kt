@@ -11,9 +11,11 @@ import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.isFileType
+import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MessageNotifier
+import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +51,24 @@ try {
     val message = inboxDao.getMessage(messageId)
     val type = message.type
     val text = message.text
+
+    // A group relay echo of a message I originally sent. Observed on 12 Aug:
+    // Giovanni's own text came back through the Family group, saveMessage said
+    // "already exists" but returned true, and receiveText notified him about his
+    // own message. Acknowledge the relayer so its retry loop stops, drop the
+    // chunks, and never reach the save or notify paths. Scoped to group messages
+    // (chatGroupId set), so 1:1 traffic and the note-to-self pseudo peer, which
+    // uses its own id, are untouched.
+    val echoGroupId = message.chatGroupId
+    val echoSenderId = message.originalSenderId
+    if (echoGroupId != null && !echoSenderId.isNullOrEmpty() && echoSenderId == MySelf.userId()) {
+        debugLine("receivedEvent", "Group echo of my own message $messageId, acking and discarding")
+        val echoDeliveryId = computeDeliveryDocId(echoGroupId, echoSenderId, message.date)
+        notifyRemotePeer(message.fromUserId, messageId, Notify.ALL_RECEIVED, echoDeliveryId)
+        val echoContentKey = resolveContentKey(inboxDao, messageId)
+        inboxDao.deleteByContent(echoContentKey)
+        return false
+    }
 
     if (type == Type.VIDEO || type == Type.IMAGE || isFileType(type)) {
         debugLine("receivedEvent", "Message received, type = $type")

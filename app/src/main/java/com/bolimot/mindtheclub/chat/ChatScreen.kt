@@ -92,8 +92,9 @@ import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.PeerIdentityChange
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.tools.NO_PICTURE
 import com.bolimot.mindtheclub.functions.getPreference
-import com.bolimot.mindtheclub.functions.getReactionViewModel
+import com.bolimot.mindtheclub.database.reaction.ReactionManager
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.loadBitmap
@@ -127,7 +128,6 @@ import com.bolimot.mindtheclub.tools.SubType
 import com.bolimot.mindtheclub.tools.Type
 import com.bolimot.mindtheclub.viewModel.MessageViewModel
 import com.bolimot.mindtheclub.viewModel.MessageViewModelFactory
-import com.bolimot.mindtheclub.viewModel.ReactionViewModel
 import com.bolimot.mindtheclub.viewModel.ViewModelProviderHolder
 import com.bolimot.mindtheclub.views.AppTab
 import com.bolimot.mindtheclub.views.ImagesTab
@@ -187,7 +187,6 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     private lateinit var replyId: String
     private lateinit var messageViewModel: MessageViewModel
     private lateinit var recordingChronometer: Chronometer
-    private lateinit var reactionViewModel: ReactionViewModel
     private lateinit var executor: java.util.concurrent.ExecutorService
     private lateinit var filePickerLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var bottomControlsContainer: LinearLayout
@@ -236,7 +235,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     private var dateNavigatorView: View? = null
     private var isSearchOpen = false
     private var targetMessageId: String? = null
-    private val typingWatchdogRunnable = Runnable { typingIndicatorAdapter.setTyping(false) }
+    private val typingWatchdogRunnable = Runnable { typingIndicatorAdapter.stopTyping() }
     private val typingWatchdogMs = 8000L
     private var webPreviewDismissed = false
     private var pendingCaptionText: String? = null
@@ -274,15 +273,39 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 Broadcast.ACTION_START_TYPING -> {
                     handler.removeCallbacks(typingWatchdogRunnable)
                     handler.postDelayed(typingWatchdogRunnable, typingWatchdogMs)
-                    typingIndicatorAdapter.setTyping(true)
+                    // The insert MUST stay synchronous, before the scroll below,
+                    // exactly like the historical setTyping(true). The first
+                    // version of the identity work moved it inside the peer
+                    // lookup coroutine: the smooth scroll then ran first and the
+                    // insert landed mid-animation, which left a ghost copy of an
+                    // old bubble painted over the top of the list (12 Aug,
+                    // Black's phone). Identity is resolved afterwards and only
+                    // retouches the row in place.
+                    typingIndicatorAdapter.setTyping(incomingUserId)
+                    if (remoteUserId.startsWith("group") && !incomingUserId.isNullOrEmpty()) {
+                        lifecycleScope.launch {
+                            val peer = getPeerViewModel().getPeer(incomingUserId)
+                            typingIndicatorAdapter.updateTyperIdentity(
+                                incomingUserId,
+                                peer?.name,
+                                peer?.picture?.takeIf { it != NO_PICTURE }
+                            )
+                        }
+                    }
                     if (!recyclerView.canScrollVertically(1)) {
                         recyclerView.smoothScrollToPosition(0)
+                    } else {
+                        // Reader is above the bottom: the bubble inserts below
+                        // the viewport and would be invisible (12 Aug log,
+                        // typing landing at firstVisible=2). Light the FAB the
+                        // same way a new message does, never steal the scroll.
+                        setGotoBottomFAB(Status.HIGHLIGHT)
                     }
                 }
 
                 Broadcast.ACTION_STOP_TYPING -> {
                     handler.removeCallbacks(typingWatchdogRunnable)
-                    typingIndicatorAdapter.setTyping(false)
+                    typingIndicatorAdapter.stopTyping(incomingUserId)
                 }
 
                 Broadcast.ACTION_FINISH_CALL -> {
@@ -397,8 +420,6 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             remoteUserId
         )
         messageViewModel = ViewModelProvider(this, factory)[MessageViewModel::class.java]
-
-        reactionViewModel = getReactionViewModel()
 
         ViewModelProviderHolder.messageViewModel = messageViewModel
 
@@ -704,7 +725,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         }
 
         gotoBottom.setOnClickListener {
-            scrollToBottom()
+            scrollToBottom("gotoBottom FAB")
         }
 
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -865,7 +886,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                     // (unlike P2P, where FCM spaces them out), which can leave
                     // isAtBottom false and swallow the observer's auto-scroll.
                     isAtBottom = true
-                    recyclerView.postDelayed({ scrollToBottom() }, 300)
+                    recyclerView.postDelayed({ scrollToBottom("assistant reply") }, 300)
                     return@let
                 }
 
@@ -879,8 +900,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             messagesAdapter.updateMessageStatus(messageId, newStatus)
         }
 
-        messageViewModel.reactionUpdate.observe(this) { (messageId, emoji) ->
-            messagesAdapter.updateMessageReaction(messageId, emoji)
+        messageViewModel.reactionUpdate.observe(this) { (messageId, pill) ->
+            messagesAdapter.updateMessageReaction(messageId, pill)
         }
 
         startHandleKeyboard()
@@ -1122,7 +1143,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(typingWatchdogRunnable)
-        typingIndicatorAdapter.setTyping(false)
+        typingIndicatorAdapter.stopTyping()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(remoteCallEventsReceiver)
         if (this::executor.isInitialized) {
             executor.shutdown()
@@ -1208,7 +1229,12 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         }
     }
 
-    private fun scrollToBottom() {
+    private fun scrollToBottom(reason: String = "unspecified") {
+        // Logged here, at the origin: the post below erases the real caller
+        // from the stack, so the ScrollProbe alone cannot tell the FAB from
+        // the keyboard listener. This line plus the probe line, read together,
+        // name both the site and the effect.
+        debugLine("ScrollProbe", "scrollToBottom requested, reason=$reason, firstVisible=${(recyclerView.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition()}")
         recyclerView.post {
             val lm = recyclerView.layoutManager as LinearLayoutManager
             lm.scrollToPositionWithOffset(0, 0)
@@ -1222,9 +1248,15 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
     private fun startHandleKeyboard() {
         recyclerView.addOnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
-            if (bottom < oldBottom) {
+            // Only chase the resize when the user was already at the bottom.
+            // Unconditional, this yanked a reader away from older messages every
+            // time the RecyclerView got shorter, and it shrinks for more reasons
+            // than the keyboard: the composer growing a line, insets, the 12 Aug
+            // log caught it firing with firstVisible=2 while a reply was being
+            // typed. WhatsApp behaviour: the keyboard never steals your place.
+            if (bottom < oldBottom && isAtBottom) {
                 recyclerView.post {
-                    scrollToBottom()
+                    scrollToBottom("keyboard/layout shrink")
                 }
             }
         }
@@ -2387,6 +2419,15 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         val emojiBlink = reactionView.findViewById<TextView>(R.id.emoji_blink)
         val emojiPlus = reactionView.findViewById<ImageButton>(R.id.plus_icon_button)
 
+        // Mark the emoji already picked on this message, so it reads as the one a second tap
+        // withdraws rather than as one more choice.
+        lifecycleScope.launch {
+            val mine = ReactionManager.myEmoji(message.messageId) ?: return@launch
+            listOf(emojiLike, emojiLove, emojiLaugh, emojiBlink)
+                .firstOrNull { it.text.toString() == mine }
+                ?.setBackgroundResource(R.drawable.circle_selected_reaction)
+        }
+
         emojiLike.setOnClickListener {
             removeReactionOverlay()
             sendReactionToServer(message, "👍")
@@ -2420,8 +2461,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             )
         }
 
-        // Only show emoji reactions for incoming messages
-        if (!isMyMessage) {
+        // Reactions are offered on incoming messages, and on your own group messages too:
+        // in a group you are one member among several and may react like anybody else.
+        if (!isMyMessage || isGroupMessage) {
             wrapperLayout.addView(reactionView)
         }
 
@@ -2584,8 +2626,17 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         messagesAdapter.removeSelection()
         toggleMenu(false)
         lifecycleScope.launch {
-            messageViewModel.updateReaction(message.messageId, emoji)
-            sendReaction(message, emoji)
+            // Picking the emoji you already put on this message withdraws it, which travels as an
+            // empty emoji. Everybody else's reaction on the same message is untouched either way.
+            val applied = if (ReactionManager.myEmoji(message.messageId) == emoji) "" else emoji
+
+            ReactionManager.apply(
+                message.messageId,
+                MySelf.userId()!!,
+                applied,
+                System.currentTimeMillis()
+            )
+            sendReaction(message, applied)
         }
     }
 

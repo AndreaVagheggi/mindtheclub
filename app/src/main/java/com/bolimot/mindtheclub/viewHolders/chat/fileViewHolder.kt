@@ -15,6 +15,7 @@ import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 
 class FileViewHolder(itemView: View, private val listener: MessagesAdapter.OnItemClickListener) : RecyclerView.ViewHolder(itemView) {
     private lateinit var status: TextView
@@ -35,6 +36,7 @@ class FileViewHolder(itemView: View, private val listener: MessagesAdapter.OnIte
                 itemView.findViewById<TextView>(R.id.fileSize).text = formatFileSize(detailList[2].toLong())
 
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(it.messageId)
                 reaction.text = it.reaction
 
                 val messageTextView = itemView.findViewById<TextView>(R.id.message)

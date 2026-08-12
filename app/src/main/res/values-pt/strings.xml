@@ -346,4 +346,7 @@
     <string name="identity_moved_close">Fechar</string>
     <string name="identity_moved_still">Esta identidade ainda está ativa em outro telefone</string>
     <string name="identity_moved_restore">Restaurar um backup</string>
+    <string name="reactions">Reações</string>
+    <string name="reactions_all">Todas %1$d</string>
+    <string name="tap_to_remove">Toque para remover</string>
 </resources>

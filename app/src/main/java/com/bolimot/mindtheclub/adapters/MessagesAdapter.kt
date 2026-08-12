@@ -602,14 +602,36 @@ class MessagesAdapter(private val listener: OnItemClickListener,
         private const val TYPE_RECEIVING_GROUP = 39
 
         private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<Message>() {
-            override fun areItemsTheSame(oldItem: Message, newItem: Message): Boolean = oldItem.uid == newItem.uid
+            // Identity is the logical message, not the DB row. messageId carries a
+            // unique index, so it can never collide inside one Paging snapshot.
+            // It used to be uid, but the placeholder replacement in saveMessage is
+            // a deleteMessage + insert that mints a NEW autoincrement uid for the
+            // same message: under uid identity the diff saw "one bubble removed,
+            // one inserted", and during the change animations both were on screen
+            // at once (12 Aug, Romy: the same message visible twice, then the
+            // duplicate vanished by itself).
+            override fun areItemsTheSame(oldItem: Message, newItem: Message): Boolean = oldItem.messageId == newItem.messageId
             override fun areContentsTheSame(oldItem: Message, newItem: Message): Boolean = oldItem == newItem
 
             override fun getChangePayload(oldItem: Message, newItem: Message): Any? {
                 val changes = mutableListOf<String>()
                 if (oldItem.status != newItem.status) changes.add(PAYLOAD_STATUS)
                 if (oldItem.reaction != newItem.reaction) changes.add(PAYLOAD_REACTION)
-                return changes.ifEmpty { super.getChangePayload(oldItem, newItem) }
+                if (changes.isEmpty()) return super.getChangePayload(oldItem, newItem)
+                // With messageId as identity, a placeholder being replaced by the
+                // real message also lands here as a "change": new uid, new content
+                // and usually a different view type (RECEIVING derives from status).
+                // A partial payload would only run updateStatus, which the
+                // ReceivingViewHolder does not even handle, leaving the placeholder
+                // bubble on screen with the photo never appearing. So the payload
+                // shortcut is allowed ONLY when status/reaction are the whole
+                // difference; anything else (uid, uri, text, receivedAt...) forces
+                // the full rebind that swaps the view holder correctly.
+                val onlyPayloadFieldsChanged = oldItem.copy(
+                    status = newItem.status,
+                    reaction = newItem.reaction
+                ) == newItem
+                return if (onlyPayloadFieldsChanged) changes else null
             }
         }
     }

@@ -6,11 +6,27 @@ import androidx.room.PrimaryKey
 import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
 
-@Entity(tableName = "Reaction", indices = [Index(value = ["messageId"], unique = true)])
+/**
+ * One member's reaction to one message.
+ *
+ * The pair (messageId, reactorUserId) is unique: a member holds at most one emoji per message,
+ * and picking a different one replaces only their own row, never anybody else's. [date] is the
+ * moment the reactor tapped, and it is what settles ordering when the same reaction is gossiped
+ * back around the group out of order.
+ *
+ * [reactorUserId] and [date] carry defaults so backups written before reactions became
+ * per-member still deserialize.
+ */
+@Entity(
+    tableName = "Reaction",
+    indices = [Index(value = ["messageId", "reactorUserId"], unique = true)]
+)
 @Keep
 @Serializable
 data class Reaction(
-    @PrimaryKey(autoGenerate = true) val uid: Int,
+    @PrimaryKey(autoGenerate = true) val uid: Int = 0,
     val messageId: String,
+    val reactorUserId: String = "",
     val emoji: String,
+    val date: Long = 0L,
 )

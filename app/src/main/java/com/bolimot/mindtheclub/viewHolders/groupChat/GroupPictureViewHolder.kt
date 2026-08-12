@@ -17,6 +17,7 @@ import com.bolimot.mindtheclub.functions.formatDate
 import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 import com.bumptech.glide.Glide
 import com.google.android.material.card.MaterialCardView
 
@@ -85,6 +86,7 @@ class GroupPictureViewHolder(itemView: View, private val listener: MessagesAdapt
                 }
 
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(it.messageId)
                 reaction.text = it.reaction
                 if (subType == SubType.FORWARD) {
                     itemView.findViewById<TextView>(R.id.forwarded).visibility = View.VISIBLE

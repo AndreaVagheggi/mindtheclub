@@ -17,6 +17,7 @@ import com.bolimot.mindtheclub.functions.formatDate
 import com.bolimot.mindtheclub.functions.formatMessageTime
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 import com.bumptech.glide.Glide
 
 class MultiPictureViewHolder(itemView: View, private val listener: MessagesAdapter.OnItemClickListener) : RecyclerView.ViewHolder(itemView) {
@@ -70,6 +71,7 @@ class MultiPictureViewHolder(itemView: View, private val listener: MessagesAdapt
 
                 selectableView = itemView.findViewById(R.id.selectable_area)
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(it.messageId)
                 reaction.text = it.reaction
 
                 if (subType == SubType.FORWARD) {

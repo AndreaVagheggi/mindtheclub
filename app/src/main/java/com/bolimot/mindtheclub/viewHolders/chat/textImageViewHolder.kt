@@ -26,6 +26,7 @@ import com.bolimot.mindtheclub.functions.toImage
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.SubType
 import com.bolimot.mindtheclub.tools.Type
+import com.bolimot.mindtheclub.viewHolders.openReactionsOnClick
 import com.bumptech.glide.Glide
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,7 @@ class TextImageViewHolder(itemView: View, private val listener: MessagesAdapter.
                 val messageTextView = messageView
 
                 reaction = itemView.findViewById(R.id.emoji)
+                reaction.openReactionsOnClick(it.messageId)
                 reaction.text = it.reaction
 
                 if (it.text.isEmpty()) {

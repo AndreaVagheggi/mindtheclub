@@ -347,4 +347,7 @@
     <string name="identity_moved_close">Tutup</string>
     <string name="identity_moved_still">Identitas ini masih aktif di ponsel lain</string>
     <string name="identity_moved_restore">Pulihkan cadangan</string>
+    <string name="reactions">Reaksi</string>
+    <string name="reactions_all">Semua %1$d</string>
+    <string name="tap_to_remove">Ketuk untuk menghapus</string>
 </resources>

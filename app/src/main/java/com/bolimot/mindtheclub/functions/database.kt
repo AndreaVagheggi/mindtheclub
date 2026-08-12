@@ -24,7 +24,6 @@ import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.viewModel.ClubViewModel
 import com.bolimot.mindtheclub.viewModel.MessageViewModel
 import com.bolimot.mindtheclub.viewModel.PeerViewModel
-import com.bolimot.mindtheclub.viewModel.ReactionViewModel
 
 fun getBlockedUserDao(context: Context): BlockedUserDao {
     return DatabaseProvider.provideDatabase(context).blockedUserDao()
@@ -53,11 +52,9 @@ fun getPeerRepository(context: Context): PeerRepository {
     return PeerRepository(databaseProvider)
 }
 
-fun getReactionViewModel(): ReactionViewModel {
-    val databaseProvider = DatabaseProvider.provideDatabase(App.context()).reactionDao()
-    val reactionRepository = ReactionRepository(databaseProvider)
-
-    return ReactionViewModel(reactionRepository)
+fun getReactionRepository(context: Context): ReactionRepository {
+    val databaseProvider = DatabaseProvider.provideDatabase(context).reactionDao()
+    return ReactionRepository(databaseProvider)
 }
 
 fun getMessageRepository(context: Context): MessageRepository {

@@ -205,6 +205,22 @@ class MessageReceivedNotification {
             }
         }
 
+        /**
+         * Records that [messageId] must never be notified, without posting anything.
+         *
+         * Called when an incoming message is handled while its chat is in the
+         * foreground: the user is looking at it, so it is consumed without a
+         * notification. Without this mark the dedup registry above only knows
+         * about messages that were actually posted, and a later group relay echo
+         * or sendMe resend of the same message would raise a notification for
+         * something the user already read.
+         */
+        fun markShown(messageId: String) {
+            App.context()
+                .getSharedPreferences(PREFS_SHOWN_MSG, Context.MODE_PRIVATE)
+                .edit { putBoolean(messageId, true) }
+        }
+
         fun cancel(userId: String) {
             val context = App.context()
             val notificationManager =
