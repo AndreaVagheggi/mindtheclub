@@ -12,8 +12,8 @@
     <string name="send_debug_log">Invia log di debug</string>
     <string name="new_contacts">Nuovi</string>
     <string name="request_contact">Richiedi contatto</string>
-    <string name="add_member">Aggiungi membro</string>
-    <string name="remove_member">Rimuovi membro</string>
+    <string name="add_member">Aggiungi</string>
+    <string name="remove_member">Rimuovi</string>
     <string name="select_group">Seleziona 2 o più contatti per creare un gruppo</string>
     <string name="group_members">Membri</string>
     <string name="new_group">Nuovo gruppo</string>
@@ -140,7 +140,7 @@
     <string name="close">Chiudi</string>
     <string name="info">Info</string>
     <string name="group_member_limit_exceeded">I gruppi non possono superare %d membri.</string>
-    <string name="media_lost">Contenuto multimediale non disponibile</string>
+    <string name="media_lost">Media non disponibile</string>
     <string name="message_size_limit">Superato il limite di 250 MB per i messaggi a un gruppo</string>
     <string name="no_results">Nessun risultato</string>
     <string name="connected_and_ready">Connesso</string>
@@ -347,4 +347,11 @@
     <string name="reactions">Reazioni</string>
     <string name="reactions_all">Tutte %1$d</string>
     <string name="tap_to_remove">Tocca per rimuovere</string>
+    <string name="make_admin">Admin</string>
+    <string name="admin_label">Admin</string>
+    <string name="already_admin">È già amministratore</string>
+    <string name="founder_not_removable">Il fondatore del gruppo non può essere rimosso</string>
+    <string name="delete_group_menu">Elimina</string>
+    <string name="leave">Esci</string>
+    <string name="delete_group_confirm">Il gruppo verrà eliminato definitivamente per tutti i membri. L\'operazione non può essere annullata.</string>
 </resources>

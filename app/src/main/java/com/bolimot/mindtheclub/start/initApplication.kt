@@ -83,6 +83,17 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
             // Unclaimed doc (pre installationId app version): claim it, the
             // update below writes our id alongside the token.
             remoteInstallation == null && isDocInFirestore -> true
+            // The trial anchor is only ever written by updateMyFcmToken, and on a
+            // fresh install that call happens BEFORE the clock starts (it starts on
+            // the first outgoing message), so it published null. Without this
+            // condition nothing wrote it again while the token stayed put, the
+            // anchor stayed empty for ever, and uninstall-reinstall handed out a
+            // brand new 30 days: the very abuse it exists to stop. adoptStartedAt
+            // ran above and already took the EARLIER of local and remote, so the
+            // local value is the minimum of the two and publishing it can never
+            // shorten anybody's trial.
+            TrialManager.startedAt(context)
+                ?.let { it != userDoc?.getLong("trialStartedAt") } == true -> true
             else -> false
         }
 

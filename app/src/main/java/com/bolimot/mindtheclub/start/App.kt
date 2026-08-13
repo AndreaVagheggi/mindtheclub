@@ -59,7 +59,14 @@ class App : Application(), DefaultLifecycleObserver {
         // entitlement (also re-acknowledges any purchase missed at buy time).
         BillingManager.init(this)
 
-        debugLine("App", "Application starting")
+        // The build stamp goes in every log an exporter ever produces. Without it
+        // a tester's log says nothing about WHICH version produced it, so reading
+        // a problem means guessing whether a given fix was already in place on
+        // that phone.
+        debugLine(
+            "App",
+            "Application starting, version ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})"
+        )
 
         SoundManager.init()
 

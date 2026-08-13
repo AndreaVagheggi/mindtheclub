@@ -12,8 +12,8 @@
     <string name="send_debug_log">Send Debug Log</string>
     <string name="new_contacts">New</string>
     <string name="request_contact">Request Contact</string>
-    <string name="add_member">Add member</string>
-    <string name="remove_member">Remove member</string>
+    <string name="add_member">Add</string>
+    <string name="remove_member">Remove</string>
     <string name="select_group">Select 2 or more contacts to create a group</string>
     <string name="group_members">Members</string>
     <string name="new_group">New Group</string>
@@ -347,4 +347,11 @@
     <string name="reactions">Reactions</string>
     <string name="reactions_all">All %1$d</string>
     <string name="tap_to_remove">Tap to remove</string>
+    <string name="make_admin">Admin</string>
+    <string name="admin_label">Admin</string>
+    <string name="already_admin">Already an admin</string>
+    <string name="founder_not_removable">The group founder cannot be removed</string>
+    <string name="delete_group_menu">Delete</string>
+    <string name="leave">Leave</string>
+    <string name="delete_group_confirm">This will permanently delete the group for all members. This action cannot be undone.</string>
 </resources>

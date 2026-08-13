@@ -38,6 +38,19 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/**
+ * JPEG quality for photos leaving this device.
+ *
+ * Was 100, i.e. visually lossless and several times heavier than it needs to be:
+ * at 2048px a quality 100 frame is 2 to 4 MB, the same frame at 80 is under one,
+ * with a difference nobody sees on a phone. On a mobile uplink that ratio is the
+ * difference between a photo arriving in a minute and in ten, and unlike the
+ * transport level ideas it changes nothing on the wire: same chunks, same
+ * protocol, same database. A receiver on an older build simply gets a lighter
+ * file.
+ */
+const val SENT_IMAGE_QUALITY = 80
+
 fun mergeImages(uriStringList: String, messageId: String): String? {
     try {
         val separator = "--SEPARATOR--"
@@ -55,16 +68,39 @@ fun mergeImages(uriStringList: String, messageId: String): String? {
         }
 
         FileOutputStream(mergedFile).use { fileOutputStream ->
-            for (uri in uriList) {
-                context.contentResolver.openInputStream(uri).use { inputStream ->
-                    if (inputStream == null) {
-                        debugLine("mergeImages", "Failed to open input stream for URI: $uri")
-                        return null
-                    }
+            for ((index, uri) in uriList.withIndex()) {
+                // Recompress before concatenating. This path used to copy the
+                // gallery originals byte for byte, so a handful of full
+                // resolution photos became tens of megabytes: on 13 Aug an album
+                // reached 870 chunks, roughly 35 MB, and took half an hour to
+                // reach two peers over a mobile uplink. The single image path
+                // already went through saveBitmapFromUri, this one never did.
+                //
+                // The separator framing is untouched, so extractImages and every
+                // already deployed receiver keep working exactly as before.
+                val tempName = "mergesrc_${messageId}_$index.jpg"
+                val tempFile = File(context.filesDir, tempName)
+                val compressed = saveBitmapFromUri(uri, tempName, SENT_IMAGE_QUALITY)
 
-                    inputStream.copyTo(fileOutputStream)
-                    fileOutputStream.write(separatorBytes)
+                if (compressed != null && tempFile.exists() && tempFile.length() > 0) {
+                    tempFile.inputStream().use { it.copyTo(fileOutputStream) }
+                    tempFile.delete()
+                } else {
+                    // Anything unexpected (undecodable file, out of memory, an
+                    // exotic format) falls back to the original bytes, i.e. to
+                    // exactly the behaviour this function had before.
+                    debugLine("mergeImages", "Compression unavailable for $uri, sending original bytes")
+                    tempFile.delete()
+                    context.contentResolver.openInputStream(uri).use { inputStream ->
+                        if (inputStream == null) {
+                            debugLine("mergeImages", "Failed to open input stream for URI: $uri")
+                            return null
+                        }
+                        inputStream.copyTo(fileOutputStream)
+                    }
                 }
+
+                fileOutputStream.write(separatorBytes)
             }
         }
 

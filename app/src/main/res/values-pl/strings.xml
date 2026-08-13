@@ -12,8 +12,8 @@
     <string name="send_debug_log">Wyślij dziennik debugowania</string>
     <string name="new_contacts">Nowe</string>
     <string name="request_contact">Poproś o kontakt</string>
-    <string name="add_member">Dodaj członka</string>
-    <string name="remove_member">Usuń członka</string>
+    <string name="add_member">Dodaj</string>
+    <string name="remove_member">Usuń</string>
     <string name="select_group">Wybierz co najmniej 2 kontakty, aby utworzyć grupę</string>
     <string name="group_members">Członkowie</string>
     <string name="new_group">Nowa grupa</string>
@@ -349,4 +349,11 @@
     <string name="reactions">Reakcje</string>
     <string name="reactions_all">Wszystkie %1$d</string>
     <string name="tap_to_remove">Dotknij, aby usunąć</string>
+    <string name="make_admin">Admin</string>
+    <string name="admin_label">Admin</string>
+    <string name="already_admin">Juz jest administratorem</string>
+    <string name="founder_not_removable">Zalozyciela grupy nie mozna usunac</string>
+    <string name="delete_group_menu">Usuń grupę</string>
+    <string name="leave">Opuść</string>
+    <string name="delete_group_confirm">Grupa zostanie trwale usunięta dla wszystkich członków. Tej operacji nie można cofnąć.</string>
 </resources>

@@ -14,8 +14,8 @@
     <string name="send_debug_log">Kirim log debug</string>
     <string name="new_contacts">Baru</string>
     <string name="request_contact">Minta kontak</string>
-    <string name="add_member">Tambah anggota</string>
-    <string name="remove_member">Hapus anggota</string>
+    <string name="add_member">Tambah</string>
+    <string name="remove_member">Keluarkan</string>
     <string name="select_group">Pilih 2 kontak atau lebih untuk membuat grup</string>
     <string name="group_members">Anggota</string>
     <string name="new_group">Grup baru</string>
@@ -350,4 +350,11 @@
     <string name="reactions">Reaksi</string>
     <string name="reactions_all">Semua %1$d</string>
     <string name="tap_to_remove">Ketuk untuk menghapus</string>
+    <string name="make_admin">Admin</string>
+    <string name="admin_label">Admin</string>
+    <string name="already_admin">Sudah menjadi admin</string>
+    <string name="founder_not_removable">Pendiri grup tidak dapat dihapus</string>
+    <string name="delete_group_menu">Hapus</string>
+    <string name="leave">Keluar</string>
+    <string name="delete_group_confirm">Grup akan dihapus secara permanen untuk semua anggota. Tindakan ini tidak dapat dibatalkan.</string>
 </resources>

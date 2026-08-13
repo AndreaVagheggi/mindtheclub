@@ -58,6 +58,16 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
     private var isAdmin = false
     private var currentPictureUrl: String? = null
 
+    /**
+     * Whoever created the group. Untouchable by design: any admin can promote
+     * others, but nobody can remove the founder, which keeps a family group one
+     * mis-tap away from an accidental coup with no way back.
+     */
+    private var founderUserId: String? = null
+
+    /** Current roles, userId to "admin" / "member", refreshed by the snapshot listener. */
+    private var currentRoles: Map<String, String> = emptyMap()
+
     private lateinit var groupPic: ShapeableImageView
     private lateinit var groupPicContainer: View
     private lateinit var groupPicEditIcon: View
@@ -205,6 +215,8 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
 
                 // Determine admin status and show/hide edit controls
                 isAdmin = membersMap[localUserId] == "admin"
+                currentRoles = membersMap
+                founderUserId = snapshot.getString("createdBy")
                 showHeader()
 
                 groupNameEditText.setText(groupName)
@@ -225,7 +237,8 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
                                     userId = peer.userId,
                                     name = peer.name,
                                     bio = peer.bio,
-                                    picture = peer.picture
+                                    picture = peer.picture,
+                                    role = membersMap[userId]
                                 )
                             } else {
                                 debugLine("GroupMembers", "Peer not found locally for $userId")
@@ -233,7 +246,8 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
                                     userId = userId,
                                     name = membersMap[userId] ?: "Unknown",
                                     bio = null,
-                                    picture = null
+                                    picture = null,
+                                    role = membersMap[userId]
                                 )
                             }
                         }
@@ -361,19 +375,70 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
         }
     }
 
-    fun removeMembers(userIds: List<String>) {
+    /**
+     * Grants admin rights to the selected members.
+     *
+     * The role map on the group document already carries one value per member
+     * ("admin" / "member"), so this is the same single-field write addMembers
+     * does, with a different value: no schema change, and several admins were
+     * always representable, there simply was no way to create them.
+     *
+     * A promoted member becomes a full admin, able to promote others in turn.
+     */
+    fun promoteMembers(userIds: List<String>) {
+        val toPromote = userIds.filter { currentRoles[it] != "admin" }
+        if (toPromote.isEmpty()) {
+            showToast(getString(R.string.already_admin), requireContext())
+            membersAdapter.clearSelection()
+            return
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val groupRef = db.collection("groups").document(groupId)
                 val updates = hashMapOf<String, Any>()
-                userIds.forEach { userId ->
+                toPromote.forEach { userId ->
+                    updates["members.$userId"] = "admin"
+                }
+                groupRef.update(updates).await()
+
+                debugLine("GroupMembers", "Promoted ${toPromote.size} member(s) to admin in group $groupId")
+            } catch (e: Exception) {
+                debugLine("GroupMembers", "Error promoting members: ${e.message}")
+            }
+
+            withContext(Dispatchers.Main) {
+                membersAdapter.clearSelection()
+            }
+        }
+    }
+
+    fun removeMembers(userIds: List<String>) {
+        // The founder is never removable, by anyone, including other admins.
+        val founder = founderUserId
+        val removable = if (founder != null) userIds.filter { it != founder } else userIds
+        if (removable.size != userIds.size) {
+            showToast(getString(R.string.founder_not_removable), requireContext())
+        }
+        if (removable.isEmpty()) {
+            membersAdapter.clearSelection()
+            return
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val groupRef = db.collection("groups").document(groupId)
+                val updates = hashMapOf<String, Any>()
+                removable.forEach { userId ->
                     updates["members.$userId"] = FieldValue.delete()
                 }
                 groupRef.update(updates).await()
 
-                debugLine("GroupMembers", "Removed ${userIds.size} members from group $groupId")
+                debugLine("GroupMembers", "Removed ${removable.size} members from group $groupId")
 
-                userIds.forEach { userId ->
+                // removable, not userIds: a filtered-out founder was never
+                // removed and must not be told that they were.
+                removable.forEach { userId ->
                     notifyRemotePeer(userId, groupId, Notify.GROUP_REMOVED, groupName)
                 }
             } catch (e: Exception) {

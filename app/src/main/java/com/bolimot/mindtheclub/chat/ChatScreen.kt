@@ -99,6 +99,7 @@ import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.loadBitmap
 import com.bolimot.mindtheclub.functions.safeUrl
+import com.bolimot.mindtheclub.functions.SENT_IMAGE_QUALITY
 import com.bolimot.mindtheclub.functions.saveBitmapFromUri
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.showToast
@@ -2128,7 +2129,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         // Decode + save off the main thread (a full-resolution photo
                         // freezes low-RAM devices), then open SendImage.
                         lifecycleScope.launch(Dispatchers.IO) {
-                            val imageUri: Uri? = saveBitmapFromUri(receivedUris[0], fileName, 100)
+                            val imageUri: Uri? = saveBitmapFromUri(receivedUris[0], fileName, SENT_IMAGE_QUALITY)
                             saveBitmapFromUri(receivedUris[0], previewFileName, 50)
 
                             val userIdList: List<String> = listOf(remoteUserId)

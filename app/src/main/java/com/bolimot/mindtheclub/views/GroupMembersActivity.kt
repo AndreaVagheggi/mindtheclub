@@ -117,6 +117,11 @@ class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener
                     true
                 }
 
+                R.id.make_admin -> {
+                    promoteSelectedMembers()
+                    true
+                }
+
                 R.id.delete_group -> {
                     confirmDeleteGroup()
                     true
@@ -143,8 +148,8 @@ class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.leave_group))
             .setMessage(getString(R.string.leave_group_alert))
-            .setPositiveButton("Leave") { _, _ -> leaveGroup() }
-            .setNegativeButton("Cancel", null)
+            .setPositiveButton(getString(R.string.leave)) { _, _ -> leaveGroup() }
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 
@@ -200,12 +205,21 @@ class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener
         groupMembersFragment?.removeMembers(selectedIds)
     }
 
+    private fun promoteSelectedMembers() {
+        val selectedIds = groupMembersFragment?.getSelectedMemberUserIds() ?: emptyList()
+        if (selectedIds.isEmpty()) {
+            debugLine("GroupMembersActivity", "No members selected for promotion")
+            return
+        }
+        groupMembersFragment?.promoteMembers(selectedIds)
+    }
+
     private fun confirmDeleteGroup() {
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.delete_group))
-            .setMessage("This will permanently delete the group for all members. This action cannot be undone.")
-            .setPositiveButton("Delete") { _, _ -> deleteGroup() }
-            .setNegativeButton("Cancel", null)
+            .setMessage(getString(R.string.delete_group_confirm))
+            .setPositiveButton(getString(R.string.delete)) { _, _ -> deleteGroup() }
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 

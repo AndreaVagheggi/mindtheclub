@@ -27,6 +27,7 @@
         app:itemIconTint="@color/white"
         app:itemTextColor="@color/white"
         android:visibility="gone"
+        app:labelVisibilityMode="labeled"
         app:menu="@menu/group_members_bottom_menu" />
 
 </LinearLayout>

@@ -17,6 +17,12 @@ class MembersViewHolder(itemView: View, private val listener: MembersAdapter.OnI
             itemView.findViewById<TextView>(R.id.lastMessage).text = request.bio
             itemView.findViewById<ImageView>(R.id.pending).visibility = View.GONE
 
+            // Set BOTH ways on every bind: this view holder is recycled, and
+            // leaving the badge alone for a plain member would inherit the
+            // "Admin" label from whichever row previously used this view.
+            itemView.findViewById<TextView>(R.id.roleBadge).visibility =
+                if (request.role == "admin") View.VISIBLE else View.GONE
+
             val selectedColor = ContextCompat.getColor(itemView.context, R.color.mtc_transparent)
             itemView.setBackgroundColor(if (isSelected) selectedColor else Color.TRANSPARENT)
 
