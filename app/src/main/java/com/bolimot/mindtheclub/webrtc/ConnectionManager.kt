@@ -100,6 +100,20 @@ class ConnectionManager {
         }
     }
 
+    /**
+     * Snapshot of the senders currently admitted for [contentKey]. Used when the
+     * content completes: every admitted sender beyond the one that finished is
+     * mid way through a transmission of bytes nobody needs any more, and an
+     * early allReceived stops it at the next batch boundary (the handler deletes
+     * its batch tables) instead of letting it run to the end.
+     */
+    fun admittedSendersFor(contentKey: String): List<String> {
+        if (contentKey.isEmpty()) return emptyList()
+        synchronized(activeSendersLock) {
+            return activeSendersByContent[contentKey]?.toList() ?: emptyList()
+        }
+    }
+
     private fun releaseSender(fromUserId: String) {
         synchronized(activeSendersLock) {
             val toRemove = mutableListOf<String>()

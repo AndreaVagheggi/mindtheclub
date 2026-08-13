@@ -338,12 +338,30 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     @Suppress("UNCHECKED_CAST")
                                     val membersMap = groupDoc.get("members") as? Map<String, Any>
                                     val myId = MySelf.userId()
-                                    val targets = membersMap?.keys?.filter { key -> key != myId } ?: emptyList()
+                                    val targets = membersMap?.keys?.filter { key -> key != myId }?.sorted() ?: emptyList()
 
-                                    for (memberId in targets) {
-                                        notifyRemotePeer(memberId, msgId, "sendMe", missingRange)
+                                    if (targets.isEmpty()) {
+                                        notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)
+                                    } else {
+                                        // ONE member per round, rotating, instead of all of
+                                        // them at once. Every member answers a sendMe with a
+                                        // FULL redispatch, so the old fan out turned each
+                                        // stall into triple traffic on the same pipe (13 Aug:
+                                        // a 78 chunk photo transmitted 4.5 times over, 11 fan
+                                        // outs in 15 minutes). Round 0 asks whoever announced
+                                        // the pending, it certainly holds the content; later
+                                        // rounds walk the member list so one dead sender can
+                                        // never stall recovery. The 3x redundancy remains
+                                        // available, spread over successive rounds instead of
+                                        // fired all at once.
+                                        val rotationPrefs = applicationContext.getSharedPreferences("SendMeRotation", MODE_PRIVATE)
+                                        val round = rotationPrefs.getInt(msgId, 0)
+                                        val target = if (round == 0 && fromUserId in targets) fromUserId
+                                                     else targets[round % targets.size]
+                                        rotationPrefs.edit().putInt(msgId, round + 1).apply()
+                                        notifyRemotePeer(target, msgId, "sendMe", missingRange)
+                                        debugLine(tag, "Sent sendMe round $round to $target for $msgId (${targets.size} members in rotation)")
                                     }
-                                    debugLine(tag, "Sent sendMe to ${targets.size} group members for $msgId")
                                 } else {
                                     debugLine(tag, "Group $chatGroupId not found, falling back to sender")
                                     notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)

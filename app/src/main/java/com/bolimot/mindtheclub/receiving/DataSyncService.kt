@@ -81,12 +81,23 @@ class DataSyncService : Service() {
             val remoteUserId = intent.getStringExtra(EXTRA_REMOTE_USER_ID)
 
             if (channelId != null && remoteUserId != null) {
+                // The lock comes FIRST, before any notification or Binder work.
+                // The CPU is only guaranteed for the ~10s FCM grace period: on
+                // 13 Aug the device suspended in the gap between startForeground
+                // and the acquire that used to sit after it, freezing
+                // onStartCommand mid-flight for 36s. The system flagged the
+                // service as ANR and the signalling room expired before the
+                // connection was ever attempted.
+                acquireWakeLock()
                 // When the foreground promotion is refused the work has already been
                 // handed to WorkManager, so starting it here too would run the same
                 // sync twice against the same peer.
                 if (startForegroundSync(channelId, remoteUserId)) {
-                    acquireWakeLock()
                     startWebRTC(channelId, remoteUserId)
+                } else if (activeJobs.get() == 0) {
+                    // Fallback path: WorkManager owns the sync now and takes its
+                    // own foreground protection, this lock must not linger.
+                    releaseWakeLock()
                 }
             } else {
                 debugLine(tag, "Missing extras, stopping.")

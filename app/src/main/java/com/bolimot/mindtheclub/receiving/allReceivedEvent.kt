@@ -17,6 +17,7 @@ import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MessageNotifier
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
+import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.bolimot.mindtheclub.tools.Type
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,6 +79,7 @@ try {
             Type.IMAGE -> receiveImage(messageId, "", text, fromUserId)
             else -> receiveObject(messageId, "", text, fromUserId, type)
         }
+        stopRedundantSenders(message)
         return true
     }
 
@@ -112,9 +114,44 @@ try {
             }
         }
     }
+    stopRedundantSenders(message)
     return true
     } finally {
         activeProcessing.remove(messageId)
+    }
+}
+
+/**
+ * Early stop for every admitted sender of this content beyond the one whose
+ * copy just completed. Without it, a member answering an earlier sendMe kept
+ * transmitting the whole message to the very end and only then learnt it was
+ * wasted (13 Aug: a completed 78 chunk photo arrived in full a second time ten
+ * minutes later, over the same pipe a 1017 chunk photo was fighting for).
+ *
+ * Addressed with the message KEY (the group original id), because a sendMe
+ * redispatch names its batch tables after that key, and the allReceived
+ * handler deletes tables by the id it receives. The sender that completed and
+ * the original sender are excluded: the receive paths already acknowledge
+ * both.
+ */
+private fun stopRedundantSenders(inboxMessage: Inbox) {
+    try {
+        val contentKey = contentKeyOf(inboxMessage)
+        val others = ConnectionManager.instance.admittedSendersFor(contentKey)
+            .filter { it != inboxMessage.fromUserId && it != inboxMessage.originalSenderId }
+        if (others.isEmpty()) return
+
+        val messageKey = if (inboxMessage.chatGroupId != null && inboxMessage.groupId.isNotEmpty())
+            inboxMessage.groupId else inboxMessage.messageId
+        val deliveryId = inboxMessage.chatGroupId?.let {
+            computeDeliveryDocId(it, inboxMessage.originalSenderId ?: inboxMessage.fromUserId, inboxMessage.date)
+        }
+        for (senderId in others) {
+            debugLine("receivedEvent", "Content complete, early allReceived to redundant sender $senderId for $messageKey")
+            notifyRemotePeer(senderId, messageKey, Notify.ALL_RECEIVED, deliveryId)
+        }
+    } catch (e: Exception) {
+        debugLine("receivedEvent", "Redundant sender stop failed: ${e.message}")
     }
 }
 
