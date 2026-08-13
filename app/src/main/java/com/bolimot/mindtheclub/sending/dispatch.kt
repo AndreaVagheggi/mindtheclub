@@ -20,6 +20,35 @@ data class DispatchResult(
     val chunksSent: Int
 )
 
+/**
+ * At most this many MEDIA dispatches on the wire at once; the rest wait here.
+ *
+ * Without the gate the sender pushes every transfer in parallel: on 13 Aug
+ * Raoul's phone ran 3 contents x 4 receivers together, the shared uplink
+ * saturated, every data channel buffer filled (20.804 backpressure waits,
+ * chunks abandoned after 15s of delay), dispatches died in bulk (1.520
+ * GENERAL_FAILURE against 16 successes) and the receivers' recovery requests
+ * multiplied the load further. Serialised, each transfer takes the full
+ * uplink and completes quickly, so buffers never fill and the recovery
+ * machinery stays quiet. Two permits rather than one so a stalled transfer
+ * cannot freeze the queue while its timeouts run.
+ *
+ * Small messages (texts, reactions, profiles) bypass the gate entirely: they
+ * must never wait behind a thousand-chunk album.
+ */
+private val mediaDispatchGate = kotlinx.coroutines.sync.Semaphore(2)
+private const val MEDIA_GATE_MIN_CHUNKS = 5
+
+/** Total chunk count of the message, read from the first batch row; 0 when unknown. */
+private fun totalChunksOf(db: SupportSQLiteDatabase, messageId: String): Int {
+    return try {
+        val cursor = db.query("SELECT totalNo FROM batch${messageId}1 LIMIT 1", emptyArray())
+        cursor.use { if (it.moveToFirst()) it.getInt(0) else 0 }
+    } catch (e: Exception) {
+        0
+    }
+}
+
 private data class BatchOutcome(
     val success: Boolean,
     val chunksSent: Int
@@ -52,35 +81,52 @@ suspend fun dispatchMessage(
 
         val senderContentKey = contentKeyOf(messageId, chatGroupId, originalSenderId, messageDate)
 
-        val transportResult = TransportRouter.connect(remoteUserId, senderContentKey, App.context())
-
-        if (transportResult !is TransportResult.Connected) {
-            return DispatchResult((transportResult as TransportResult.Failed).result, totalChunksSent)
+        // The permit is taken BEFORE connecting: a queued transfer must not
+        // hold a signalling room open while it waits, the peer would time out
+        // in it. If the acquire itself is cancelled we have taken nothing, so
+        // only a successful acquire is paired with the release in finally.
+        val gated = totalChunksOf(db, messageId) >= MEDIA_GATE_MIN_CHUNKS
+        if (gated) {
+            val queuedAt = System.currentTimeMillis()
+            mediaDispatchGate.acquire()
+            val waitedMs = System.currentTimeMillis() - queuedAt
+            if (waitedMs > 1_000) {
+                debugLine("DispatchMessage", "Media slot for $messageId acquired after ${waitedMs / 1000}s in queue")
+            }
         }
-
-        val transport = transportResult.transport
-
         try {
-            for (i in 1..batchesNumber) {
-                val outcome = dispatchBatch("batch$messageId$i", transport, context)
-                totalChunksSent += outcome.chunksSent
-                if (!outcome.success) {
-                    debugLine("DispatchMessage","Dispatch batch failed at batch $i of $batchesNumber batches")
-                    return DispatchResult(RTCClientResult.RTCClientGeneralFailure, totalChunksSent)
-                }
-            }
-        } finally {
-            if (transport is com.bolimot.mindtheclub.transport.BluetoothTransport) {
-                transport.sendCompletedAndAwaitReply(messageId, remoteUserId)
-            }
-            transport.close()
-        }
+            val transportResult = TransportRouter.connect(remoteUserId, senderContentKey, App.context())
 
-        debugLine("dispatchMessage", "All $batchesNumber batches sent")
-        if (transport !is com.bolimot.mindtheclub.transport.BluetoothTransport) {
-            sentAllSentEvent(messageId, remoteUserId)
+            if (transportResult !is TransportResult.Connected) {
+                return DispatchResult((transportResult as TransportResult.Failed).result, totalChunksSent)
+            }
+
+            val transport = transportResult.transport
+
+            try {
+                for (i in 1..batchesNumber) {
+                    val outcome = dispatchBatch("batch$messageId$i", transport, context)
+                    totalChunksSent += outcome.chunksSent
+                    if (!outcome.success) {
+                        debugLine("DispatchMessage","Dispatch batch failed at batch $i of $batchesNumber batches")
+                        return DispatchResult(RTCClientResult.RTCClientGeneralFailure, totalChunksSent)
+                    }
+                }
+            } finally {
+                if (transport is com.bolimot.mindtheclub.transport.BluetoothTransport) {
+                    transport.sendCompletedAndAwaitReply(messageId, remoteUserId)
+                }
+                transport.close()
+            }
+
+            debugLine("dispatchMessage", "All $batchesNumber batches sent")
+            if (transport !is com.bolimot.mindtheclub.transport.BluetoothTransport) {
+                sentAllSentEvent(messageId, remoteUserId)
+            }
+            return DispatchResult(RTCClientResult.RTCClientSuccess, totalChunksSent)
+        } finally {
+            if (gated) mediaDispatchGate.release()
         }
-        return DispatchResult(RTCClientResult.RTCClientSuccess, totalChunksSent)
 
     } catch(ex: Exception){
         debugLine("dispatchMessage", "Dispatch not completed because: ${ex.message}")
