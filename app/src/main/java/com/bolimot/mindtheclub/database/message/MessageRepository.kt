@@ -14,6 +14,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteFile
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.database.reaction.toPillText
 import com.bolimot.mindtheclub.functions.getReactionRepository
 import com.bolimot.mindtheclub.functions.splitToList
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -132,6 +133,34 @@ class MessageRepository(private val messageDao: MessageDao) {
         return peer.picture
     }
 
+    /**
+     * Rebuilds the denormalised reaction caption of a message just written.
+     *
+     * Message.reaction is a cached rendering of the Reaction rows, and a freshly
+     * inserted row always carries an empty one. It has to be recomputed here for
+     * two situations that both leave reactions on disk with no caption to show
+     * them:
+     *  - a reaction that arrived BEFORE its target, which happens to anyone who
+     *    joined a group mid-conversation and is now kept instead of dropped;
+     *  - the placeholder replacement above, a delete followed by an insert, which
+     *    silently discarded the caption of any reaction that landed while the
+     *    media was still being received.
+     *
+     * A message with no reactions is left untouched, so the normal path pays one
+     * indexed lookup and nothing else.
+     */
+    private suspend fun restoreReactionCaption(messageId: String) {
+        try {
+            val reactions = getReactionRepository(App.context()).getReactions(messageId)
+            if (reactions.isEmpty()) return
+            val pill = reactions.toPillText()
+            messageDao.updateReaction(messageId, pill)
+            debugLine("saveMessage", "Restored reaction caption for $messageId -> '$pill'")
+        } catch (e: Exception) {
+            debugLine("saveMessage", "Reaction caption restore failed for $messageId: ${e.message}")
+        }
+    }
+
     suspend fun saveMessage(message: Message, messageIn: Boolean): Boolean {
         return withContext(Dispatchers.IO) {
             mutex.withLock {
@@ -155,6 +184,7 @@ class MessageRepository(private val messageDao: MessageDao) {
                             val insertResult = messageDao.insert(toStore) > 0L
                             if (insertResult) {
                                 debugLine("saveMessage", "Placeholder replaced for: ${toStore.messageId}")
+                                restoreReactionCaption(toStore.messageId)
                                 touchPeerLastMessage(toStore, messageIn)
                                 if (messageIn) {
                                     withContext(Dispatchers.Main) {
@@ -172,6 +202,7 @@ class MessageRepository(private val messageDao: MessageDao) {
 
                     if (insertResult) {
                         debugLine("saveMessage", "Message successfully added")
+                        restoreReactionCaption(toStore.messageId)
                         touchPeerLastMessage(toStore, messageIn)
 
                         if (messageIn) {

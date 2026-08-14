@@ -29,7 +29,10 @@ class DataSyncWorker(
         private const val KEY_CHANNEL_ID = "channel_id"
         private const val KEY_REMOTE_USER_ID = "remote_user_id"
         private const val POLL_INTERVAL_MS = 5_000L
-        private const val IDLE_LIMIT_MS = 15_000L
+        // Kept in step with DataSyncService.IDLE_LIMIT_MS, see the reasoning there:
+        // 15s abandoned transfers that were all but complete, and cost the process
+        // its foreground protection at the worst possible moment.
+        private const val IDLE_LIMIT_MS = 45_000L
         private const val MAX_SYNC_MS = 10 * 60 * 1000L
         private const val NOTIFICATION_ID = 9999
         private const val CHANNEL_ID = "DataSyncWorkerChannel"

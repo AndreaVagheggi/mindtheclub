@@ -55,7 +55,17 @@ class DataSyncService : Service() {
         const val EXTRA_REMOTE_USER_ID = "EXTRA_REMOTE_USER_ID"
         const val NOTIFICATION_ID = 9999
         private const val POLL_INTERVAL_MS = 5_000L
-        private const val IDLE_LIMIT_MS = 15_000L
+        // How long an open data channel may stay quiet before the sync gives up.
+        // Was 15s, which a sender pausing on a throttled uplink reaches routinely:
+        // on 14 Aug White abandoned a transfer sitting at 128 chunks out of 131,
+        // with the channel still open, and the three missing ones only landed 38
+        // minutes later. Worse than the lost transfer, tearing the service down
+        // also removes the foreground notification that shields the process, and
+        // that phone was killed 23 seconds after it went away. The absolute
+        // MAX_SYNC_MS ceiling and the immediate exit on a genuinely closed channel
+        // both still apply, so the only cost is half a minute of extra patience on
+        // a connection that really has died.
+        private const val IDLE_LIMIT_MS = 45_000L
         // Extra time the service stays alive after the chunk flow stops, while a
         // completed message is still being assembled (chunks -> file -> Message).
         // Bounded so a stale unprocessable inbox row can never pin the service.

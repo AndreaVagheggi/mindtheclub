@@ -70,9 +70,15 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
     val reactorUserId = inboxMessage.originalSenderId?.takeIf { it.isNotEmpty() }
         ?: inboxMessage.fromUserId
 
-    val messageRepository = getMessageRepository(App.context())
-    messageRepository.getMessage(targetMessageId) ?: return
-
+    // Stored whether or not the target is here yet. This used to bail out when the
+    // reacted-to message was missing from the local database, which threw away far
+    // more than the pill: the acknowledgement never left, so the sender kept
+    // re-offering the reaction for hours, and the gossip relay never ran, so every
+    // member downstream of this one lost it too. It happens routinely to anyone who
+    // joined a group after the conversation started (14 Aug, White: reaction
+    // received and silently dropped, chunks left orphaned for the recovery worker).
+    // The Reaction table has no foreign key to Message, so an orphan row is legal;
+    // saveMessage recomputes the pill from these rows when the target finally lands.
     ReactionManager.apply(targetMessageId, reactorUserId, emoji, inboxMessage.date)
 
     val reactionContentKey = resolveContentKey(inboxDao, messageId)

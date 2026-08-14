@@ -45,8 +45,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1027
-        versionName = "Release 1.27" +
+        versionCode = 1028
+        versionName = "Release 1.28" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "")
 
