@@ -318,7 +318,19 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
     }
 }
 
-fun handleGroupDeliveryConfirmation(deliveryDocId: String?, fromUserId: String) {
+/**
+ * @param countsTowardFanout false when the member REFUSED the transfer rather
+ * than received it (see refuseIncomingGroupTransfer). Everything else is
+ * identical, the member is dropped from the delivery map exactly the same way,
+ * but a refusal must not push the fanout counter: two refusals would otherwise
+ * satisfy GROUP_DISPATCH_FANOUT and the sender would stop relaying to the
+ * members who are still waiting for it.
+ */
+fun handleGroupDeliveryConfirmation(
+    deliveryDocId: String?,
+    fromUserId: String,
+    countsTowardFanout: Boolean = true
+) {
     if (deliveryDocId.isNullOrEmpty()) return
 
     CoroutineScope(Dispatchers.IO).launch {
@@ -349,7 +361,12 @@ fun handleGroupDeliveryConfirmation(deliveryDocId: String?, fromUserId: String) 
                     debugLine("groupDelivery", "Skipped GroupMessageStatus update for $fromUserId (already Seen) for $originalMessageId")
                 }
 
-                val count = incrementDirectAllReceived(App.context(), originalMessageId)
+                val count = if (countsTowardFanout) {
+                    incrementDirectAllReceived(App.context(), originalMessageId)
+                } else {
+                    debugLine("groupDelivery", "$fromUserId refused $originalMessageId, not counting towards fanout")
+                    getDirectAllReceivedCount(App.context(), originalMessageId)
+                }
                 debugLine("groupDelivery", "Direct allReceived: $count/$GROUP_DISPATCH_FANOUT for $originalMessageId")
                 if (count < GROUP_DISPATCH_FANOUT && chatGroupIdFromDoc != null && messageDateFromDoc > 0L && senderId != null) {
                     tryDispatchNextGroupMember(

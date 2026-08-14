@@ -42,6 +42,15 @@ suspend fun receiveData(remoteUserId: String,
         return
     }
 
+    // Content-level check on top of the messageId one: a refused group transfer
+    // comes back under a different messageId at every relay hop, and only the
+    // contentKey recognises it as the same file.
+    val incomingContentKey = contentKeyOf(message)
+    if (CancelledTransferRegistry.isContentCancelled(App.context(), incomingContentKey)) {
+        debugLine("receiveData", "Content $incomingContentKey was refused, dropping chunk ${message.sequenceNo}")
+        return
+    }
+
     val newMessage = Inbox(
         uid = 0,
         fromUserId = remoteUserId,

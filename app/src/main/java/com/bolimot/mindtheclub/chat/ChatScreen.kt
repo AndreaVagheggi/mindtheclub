@@ -110,6 +110,7 @@ import com.bolimot.mindtheclub.functions.vectorToBitmap
 import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
 import com.bolimot.mindtheclub.sending.cancelIncomingTransfer
 import com.bolimot.mindtheclub.sending.cancelOutgoingSend
+import com.bolimot.mindtheclub.sending.refuseIncomingGroupTransfer
 import com.bolimot.mindtheclub.sending.forwardAudio
 import com.bolimot.mindtheclub.sending.forwardText
 import com.bolimot.mindtheclub.sending.forwardWeb
@@ -1778,14 +1779,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     }
 
     override fun onSwipeToDismissPlaceholder(message: Message) {
-        if (message.chatGroupId != null) {
-            // Group transfers travel by gossip and cannot be revoked with a single
-            // FCM: keep the original local-only dismiss for them.
-            lifecycleScope.launch {
-                messageViewModel.deleteMessages(listOf(message))
-            }
-            return
-        }
+        val isGroup = message.chatGroupId != null
 
         AlertDialog.Builder(this)
             .setMessage(R.string.cancel_transfer_confirm)
@@ -1796,7 +1790,15 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         // Completed while the dialog was open: delivery wins.
                         return@launch
                     }
-                    cancelIncomingTransfer(current, this@ChatScreen)
+                    // A group transfer is refused rather than cancelled: it keeps
+                    // running for the other members, we just drop out of the
+                    // recipients. Used to be a silent local-only delete, which left
+                    // the chunks arriving and the placeholder coming back.
+                    if (isGroup) {
+                        refuseIncomingGroupTransfer(current, this@ChatScreen)
+                    } else {
+                        cancelIncomingTransfer(current, this@ChatScreen)
+                    }
                 }
             }
             .setNegativeButton(R.string.no, null)

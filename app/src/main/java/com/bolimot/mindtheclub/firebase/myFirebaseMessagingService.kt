@@ -696,6 +696,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             } else {
                                 debugLine(tag, "Skipped GroupMessageStatus (relayed) for $confirmedMember (already Seen) for $messageId")
                             }
+                        } else if (deliveryDocId != null && deliveryDocId.startsWith("refused:")) {
+                            // The member swiped our transfer away. Same handling as a
+                            // real delivery (it drops out of the member map, so nobody
+                            // relays to it again) except that it must not count towards
+                            // the fanout, or the message would stop spreading to the
+                            // members still waiting for it.
+                            debugLine(tag, "$fromUserId refused $messageId, dropping it from the recipients")
+                            handleGroupDeliveryConfirmation(
+                                deliveryDocId.removePrefix("refused:"),
+                                fromUserId,
+                                countsTowardFanout = false
+                            )
                         } else {
                             handleGroupDeliveryConfirmation(deliveryDocId, fromUserId)
                         }

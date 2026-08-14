@@ -6,6 +6,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.contentKeyOf
@@ -162,6 +163,16 @@ class PendingRetryWorker(
         val now = System.currentTimeMillis()
 
         for (entry in entries) {
+            // Every other recovery path consults the registry, this one never did:
+            // after refusing a transfer it went on asking the sender for the very
+            // chunks the user had just thrown away, resurrecting it.
+            if (CancelledTransferRegistry.isCancelled(applicationContext, entry.messageId)) {
+                IncomingPendingTracker.remove(
+                    applicationContext, entry.messageId, entry.fromUserId, "cancelled"
+                )
+                continue
+            }
+
             val message = try {
                 messageDao.getMessage(entry.messageId)
             } catch (e: Exception) {
