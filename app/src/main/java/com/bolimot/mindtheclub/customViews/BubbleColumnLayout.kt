@@ -44,6 +44,35 @@ class BubbleColumnLayout @JvmOverloads constructor(
         v
     }
 
+    /**
+     * The width a child really needs, as opposed to the one it declares.
+     *
+     * A TextView that has to wrap measures itself at the FULL width it was
+     * offered, never at the longest line it actually produced. So a bubble
+     * holding "Gia' questo sarebbe da implementare", which breaks after "da",
+     * still claimed the whole 260dp and left a band of empty space to the right
+     * of the shorter last line. Reading the produced Layout back gives the real
+     * figure.
+     *
+     * Only ever narrows the answer (min against the measured width), so a child
+     * that is not a TextView, or one whose text fits on a single line, votes
+     * exactly as it did before.
+     */
+    private fun naturalTextWidth(child: android.view.View): Int {
+        val measured = child.measuredWidth
+        if (child !is android.widget.TextView) return measured
+        val layout = child.layout ?: return measured
+        if (layout.lineCount <= 1) return measured
+
+        var longestLine = 0f
+        for (line in 0 until layout.lineCount) {
+            longestLine = max(longestLine, layout.getLineWidth(line))
+        }
+        val needed = kotlin.math.ceil(longestLine).toInt() +
+                child.compoundPaddingLeft + child.compoundPaddingRight
+        return min(measured, max(needed, 0))
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val widthMode = MeasureSpec.getMode(widthMeasureSpec)
 
@@ -84,7 +113,7 @@ class BubbleColumnLayout @JvmOverloads constructor(
                     0, lp.height
                 )
             )
-            widest = max(widest, child.measuredWidth + lp.leftMargin + lp.rightMargin)
+            widest = max(widest, naturalTextWidth(child) + lp.leftMargin + lp.rightMargin)
         }
 
         var finalWidth = max(widest + paddingLeft + paddingRight, suggestedMinimumWidth)

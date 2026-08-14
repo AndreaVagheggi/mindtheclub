@@ -16,6 +16,7 @@ import com.bolimot.mindtheclub.database.database.AppDatabase
 import com.bolimot.mindtheclub.database.outbox.Outbox
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.batchContentCoordinates
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.debugLine2
@@ -108,7 +109,18 @@ fun reSendMessage(userId: String, messageId: String, missingItems: List<Int>, co
         if (hasNetworkAvailable(App.context())
             || runBlocking { hasBluetoothPathTo(userId, App.context()) }
         ) {
-            submitDispatchWorker(messageId, userId, context)
+            // Carry the group coordinates so the worker is tagged by CONTENT and
+            // not just by this copy's messageId: without them contentTag falls
+            // back to peer_<messageId>_<target>, which cannot recognise two
+            // dispatches of the same file as being the same transfer, and the
+            // same-content guard in the sendMe handler has nothing to match on.
+            val coords = batchContentCoordinates(messageId)
+            submitDispatchWorker(
+                messageId, userId, context,
+                chatGroupId = coords?.chatGroupId ?: "",
+                originalSenderId = coords?.originalSenderId ?: "",
+                messageDate = coords?.messageDate ?: 0L
+            )
         } else {
             deferredReSendMessage(messageId, userId, context)
         }

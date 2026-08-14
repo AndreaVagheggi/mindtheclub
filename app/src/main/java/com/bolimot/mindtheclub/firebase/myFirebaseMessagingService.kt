@@ -28,6 +28,7 @@ import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.appIsForeground
+import com.bolimot.mindtheclub.functions.batchContentCoordinates
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
@@ -406,6 +407,40 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             return@launch
                         }
                         if (batchTablesExists(msgId)) {
+                            // Same-content guard, the one the relay branch below has
+                            // had all along. It was missing exactly here, on the
+                            // ORIGINAL sender's path, and that is what let one photo
+                            // be transmitted four times over: submitDispatchWorker
+                            // keys its unique work on the messageId, group gossip
+                            // mints a new messageId at every hop, so four requests
+                            // for one file became four unique names and four
+                            // concurrent workers, all streaming from chunk 1 (14 Aug:
+                            // 648 useful chunks against 1234 discarded as already
+                            // present, four streams live in the same minute for an
+                            // hour).
+                            val coords = batchContentCoordinates(msgId)
+                            if (coords != null) {
+                                val contentTag = contentTag(
+                                    messageId = msgId,
+                                    toUserId = fromUserId,
+                                    chatGroupId = coords.chatGroupId,
+                                    originalSenderId = coords.originalSenderId,
+                                    messageDate = coords.messageDate
+                                )
+                                val active = try {
+                                    WorkManager.getInstance(applicationContext)
+                                        .getWorkInfosByTag(contentTag).await()
+                                        .any { !it.state.isFinished }
+                                } catch (e: Exception) {
+                                    debugLine(tag, "WorkManager query failed, proceeding: ${e.message}")
+                                    false
+                                }
+                                if (active) {
+                                    debugLine(tag, "Skip sendMe for $msgId: same content already being dispatched to $fromUserId")
+                                    return@launch
+                                }
+                            }
+
                             if (missingItems != null) {
                                 debugLine(tag, "Partial sendMe: re-sending chunks ${missingItems.first()}..${missingItems.last()} of $msgId to $fromUserId")
                                 // The requester holds everything outside this range, but —
@@ -418,7 +453,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                 reSendMessage(fromUserId, msgId, missingItems, applicationContext)
                             } else {
                                 debugLine(tag, "Batch tables exist for $msgId, dispatching to $fromUserId")
-                                submitDispatchWorker(msgId, fromUserId, applicationContext)
+                                // Coordinates passed for the same reason as in
+                                // reSendMessage: they make the worker tagged by
+                                // content, which is what the guard above matches on.
+                                submitDispatchWorker(
+                                    msgId, fromUserId, applicationContext,
+                                    chatGroupId = coords?.chatGroupId ?: "",
+                                    originalSenderId = coords?.originalSenderId ?: "",
+                                    messageDate = coords?.messageDate ?: 0L
+                                )
                             }
                         } else {
                             val message = getMessageRepository(App.context()).getMessage(msgId)

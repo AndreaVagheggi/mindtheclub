@@ -137,6 +137,44 @@ fun batchTablesExists(messageId: String): Boolean {
     return db.query(query, arrayOf("batch$messageId%")).use { it.count > 0 }
 }
 
+/** Group coordinates of a queued message, as stored on its batch rows. */
+data class BatchContentCoordinates(
+    val chatGroupId: String,
+    val originalSenderId: String,
+    val messageDate: Long
+)
+
+/**
+ * Reads the group coordinates back from the batch rows of [messageId].
+ *
+ * They identify the CONTENT rather than this particular copy of it, which is
+ * what makes two dispatches recognisable as the same transfer: in group gossip
+ * the same file travels under a fresh messageId at every hop, so the messageId
+ * alone says nothing about what is being sent.
+ *
+ * Returns null for a 1:1 message (no group coordinates), where the messageId is
+ * already a sufficient identity.
+ */
+fun batchContentCoordinates(messageId: String): BatchContentCoordinates? {
+    return try {
+        val db = AppDatabase.getInstance(App.context()).openHelper.readableDatabase
+        db.query(
+            "SELECT chatGroupId, originalSenderId, date FROM batch${messageId}1 LIMIT 1",
+            emptyArray()
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            val chatGroupId = cursor.getString(0) ?: return null
+            val originalSenderId = cursor.getString(1) ?: return null
+            val date = cursor.getLong(2)
+            if (chatGroupId.isEmpty() || originalSenderId.isEmpty() || date <= 0L) return null
+            BatchContentCoordinates(chatGroupId, originalSenderId, date)
+        }
+    } catch (e: Exception) {
+        debugLine("batchContentCoordinates", "Lookup failed for $messageId: ${e.message}")
+        null
+    }
+}
+
 fun isGroupChat(message: Message): Boolean {
     return message.chatGroupId != null
 }
