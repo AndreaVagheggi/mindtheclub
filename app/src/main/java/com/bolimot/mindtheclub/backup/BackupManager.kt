@@ -120,6 +120,50 @@ object BackupManager {
         }
     }
 
+    /**
+     * Checks that [password] opens the backup at [sourceUri] and that the backup
+     * belongs to the identity currently on this device. Reads nothing else: no
+     * contact, no message, no key is touched.
+     *
+     * This is the proof of ownership behind the reclaim button. The password is
+     * never stored anywhere, so the only way to verify it is to decrypt something
+     * encrypted with it, and the backup file the user left on this phone when
+     * they migrated is exactly that. Whoever picks up a lost handset therefore
+     * still cannot take the identity back without knowing the password.
+     *
+     * The userId comparison is what stops a stranger's backup, opened with its
+     * own password, from authorising a reclaim of THIS identity.
+     */
+    suspend fun verifyOwnership(
+        context: Context,
+        sourceUri: Uri,
+        password: String,
+        expectedUserId: String
+    ): Boolean {
+        return try {
+            val encryptedBytes = context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                val buffer = ByteArrayOutputStream()
+                input.copyTo(buffer)
+                buffer.toByteArray()
+            } ?: return false
+
+            val decryptedBytes = decrypt(encryptedBytes, password) ?: return false
+            val backupData = json.decodeFromString(
+                BackupData.serializer(),
+                decryptedBytes.toString(Charsets.UTF_8)
+            )
+
+            val matches = backupData.userId.isNotEmpty() && backupData.userId == expectedUserId
+            if (!matches) {
+                debugLine(TAG, "Ownership check failed: backup belongs to another identity")
+            }
+            matches
+        } catch (e: Exception) {
+            debugLine(TAG, "Ownership check failed: ${e.message}")
+            false
+        }
+    }
+
     suspend fun restoreBackup(
         context: Context,
         sourceUri: Uri,

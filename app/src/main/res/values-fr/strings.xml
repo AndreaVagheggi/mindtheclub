@@ -356,4 +356,12 @@
     <string name="delete_group_menu">Supprimer</string>
     <string name="leave">Quitter</string>
     <string name="delete_group_confirm">Le groupe sera définitivement supprimé pour tous les membres. Cette action est irréversible.</string>
+    <string name="reclaim_title">Réutiliser ce téléphone</string>
+    <string name="reclaim_explain">Choisis le fichier de sauvegarde créé sur ce téléphone et saisis son mot de passe. Tes contacts et messages restent tels quels, seule la réception des messages revient ici. L\'autre téléphone cesse de recevoir.</string>
+    <string name="reclaim_button">Réutiliser ce téléphone</string>
+    <string name="reclaim_wrong_password">Mot de passe incorrect, ou la sauvegarde appartient à un autre compte</string>
+    <string name="reclaim_failed">Impossible de récupérer la réception. Vérifie la connexion et réessaie</string>
+    <string name="reclaim_done">Ce téléphone est de nouveau actif</string>
+    <string name="backup_share_question">Le fichier est protégé par ton mot de passe. Veux-tu l\'envoyer ou l\'enregistrer ailleurs ?</string>
+    <string name="backup_share_now">Envoyer</string>
 </resources>

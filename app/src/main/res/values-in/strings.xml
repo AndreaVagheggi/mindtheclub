@@ -357,4 +357,12 @@
     <string name="delete_group_menu">Hapus</string>
     <string name="leave">Keluar</string>
     <string name="delete_group_confirm">Grup akan dihapus secara permanen untuk semua anggota. Tindakan ini tidak dapat dibatalkan.</string>
+    <string name="reclaim_title">Gunakan ponsel ini lagi</string>
+    <string name="reclaim_explain">Pilih berkas cadangan yang dibuat di ponsel ini dan masukkan kata sandinya. Kontak dan pesanmu tetap seperti sekarang, hanya penerimaan pesan yang kembali ke sini. Ponsel lain berhenti menerima.</string>
+    <string name="reclaim_button">Gunakan ponsel ini lagi</string>
+    <string name="reclaim_wrong_password">Kata sandi salah, atau cadangan milik akun lain</string>
+    <string name="reclaim_failed">Tidak dapat mengambil kembali penerimaan. Periksa koneksi lalu coba lagi</string>
+    <string name="reclaim_done">Ponsel ini aktif kembali</string>
+    <string name="backup_share_question">Berkas dilindungi oleh kata sandimu. Ingin mengirimnya atau menyimpannya di tempat lain?</string>
+    <string name="backup_share_now">Kirim</string>
 </resources>

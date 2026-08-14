@@ -3,6 +3,7 @@
 package com.bolimot.mindtheclub.views
 
 import android.app.backup.BackupManager as AndroidBackupManager
+import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import android.widget.Button
@@ -157,12 +158,44 @@ class BackupRestoreActivity : BaseActivity() {
 
             if (success) {
                 statusText.text = getString(R.string.backup_completed)
-                showToast(getString(R.string.backup_completed), this@BackupRestoreActivity)
+                offerToShare(uri)
             } else {
                 statusText.text = getString(R.string.backup_failed)
                 showToast(getString(R.string.backup_failed), this@BackupRestoreActivity)
             }
         }
+    }
+
+    /**
+     * Offers the system share sheet on the backup that was just written.
+     *
+     * Saves the trip out of the app, into the file manager, to find the file and
+     * send it: the URI is already in hand from the SAF picker. Only shown after
+     * createBackup reported success, so a half-written file can never be sent.
+     *
+     * FLAG_GRANT_READ_URI_PERMISSION is what makes it work at all. Without it
+     * the receiving app gets a URI it has no right to open, and the attachment
+     * silently arrives empty.
+     */
+    private fun offerToShare(uri: android.net.Uri) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.backup_completed)
+            .setMessage(R.string.backup_share_question)
+            .setPositiveButton(R.string.backup_share_now) { _, _ ->
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/octet-stream"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                try {
+                    startActivity(Intent.createChooser(share, getString(R.string.share_via)))
+                } catch (e: Exception) {
+                    debugLine("BackupRestoreActivity", "Share failed: ${e.message}")
+                    showToast(getString(R.string.backup_completed), this)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun performRestore(password: String, uri: android.net.Uri) {

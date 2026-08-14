@@ -356,4 +356,12 @@
     <string name="delete_group_menu">Usuń grupę</string>
     <string name="leave">Opuść</string>
     <string name="delete_group_confirm">Grupa zostanie trwale usunięta dla wszystkich członków. Tej operacji nie można cofnąć.</string>
+    <string name="reclaim_title">Znowu używaj tego telefonu</string>
+    <string name="reclaim_explain">Wybierz plik kopii zapasowej utworzony na tym telefonie i podaj jego hasło. Kontakty i wiadomości pozostają bez zmian, wraca tu tylko odbieranie wiadomości. Drugi telefon przestaje odbierać.</string>
+    <string name="reclaim_button">Znowu używaj tego telefonu</string>
+    <string name="reclaim_wrong_password">Błędne hasło albo kopia należy do innego konta</string>
+    <string name="reclaim_failed">Nie udało się odzyskać odbierania. Sprawdź połączenie i spróbuj ponownie</string>
+    <string name="reclaim_done">Ten telefon jest znowu aktywny</string>
+    <string name="backup_share_question">Plik jest chroniony twoim hasłem. Chcesz go wysłać lub zapisać w innym miejscu?</string>
+    <string name="backup_share_now">Wyślij</string>
 </resources>

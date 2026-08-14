@@ -357,4 +357,12 @@
     <string name="delete_group_menu">Eliminar</string>
     <string name="leave">Salir</string>
     <string name="delete_group_confirm">El grupo se eliminará permanentemente para todos los miembros. Esta acción no se puede deshacer.</string>
+    <string name="reclaim_title">Volver a usar este teléfono</string>
+    <string name="reclaim_explain">Elige el archivo de copia de seguridad creado en este teléfono e introduce su contraseña. Tus contactos y mensajes se quedan como están, solo vuelve aquí la recepción de mensajes. El otro teléfono deja de recibir.</string>
+    <string name="reclaim_button">Volver a usar este teléfono</string>
+    <string name="reclaim_wrong_password">Contraseña incorrecta, o la copia pertenece a otra cuenta</string>
+    <string name="reclaim_failed">No se pudo recuperar la recepción. Comprueba la conexión e inténtalo de nuevo</string>
+    <string name="reclaim_done">Este teléfono vuelve a estar activo</string>
+    <string name="backup_share_question">El archivo está protegido por tu contraseña. ¿Quieres enviarlo o guardarlo en otro sitio?</string>
+    <string name="backup_share_now">Enviar</string>
 </resources>

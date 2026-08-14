@@ -356,4 +356,12 @@
     <string name="delete_group_menu">Excluir</string>
     <string name="leave">Sair</string>
     <string name="delete_group_confirm">O grupo será excluído permanentemente para todos os membros. Esta ação não pode ser desfeita.</string>
+    <string name="reclaim_title">Voltar a usar este telefone</string>
+    <string name="reclaim_explain">Escolhe o ficheiro de cópia de segurança criado neste telefone e introduz a palavra-passe. Os teus contactos e mensagens ficam como estão, só a receção de mensagens volta para aqui. O outro telefone deixa de receber.</string>
+    <string name="reclaim_button">Voltar a usar este telefone</string>
+    <string name="reclaim_wrong_password">Palavra-passe incorreta, ou a cópia pertence a outra conta</string>
+    <string name="reclaim_failed">Não foi possível recuperar a receção. Verifica a ligação e tenta de novo</string>
+    <string name="reclaim_done">Este telefone está de novo ativo</string>
+    <string name="backup_share_question">O ficheiro está protegido pela tua palavra-passe. Queres enviá-lo ou guardá-lo noutro local?</string>
+    <string name="backup_share_now">Enviar</string>
 </resources>
