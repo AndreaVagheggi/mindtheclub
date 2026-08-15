@@ -1,7 +1,11 @@
 object ProcessedMessageCache {
     private val cache = LinkedHashMap<String, Long>(100, 0.75f, true)
     private const val MAX_SIZE = 500
-    private const val TTL_MS = 120_000L // 2 minutes
+    // 10 minutes: a completed FCM has been observed arriving 2 minutes after its
+    // copy was processed (Gio, 15 Aug), and under FCM throttling the lag grows.
+    // An expired entry costs a full resend of an already saved message, so the
+    // window errs on the long side; memory stays bounded by MAX_SIZE.
+    private const val TTL_MS = 600_000L
 
     @Synchronized
     fun markProcessed(messageId: String) {

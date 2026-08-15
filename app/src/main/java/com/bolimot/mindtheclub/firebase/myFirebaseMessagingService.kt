@@ -188,6 +188,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
+    // Identity of the original group message for a relayed copy. Receivers archive a
+    // copy under groupId.ifEmpty { messageId }, so a relay that leaves groupId empty
+    // makes every copy land under a fresh key: the same photo saved as two bubbles
+    // (Black, 15 Aug) and an orphan RECEIVING placeholder begging the sender forever
+    // (Gio, 15 Aug). A forwarded copy already carries the original id in groupId; the
+    // original sender's own row has groupId empty by construction, so there the
+    // identity is its messageId. One to one messages keep groupId as is: empty is
+    // correct outside groups. Same rule fromMessage() already applies to albums.
+    private fun originalIdOf(message: Message): String =
+        if (message.chatGroupId.isNullOrEmpty()) message.groupId
+        else message.groupId.ifEmpty { message.messageId }
+
     private fun handleMessage(fromUserId: String, channelId: String?, callId: String?, type: String, incomingContentKey: String? = null) {
         val myUserId = MySelf.userId()
 
@@ -495,7 +507,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     }
                                     debugLine(tag, "Re-sending received/group message $msgId to requester $fromUserId")
                                     submitSendMessageWorker(
-                                        MessageData.fromMessage(message).copy(toUserId = fromUserId),
+                                        MessageData.fromMessage(message).copy(
+                                            toUserId = fromUserId,
+                                            groupId = originalIdOf(message)
+                                        ),
                                         applicationContext,
                                         resendMissing = missingItems
                                     )
@@ -543,6 +558,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             val memberMessage = MessageData.fromMessage(message).copy(
                                 toUserId = targetUserId,
                                 messageId = memberMessageId,
+                                groupId = originalIdOf(message),
                                 chatGroupId = chatGroupId,
                                 originalSenderId = originalSenderId
                             )

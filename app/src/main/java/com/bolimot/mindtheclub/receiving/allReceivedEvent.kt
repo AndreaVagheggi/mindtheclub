@@ -1,5 +1,6 @@
 package com.bolimot.mindtheclub.receiving
 
+import ProcessedMessageCache
 import android.net.Uri
 import android.util.Base64
 import com.bolimot.mindtheclub.contactAcquisition.receiveProfile
@@ -30,6 +31,16 @@ import java.util.Collections
 
 private val activeProcessing: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
 
+// Claimed by CONTENT identity, not by copy. activeProcessing above only stops the
+// same copy from entering twice; two different copies of the same group content
+// have different messageIds, slipped past it, and assembled the same temp file in
+// parallel (Romy, 15 Aug: one copy saved a truncated image, "Media non
+// disponibile" in the chat with corrupted twins in the gallery). The loser of
+// this claim returns before reading or writing anything, with its chunks and
+// placeholder intact: the recovery worker retries it later, when the winner has
+// saved, and the duplicate guards then discard it cleanly.
+private val activeContent: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+
 fun isProcessingActive(messageId: String): Boolean = messageId in activeProcessing
 
 
@@ -38,8 +49,21 @@ if (!activeProcessing.add(messageId)) {
     debugLine("receivedEvent", "Already processing $messageId, skipping")
     return false
 }
+var claimedContent: String? = null
 try {
     val inboxDao: InboxDao = getInboxDao(App.context())
+
+    // For one to one traffic the content key IS the messageId and activeProcessing
+    // already covers it; claiming is only needed where distinct copies exist.
+    val raceContentKey = resolveContentKey(inboxDao, messageId)
+    if (raceContentKey != messageId) {
+        if (!activeContent.add(raceContentKey)) {
+            debugLine("receivedEvent", "Another copy of $raceContentKey is already being assembled, skipping $messageId")
+            return false
+        }
+        claimedContent = raceContentKey
+    }
+
     val fromUserId = inboxDao.getMessage(messageId).fromUserId
 
     if (getBlockedUserRepository(App.context()).isBlocked(fromUserId)) {
@@ -68,6 +92,9 @@ try {
         notifyRemotePeer(message.fromUserId, messageId, Notify.ALL_RECEIVED, echoDeliveryId)
         val echoContentKey = resolveContentKey(inboxDao, messageId)
         inboxDao.deleteByContent(echoContentKey)
+        // A completed FCM for this echo may still arrive: answer it from the cache,
+        // not with an allMissing that would make the relayer resend the echo.
+        ProcessedMessageCache.markProcessed(messageId)
         return false
     }
 
@@ -118,6 +145,7 @@ try {
     return true
     } finally {
         activeProcessing.remove(messageId)
+        claimedContent?.let { activeContent.remove(it) }
     }
 }
 

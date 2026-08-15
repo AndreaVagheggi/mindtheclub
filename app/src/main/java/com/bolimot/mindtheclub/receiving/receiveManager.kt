@@ -121,6 +121,26 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
     )
 }
 
+// A discarded duplicate may have already inserted its own RECEIVING placeholder:
+// a copy relayed with an empty groupId lands under a fresh key, so neither the
+// placeholder guard nor the already-exists branch sees the saved original. The
+// duplicate branches below delete the chunks and return, which used to leave that
+// row in the chat forever, stuck at 0/0 and asking the sender for the missing
+// chunks every 15 minutes (Gio, 15 Aug). Remove it, and only it: a row that is
+// not RECEIVING is a real message and is never touched, so even a call with the
+// wrong key cannot destroy anything visible.
+private suspend fun dropOrphanPlaceholder(messageKey: String) {
+    try {
+        val repository = getMessageRepository(App.context())
+        val orphan = repository.getMessage(messageKey) ?: return
+        if (orphan.status != Status.RECEIVING) return
+        repository.deleteMessages(listOf(orphan))
+        debugLine("receivedEvent", "Dropped orphan placeholder $messageKey left by a discarded copy")
+    } catch (e: Exception) {
+        debugLine("receivedEvent", "Orphan placeholder cleanup failed for $messageKey: ${e.message}")
+    }
+}
+
 suspend fun receiveText(messageId: String) {
     debugLine("fullMessageReceivedEvent", "TEXT MESSAGE RECEIVED")
 
@@ -148,6 +168,11 @@ suspend fun receiveText(messageId: String) {
             if (messageRepository.groupMessageExists(inboxMessage.chatGroupId, inboxMessage.originalSenderId, inboxMessage.date)) {
                 debugLine("receiveText", "Duplicate group message, skipping")
                 inboxDao.deleteByContent(contentKey)
+                dropOrphanPlaceholder(messageKey)
+                // The completed FCM for this copy may still be in flight; remember the
+                // hop id so it is answered from the cache instead of with an allMissing
+                // that would trigger a full resend of a message we already have.
+                ProcessedMessageCache.markProcessed(messageId)
                 val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
                     inboxMessage.originalSenderId, inboxMessage.date)
                 notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
@@ -199,6 +224,12 @@ suspend fun receiveText(messageId: String) {
 
         if(messageRepository.saveMessage(message, messageIn = true)){
             inboxDao.deleteByContent(contentKey)
+            // Group messages are saved under the group key, not under this hop's
+            // messageId, and the chunks are gone: without this the completed FCM
+            // naming the hop id finds nothing, answers allMissing and triggers a
+            // full resend of a message that was just saved (Black, 15 Aug: the
+            // same text redelivered 21 times in 16 seconds).
+            ProcessedMessageCache.markProcessed(messageId)
 
             val deliveryId = message.chatGroupId?.let {
                 computeDeliveryDocId(it, message.originalSenderId ?: "", message.date)
@@ -274,6 +305,7 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
             }
             propagateGroupMessage(MessageData.fromMessage(existingMessage).copy(messageId = messageId, uri = uri.toString()))
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
             if (existingMessage.uri != uri.toString()) {
                 deleteFile(uri)
             }
@@ -301,6 +333,8 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
                 debugLine("receiveImages", "Duplicate group message, skipping")
                 inboxDao.deleteByContent(contentKey)
                 deleteFile(uri)
+                dropOrphanPlaceholder(messageKey)
+                ProcessedMessageCache.markProcessed(messageId)
                 val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
                     inboxMessage.originalSenderId, inboxMessage.date)
                 notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
@@ -335,6 +369,7 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
         if(messageRepository.saveMessage(message, messageIn = true)){
 
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
 
             for (imageUri in uriList) {
                 val tempFile = File(context.cacheDir, "temp_dedup_${imageUri.lastPathSegment}.jpg")
@@ -434,6 +469,7 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 propagateGroupMessage(propagateData)
             }
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
             if (content.isNotEmpty() && content != existingMessage.uri) deleteFile(content.toUri())
             if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
                 MessageReceivedNotification.show(existingMessage)
@@ -447,6 +483,8 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 debugLine("receiveObject", "Duplicate group message, skipping")
                 inboxDao.deleteByContent(contentKey)
                 if (content.isNotEmpty()) deleteFile(uri)
+                dropOrphanPlaceholder(messageKey)
+                ProcessedMessageCache.markProcessed(messageId)
                 val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
                     inboxMessage.originalSenderId, inboxMessage.date)
                 notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
@@ -465,7 +503,11 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
             val tempFile = if (content.isNotEmpty()) {
                 File(content.toUri().path ?: "")
             } else {
-                val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageKey}.bin")
+                // Named after the COPY, not the content: two copies of the same content
+                // sharing one temp file is what corrupted Romy's photos on 15 Aug. The
+                // activeContent claim already serializes them; this makes a collision
+                // physically impossible even if something ever slips past it.
+                val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageId}.bin")
                 if (assembled == null) {
                     debugLine("receiveObject", "Failed to assemble file from chunks")
                     return
@@ -528,6 +570,7 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
 
         if(messageRepository.saveMessage(message, messageIn = true)){
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
 
             debugLine("fullMessageReceivedEvent", "%% messageId: $messageKey, groupId: ${message.groupId}")
             val deliveryId = inboxMessage.chatGroupId?.let {
@@ -603,6 +646,7 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
             }
             propagateGroupMessage(MessageData.fromMessage(existingMessage).copy(messageId = messageId))
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
             if (content.isNotEmpty()) deleteFile(content.toUri())
             if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
                 MessageReceivedNotification.show(existingMessage)
@@ -617,6 +661,8 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
                 debugLine("receiveVideo", "Duplicate group message, skipping")
                 inboxDao.deleteByContent(contentKey)
                 if (content.isNotEmpty()) deleteFile(content.toUri())
+                dropOrphanPlaceholder(messageKey)
+                ProcessedMessageCache.markProcessed(messageId)
                 val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
                     inboxMessage.originalSenderId, inboxMessage.date)
                 notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
@@ -630,7 +676,8 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
         val tempFile = if (content.isNotEmpty()) {
             File(content.toUri().path!!)
         } else {
-            val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageKey}.mp4")
+            // Per copy name, same reasoning as in receiveObject.
+            val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageId}.mp4")
             if (assembled == null) {
                 debugLine("receiveVideo", "Failed to assemble video from chunks")
                 return
@@ -692,6 +739,7 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
             propagateGroupMessage(MessageData.fromMessage(message).copy(messageId = messageId))
 
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
 
             if (content.isNotEmpty() && videoPath != content) deleteFile(content.toUri())
 
@@ -764,6 +812,7 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             }
             propagateGroupMessage(MessageData.fromMessage(existingMessage).copy(messageId = messageId))
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
             if (content.isNotEmpty()) deleteFile(content.toUri())
             if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
                 MessageReceivedNotification.show(existingMessage)
@@ -773,11 +822,33 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
 
         val originalSender = inboxMessage.originalSenderId ?: fromUserId
 
+        // The duplicate guard every other receive path has always had. Single images
+        // were the one type without it, and a copy of an already saved photo arriving
+        // under a different key was saved again as a second bubble (Black, 15 Aug:
+        // same photo, same caption, twice in the chat).
+        if (inboxMessage.chatGroupId != null && inboxMessage.originalSenderId != null) {
+            if (messageRepository.groupMessageExists(inboxMessage.chatGroupId, inboxMessage.originalSenderId, inboxMessage.date)) {
+                debugLine("receiveImage", "Duplicate group message, skipping")
+                inboxDao.deleteByContent(contentKey)
+                if (content.isNotEmpty()) deleteFile(content.toUri())
+                dropOrphanPlaceholder(messageKey)
+                ProcessedMessageCache.markProcessed(messageId)
+                val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
+                    inboxMessage.originalSenderId, inboxMessage.date)
+                notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
+                if (inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+                    notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
+                }
+                return
+            }
+        }
+
         // ---- HASH‑BASED DEDUPLICATION START ----
         val tempFile = if (content.isNotEmpty()) {
             File(content.toUri().path!!)
         } else {
-            val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageKey}.tmp")
+            // Per copy name, same reasoning as in receiveObject.
+            val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageId}.tmp")
             if (assembled == null) {
                 debugLine("receiveImage", "Failed to assemble image from chunks")
                 return
@@ -855,6 +926,7 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             propagateGroupMessage(MessageData.fromMessage(message).copy(messageId = messageId))
 
             inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
 
             val imageOwner = inboxMessage.chatGroupId ?: inboxMessage.fromUserId
             imageRepository.insertImage(Image(0, messageKey, picturePath, inboxMessage.date, "", imageOwner))
