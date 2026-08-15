@@ -11,6 +11,7 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
+import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.receiving.isProcessingActive
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -33,6 +34,8 @@ class InboxRecoveryWorker(
         // otherwise pin the DataSyncService "assembly pending" loop for ever.
         private const val MIN_ORPHAN_AGE_MS = 5 * 60 * 1000L
         private const val MAX_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000L
+
+        private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<InboxRecoveryWorker>(
@@ -93,6 +96,10 @@ class InboxRecoveryWorker(
         // Pass 2: incomplete RECEIVING messages (placeholders stuck with partial chunks)
         try {
             val receivingMessages = messageDao.getReceivingMessages()
+            // Bounded seeder lookups for the whole pass: an informed choice is
+            // worth one doc read, a Firestore crawl over a pile of stalled
+            // contents is the 15 Aug mistake and must stay impossible.
+            var seederLookups = 0
             if (receivingMessages.isNotEmpty()) {
                 debugLine(TAG, "Found ${receivingMessages.size} RECEIVING message(s) to check")
 
@@ -122,8 +129,19 @@ class InboxRecoveryWorker(
                             } else {
                                 null
                             }
-                            debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $originalSender (missing: ${missingRange ?: "all"})")
-                            notifyRemotePeer(originalSender, msg.messageId, Notify.SEND_ME, missingRange)
+                            // Ask a member holding a COMPLETE copy when one is known,
+                            // the original sender otherwise. The origin may be a weak
+                            // holiday uplink while a seeder sits on the same Wi-Fi.
+                            val recoveryTarget = if (!msg.chatGroupId.isNullOrEmpty()
+                                && seederLookups < MAX_SEEDER_LOOKUPS_PER_PASS
+                            ) {
+                                seederLookups++
+                                pickRecoverySource(msg.chatGroupId, msg.originalSenderId, msg.date, originalSender)
+                            } else {
+                                originalSender
+                            }
+                            debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $recoveryTarget (missing: ${missingRange ?: "all"})")
+                            notifyRemotePeer(recoveryTarget, msg.messageId, Notify.SEND_ME, missingRange)
                         } else {
                             debugLine(TAG, "RECEIVING ${msg.messageId} has no resolvable sender, skipping")
                         }

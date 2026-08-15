@@ -16,6 +16,7 @@ import com.bolimot.mindtheclub.database.groupMessageStatus.GroupMessageStatus
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.guid
+import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
@@ -36,6 +37,13 @@ import java.util.concurrent.TimeUnit
 const val GROUP_DISPATCH_FANOUT = 2
 const val GROUP_HOP_LIMIT = 3
 const val MAX_FAIL_COUNT_PER_TARGET = 5
+
+// Types whose transfers are chunk heavy enough that a weak uplink cannot feed
+// two recipients at once. Decided by type rather than by chunk count because
+// the type is known before the batches exist.
+fun isHeavyContent(type: String): Boolean =
+    type == Type.IMAGE || type == Type.MULTIPLE_IMAGES ||
+    type == Type.VIDEO || type == Type.AUDIO || isFileType(type)
 
 private const val PREFS_GROUP_DISPATCH = "group_dispatch_counters"
 private const val COUNTER_EXPIRE_MS = 14L * 24 * 60 * 60 * 1000
@@ -81,9 +89,26 @@ suspend fun tryDispatchNextGroupMember(
 ) {
     val myUserId: String = MySelf.userId() ?: return
 
+    // Loaded before the fanout check because the goal depends on the type.
+    // Heavy content stops at ONE confirmed direct delivery: in the 15 Aug
+    // throttled test the origin, after seeding Dooge, grabbed White for a
+    // second full upload over its mobile uplink (5 minutes) while two Wi-Fi
+    // seeders could have served it in 15 seconds. Once a seed exists the
+    // remaining members belong to the cascade and the informed recovery; the
+    // origin still serves anyone who explicitly asks (sendMe, queue), it only
+    // stops volunteering. A FAILED first delivery leaves the count at 0, so
+    // the deep dispatch still walks to the next member on real failures.
+    val repo = getMessageRepository(context)
+    val message = repo.getMessage(originalMessageId)
+    if (message == null) {
+        debugLine("groupDispatch", "Original message $originalMessageId not in DB, nothing to dispatch")
+        return
+    }
+
+    val targetFanout = if (isHeavyContent(message.type)) 1 else GROUP_DISPATCH_FANOUT
     val count = getDirectAllReceivedCount(context, originalMessageId)
-    if (count >= GROUP_DISPATCH_FANOUT) {
-        debugLine("groupDispatch", "Fanout satisfied ($count/$GROUP_DISPATCH_FANOUT) for $originalMessageId")
+    if (count >= targetFanout) {
+        debugLine("groupDispatch", "Fanout satisfied ($count/$targetFanout) for $originalMessageId")
         return
     }
 
@@ -121,14 +146,6 @@ suspend fun tryDispatchNextGroupMember(
             )
         ).await()
         debugLine("groupDispatch", "Reserved $nextTarget (hop ${hopCount + 1})")
-
-        val repo = getMessageRepository(context)
-        val message = repo.getMessage(originalMessageId)
-        if (message == null) {
-            debugLine("groupDispatch", "Original message $originalMessageId not in DB, releasing")
-            deliveryRef.update("members.$nextTarget", true).await()
-            return
-        }
 
         val totalMembers = (doc.getLong("totalMembers") ?: members.size.toLong()).toInt()
         val newMemberMessageId = guid()
@@ -285,7 +302,20 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
         return
     }
 
-    val targets = availableMembers.shuffled().take(GROUP_DISPATCH_FANOUT)
+    // Deep before wide: a big transfer must produce ONE complete copy as fast as
+    // the sender's uplink physically allows, because only a complete copy can
+    // relay onward. Splitting a weak uplink across two media recipients produced
+    // two half copies and no relayer (15 Aug: a 1137 chunk album, six partial
+    // copies, zero complete after 4 hours). Chat sized types keep the wide
+    // fanout: they complete within a single session either way.
+    val fanout = if (isHeavyContent(message.type)) {
+        debugLine("sendGroupMessage", "Media content (${message.type}), deep dispatch: fanout=1")
+        1
+    } else {
+        GROUP_DISPATCH_FANOUT
+    }
+
+    val targets = availableMembers.shuffled().take(fanout)
 
     for ((index, userId) in targets.withIndex()) {
         if (index > 0) kotlinx.coroutines.delay(2000)
@@ -509,4 +539,31 @@ fun propagateGroupMessage(receivedMessage: MessageData) {
 
 fun computeDeliveryDocId(chatGroupId: String, originalSenderId: String, date: Long): String {
     return chatGroupId.removePrefix("group") + originalSenderId + date.toString()
+}
+
+/**
+ * Registers this device in the delivery doc as holding a COMPLETE copy of the
+ * content. This is the honest counterpart of the "members" map, which marks a
+ * member unavailable at dispatch ATTEMPT time and can therefore lie (14 Aug:
+ * White reserved by a transfer that died at 25/429 and never offered help
+ * again). The complete map is only ever written by the member itself, only
+ * after saveMessage succeeded, so recovery can trust it: anyone in it can serve
+ * the content right now. Older versions ignore the field entirely.
+ *
+ * The doc disappears once every member confirmed, and an update on a missing
+ * doc fails: that failure means nobody needs a seeder any more, so it is logged
+ * at whisper level and swallowed.
+ */
+fun markContentComplete(deliveryDocId: String?) {
+    if (deliveryDocId.isNullOrEmpty()) return
+    val myId = MySelf.userId() ?: return
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            Firebase.firestore.collection("groupDelivery").document(deliveryDocId)
+                .update("complete.$myId", true).await()
+            debugLine("groupDelivery", "Marked myself complete in $deliveryDocId")
+        } catch (e: Exception) {
+            debugLine("groupDelivery", "Complete mark skipped for $deliveryDocId (doc gone or offline): ${e.message}")
+        }
+    }
 }

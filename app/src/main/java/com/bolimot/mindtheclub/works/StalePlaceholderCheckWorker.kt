@@ -11,6 +11,7 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
+import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Status
@@ -64,8 +65,11 @@ class StalePlaceholderCheckWorker(
 
             val originalSender = message.originalSenderId
             if (!originalSender.isNullOrEmpty()) {
-                debugLine(TAG, "Message $messageKey stalled at $count/$total chunks, sending sendMe to $originalSender")
-                notifyRemotePeer(originalSender, messageKey, Notify.SEND_ME)
+                // Prefer a member with a registered complete copy over the
+                // origin; single lookup, hard timeout, falls back untouched.
+                val target = pickRecoverySource(message.chatGroupId, originalSender, message.date, originalSender)
+                debugLine(TAG, "Message $messageKey stalled at $count/$total chunks, sending sendMe to $target")
+                notifyRemotePeer(target, messageKey, Notify.SEND_ME)
             } else {
                 debugLine(TAG, "Message $messageKey has no originalSenderId, nothing to do")
             }

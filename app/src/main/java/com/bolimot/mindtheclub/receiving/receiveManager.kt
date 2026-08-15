@@ -38,6 +38,7 @@ import com.bolimot.mindtheclub.functions.saveFileToPublicDownloads
 import com.bolimot.mindtheclub.functions.saveMediaToPublicStorage
 import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
+import com.bolimot.mindtheclub.sending.markContentComplete
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.propagateGroupMessage
 import com.bolimot.mindtheclub.sending.saveFirstVideoFrame
@@ -234,6 +235,8 @@ suspend fun receiveText(messageId: String) {
             val deliveryId = message.chatGroupId?.let {
                 computeDeliveryDocId(it, message.originalSenderId ?: "", message.date)
             }
+            // I now hold a complete copy: register as seeder (see the media paths).
+            markContentComplete(deliveryId)
             notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
             if (deliveryId != null && inboxMessage.originalSenderId != null
@@ -401,6 +404,9 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
+            // I now hold a complete copy: register as seeder so recovery can
+            // ask me instead of the (possibly distant) original sender.
+            markContentComplete(deliveryId)
 
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
@@ -576,6 +582,9 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
+            // I now hold a complete copy: register as seeder so recovery can
+            // ask me instead of the (possibly distant) original sender.
+            markContentComplete(deliveryId)
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
             if (deliveryId != null && inboxMessage.originalSenderId != null
@@ -750,6 +759,9 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
+            // I now hold a complete copy: register as seeder so recovery can
+            // ask me instead of the (possibly distant) original sender.
+            markContentComplete(deliveryId)
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
             if (deliveryId != null && inboxMessage.originalSenderId != null
@@ -934,6 +946,9 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
+            // I now hold a complete copy: register as seeder so recovery can
+            // ask me instead of the (possibly distant) original sender.
+            markContentComplete(deliveryId)
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
             if (deliveryId != null && inboxMessage.originalSenderId != null

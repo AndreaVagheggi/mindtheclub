@@ -25,6 +25,7 @@ import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
+import com.bolimot.mindtheclub.functions.ContentServeQueue
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.appIsForeground
@@ -40,6 +41,7 @@ import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getMessageViewModel
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.functions.saveNewGroupAsPeer
@@ -356,24 +358,30 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     if (targets.isEmpty()) {
                                         notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)
                                     } else {
-                                        // ONE member per round, rotating, instead of all of
-                                        // them at once. Every member answers a sendMe with a
-                                        // FULL redispatch, so the old fan out turned each
-                                        // stall into triple traffic on the same pipe (13 Aug:
-                                        // a 78 chunk photo transmitted 4.5 times over, 11 fan
-                                        // outs in 15 minutes). Round 0 asks whoever announced
-                                        // the pending, it certainly holds the content; later
-                                        // rounds walk the member list so one dead sender can
-                                        // never stall recovery. The 3x redundancy remains
-                                        // available, spread over successive rounds instead of
-                                        // fired all at once.
+                                        // ONE member per round instead of all of them at once.
+                                        // Every member answers a sendMe with a FULL redispatch,
+                                        // so the old fan out turned each stall into triple
+                                        // traffic on the same pipe (13 Aug: a 78 chunk photo
+                                        // transmitted 4.5 times over, 11 fan outs in 15
+                                        // minutes). Round 0 asks whoever announced the pending,
+                                        // it certainly holds the content. Later rounds used to
+                                        // walk the member list blindly, soliciting members that
+                                        // provably held nothing (15 Aug: allMissing floods);
+                                        // now they ask a member with a REGISTERED complete
+                                        // copy, and only fall back to the announcer when the
+                                        // delivery doc knows of none.
                                         val rotationPrefs = applicationContext.getSharedPreferences("SendMeRotation", MODE_PRIVATE)
                                         val round = rotationPrefs.getInt(msgId, 0)
                                         val target = if (round == 0 && fromUserId in targets) fromUserId
-                                                     else targets[round % targets.size]
+                                                     else pickRecoverySource(
+                                                         existingMessage?.chatGroupId ?: chatGroupId,
+                                                         existingMessage?.originalSenderId,
+                                                         existingMessage?.date ?: 0L,
+                                                         fallback = fromUserId
+                                                     )
                                         rotationPrefs.edit().putInt(msgId, round + 1).apply()
                                         notifyRemotePeer(target, msgId, "sendMe", missingRange)
-                                        debugLine(tag, "Sent sendMe round $round to $target for $msgId (${targets.size} members in rotation)")
+                                        debugLine(tag, "Sent sendMe round $round to $target for $msgId (informed recovery)")
                                     }
                                 } else {
                                     debugLine(tag, "Group $chatGroupId not found, falling back to sender")
@@ -439,16 +447,37 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     originalSenderId = coords.originalSenderId,
                                     messageDate = coords.messageDate
                                 )
+                                // RUNNING only, deliberately not "unfinished": an ENQUEUED
+                                // retry sitting in WorkManager backoff is doing nothing for
+                                // this peer, and a fresh sendMe proves the peer awake right
+                                // now (15 Aug: White abandoned by a stalled retry and then
+                                // refused by this very guard). A truly running transfer is
+                                // still protected; a dormant one gets REPLACEd below.
                                 val active = try {
                                     WorkManager.getInstance(applicationContext)
                                         .getWorkInfosByTag(contentTag).await()
-                                        .any { !it.state.isFinished }
+                                        .any { it.state == androidx.work.WorkInfo.State.RUNNING }
                                 } catch (e: Exception) {
                                     debugLine(tag, "WorkManager query failed, proceeding: ${e.message}")
                                     false
                                 }
                                 if (active) {
                                     debugLine(tag, "Skip sendMe for $msgId: same content already being dispatched to $fromUserId")
+                                    return@launch
+                                }
+
+                                // One transfer per content at a time. A second requester is
+                                // queued, not served in parallel: parallel uploads sliced
+                                // the sender's bandwidth so that nobody ever completed
+                                // (15 Aug). It will be invited back with a pending FCM the
+                                // moment the current transfer ends.
+                                val serveContentId = ContentServeQueue.contentIdOf(
+                                    coords.chatGroupId, coords.originalSenderId, coords.messageDate
+                                )
+                                if (serveContentId != null &&
+                                    !ContentServeQueue.admit(serveContentId, fromUserId, "$msgId#${coords.chatGroupId}")
+                                ) {
+                                    debugLine(tag, "ServeQueue;Busy serving ${ContentServeQueue.servingTargetOf(serveContentId)} for $serveContentId, queued $fromUserId")
                                     return@launch
                                 }
                             }
@@ -500,11 +529,25 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                         debugLine(tag, "WorkManager query failed, proceeding: ${e.message}")
                                         emptyList()
                                     }
-                                    val hasActive = existing.any { !it.state.isFinished }
+                                    // RUNNING only, same reasoning as the batch path above.
+                                    val hasActive = existing.any { it.state == androidx.work.WorkInfo.State.RUNNING }
                                     if (hasActive) {
                                         debugLine(tag, "Skip sendMe for $msgId: dispatch already in flight to $fromUserId (same content)")
                                         return@launch
                                     }
+
+                                    // Same serving discipline as the batch path: one
+                                    // transfer per content, later requesters get queued.
+                                    val serveContentId = ContentServeQueue.contentIdOf(
+                                        message.chatGroupId, message.originalSenderId, message.date
+                                    )
+                                    if (serveContentId != null &&
+                                        !ContentServeQueue.admit(serveContentId, fromUserId, "$msgId#${message.chatGroupId}")
+                                    ) {
+                                        debugLine(tag, "ServeQueue;Busy serving ${ContentServeQueue.servingTargetOf(serveContentId)} for $serveContentId, queued $fromUserId")
+                                        return@launch
+                                    }
+
                                     debugLine(tag, "Re-sending received/group message $msgId to requester $fromUserId")
                                     submitSendMessageWorker(
                                         MessageData.fromMessage(message).copy(

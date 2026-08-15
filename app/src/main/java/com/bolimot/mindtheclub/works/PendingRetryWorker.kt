@@ -13,6 +13,7 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
+import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -36,6 +37,7 @@ class PendingRetryWorker(
     companion object {
         private const val UNIQUE_WORK_NAME = "PendingRetryWorker"
         private const val INTERVAL_MINUTES = 15L
+        private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
 
         suspend fun retryAllNow(context: Context) {
             val entries = PendingMessageTracker.getAll(context)
@@ -161,6 +163,9 @@ class PendingRetryWorker(
         val messageDao = getMessageDao(applicationContext)
         val inboxDao = getInboxDao(applicationContext)
         val now = System.currentTimeMillis()
+        // Same bound as InboxRecoveryWorker: informed choices are welcome, a
+        // Firestore read per entry in a loop is not (the 15 Aug lesson).
+        var seederLookups = 0
 
         for (entry in entries) {
             // Every other recovery path consults the registry, this one never did:
@@ -234,12 +239,22 @@ class PendingRetryWorker(
             val missingRange =
                 if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
 
+            // Ask a registered complete member when one is known; the announcer
+            // stays the fallback, it declared it holds the content.
+            val askTarget = if (message != null && !message.chatGroupId.isNullOrEmpty()
+                && seederLookups < MAX_SEEDER_LOOKUPS_PER_PASS
+            ) {
+                seederLookups++
+                pickRecoverySource(message.chatGroupId, message.originalSenderId, message.date, entry.fromUserId)
+            } else {
+                entry.fromUserId
+            }
             debugLine(
                 "IncomingPending",
-                "Re-requesting ${entry.messageId} from ${entry.fromUserId} " +
+                "Re-requesting ${entry.messageId} from $askTarget " +
                         "(retry #${entry.retryCount + 1}/${IncomingPendingTracker.MAX_RETRIES})"
             )
-            notifyRemotePeer(entry.fromUserId, entry.messageId, Notify.SEND_ME, missingRange)
+            notifyRemotePeer(askTarget, entry.messageId, Notify.SEND_ME, missingRange)
             IncomingPendingTracker.updateRetry(applicationContext, entry)
             delay(500L)
         }

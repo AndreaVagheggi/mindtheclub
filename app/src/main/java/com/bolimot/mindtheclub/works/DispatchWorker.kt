@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.dataModels.RTCClientResult
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
+import com.bolimot.mindtheclub.functions.ContentServeQueue
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.debugLine
@@ -122,10 +123,20 @@ class DispatchWorker(
 
         val messageDate = inputData.getLong("messageDate", 0L)
 
+        // Serving discipline (group content only): claim the content for this
+        // target if nobody holds it, refresh the claim if we already do. Claimed
+        // here, not only in the sendMe handler, so transfers submitted by the
+        // initial group dispatch are visible to the queue too. A claim held by
+        // ANOTHER live target is never stolen: this run simply proceeds, the
+        // overlap is at most the old fanout.
+        val serveContentId = ContentServeQueue.contentIdOf(chatGroupId, originalSenderId, messageDate)
+        serveContentId?.let { ContentServeQueue.claimIfFree(it, toUserId) }
+
         if (CancelledTransferRegistry.isCancelled(applicationContext, messageId)) {
             debugLine("DispatchWorker", "Transfer $messageId was cancelled, dropping dispatch")
             deleteBatchTables(messageId)
             PendingMessageTracker.remove(applicationContext, messageId, toUserId)
+            finishServing(serveContentId, toUserId)
             return Result.success()
         }
 
@@ -247,6 +258,8 @@ class DispatchWorker(
         return if (newState == SUCCESS) {
             debugLine2("doWork", "dispatchMessage successful: work=success, for messageId: $messageId, part of: $groupId")
             sharedPreferences.edit { remove("offline_$toUserId") }
+            // The line moves: whoever queued behind this transfer gets invited now.
+            finishServing(serveContentId, toUserId)
 
             if (batchTablesExists(messageId)) {
                 val pendingKey = if (!chatGroupId.isNullOrEmpty()) "$messageKey#$chatGroupId" else messageKey
@@ -314,6 +327,8 @@ class DispatchWorker(
                         debugLine2("doWork", "Failed to pick next group member: ${e.message}")
                     }
 
+                    // Give up on this target: free the line for whoever is waiting.
+                    finishServing(serveContentId, toUserId)
                     clearInternalState(messageId, toUserId)
                     Result.success()
 
@@ -348,6 +363,22 @@ class DispatchWorker(
                 saveInternalState(newState, attemptCount)
                 Result.retry()
             }
+        }
+    }
+
+    // Releases the serving claim held by [toUserId] and, when someone is queued
+    // for the same content, invites it back with a tiny pending FCM: the member
+    // re-asks through the existing reactive path and finds the line free. Doing
+    // it by invitation instead of dispatching directly reuses the battle tested
+    // pending -> sendMe -> serve flow end to end.
+    private fun finishServing(contentId: String?, toUserId: String) {
+        if (contentId == null) return
+        try {
+            val next = ContentServeQueue.finish(contentId, toUserId) ?: return
+            debugLine2("ServeQueue", "Done serving $toUserId for $contentId, inviting queued ${next.first}")
+            notifyRemotePeer(next.first, next.second, "pending")
+        } catch (e: Exception) {
+            debugLine2("ServeQueue", "Failed to invite next for $contentId: ${e.message}")
         }
     }
 
