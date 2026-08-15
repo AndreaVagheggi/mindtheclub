@@ -86,6 +86,35 @@ fun logToFileIce(message: String) {
     logChannel.trySend(message)
 }
 
+/**
+ * Deletes the working debug log, plus the legacy per-user files if any survive.
+ * Counterpart of the resolution in exportLogToVisibleStorage: after the rename
+ * to the fixed LOG_FILE_NAME, the two deletion sites (options menu, destructive
+ * migration) kept looking only for the legacy "<name>.txt" and always reported
+ * "No log file found" while mtc_debug_log.txt kept growing (Gio, 15 Aug: 165k
+ * lines that could not be cleared from the phone). Returns true if anything was
+ * actually deleted. The writer recreates the file on the next debugLine, so
+ * logging continues seamlessly after a wipe.
+ */
+fun deleteDebugLog(): Boolean {
+    return try {
+        val deviceContext = App.context().createDeviceProtectedStorageContext()
+        val candidates = listOfNotNull(
+            File(deviceContext.filesDir, LOG_FILE_NAME),
+            MySelf.name()?.trim()?.let { File(deviceContext.filesDir, "$it.txt") },
+            File(deviceContext.filesDir, "unknown_user.txt")
+        )
+        var deleted = false
+        for (file in candidates) {
+            if (file.exists() && file.delete()) deleted = true
+        }
+        deleted
+    } catch (e: Exception) {
+        Log.e("##", "deleteDebugLog Failed: ${e.message}")
+        false
+    }
+}
+
 fun exportLogToVisibleStorage() {
     App.instance!!.applicationScope.launch(Dispatchers.IO) {
         try {

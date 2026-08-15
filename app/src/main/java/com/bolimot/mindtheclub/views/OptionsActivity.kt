@@ -20,6 +20,7 @@ import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.deleteDebugLog
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.showToast
@@ -218,12 +219,7 @@ class OptionsActivity : BaseActivity() {
             }
             R.id.delete_log -> {
                 if (BuildConfig.ENABLE_DEBUG_TOOLS) {
-                    val context = applicationContext
-                    val deviceContext = context.createDeviceProtectedStorageContext()
-                    val safeName = MySelf.name()?.trim() ?: return true
-                    val logFile = java.io.File(deviceContext.filesDir, "$safeName.txt")
-                    if (logFile.exists()) {
-                        logFile.delete()
+                    if (deleteDebugLog()) {
                         android.widget.Toast.makeText(
                             this,
                             "Log deleted",

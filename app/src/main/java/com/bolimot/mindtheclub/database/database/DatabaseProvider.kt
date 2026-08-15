@@ -5,8 +5,7 @@ import android.util.Log
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.bolimot.mindtheclub.tools.MySelf
-import java.io.File
+import com.bolimot.mindtheclub.functions.deleteDebugLog
 
 object DatabaseProvider {
     @Volatile
@@ -38,7 +37,7 @@ object DatabaseProvider {
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
                         super.onDestructiveMigration(db)
-                        deleteDebugLogFile(deviceProtectedContext)
+                        deleteDebugLogFile()
                     }
                 })
                 .build()
@@ -47,13 +46,9 @@ object DatabaseProvider {
         }
     }
 
-    private fun deleteDebugLogFile(deviceProtectedContext: Context) {
+    private fun deleteDebugLogFile() {
         try {
-            val safeName = MySelf.name()?.trim() ?: "unknown_user"
-            val filename = "$safeName.txt"
-            val logFile = File(deviceProtectedContext.filesDir, filename)
-            if (logFile.exists()) {
-                logFile.delete()
+            if (deleteDebugLog()) {
                 Log.d("##", "DatabaseProvider;Debug log file deleted after destructive migration")
             }
         } catch (e: Exception) {
