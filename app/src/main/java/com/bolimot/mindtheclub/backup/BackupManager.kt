@@ -14,6 +14,8 @@ import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.functions.splitToList
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Type
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import android.util.Base64
 import java.io.ByteArrayOutputStream
@@ -182,21 +184,20 @@ object BackupManager {
             val jsonString = decryptedBytes.toString(Charsets.UTF_8)
             val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
 
-            if (backupData.userId.isNotEmpty()) {
-                setPreference(MySelf.USER_ID_KEY, backupData.userId, context)
-            }
-            backupData.privateId?.let { setPreference(MySelf.PRIVATE_ID_KEY, it, context) }
-            backupData.name?.let { setPreference(MySelf.NAME_KEY, it, context) }
-            backupData.bio?.let { setPreference("myBio", it, context) }
+            // Captured before anything is written: it decides below whether this
+            // restore CHANGES the phone's identity, so it must reflect who the
+            // phone WAS, not who the backup says it becomes.
+            val previousUserId = MySelf.userId()
 
-            // The trial clock belongs to the identity, not to the handset: a
-            // restore must carry it over, or changing phone (or just
-            // uninstalling and restoring) would grant a fresh 30 days for ever.
-            TrialManager.adoptStartedAt(context, backupData.trialStartedAt)
-
-            // Identity first, data second. Restoring the keyset makes this phone
-            // BE the old one. The Firestore side (publicKey, FCM token and the
-            // installationId ownership marker) is claimed right after by
+            // Keyset FIRST, identity preferences second. The old order overwrote
+            // the preferences before knowing whether the keyset import would
+            // succeed: a failed import left a hybrid (the backup's userId over
+            // this phone's own keys) that no contact could talk to. Now a failed
+            // import leaves the phone exactly as it was.
+            //
+            // Restoring the keyset makes this phone BE the old one. The
+            // Firestore side (publicKey, FCM token and the installationId
+            // ownership marker) is claimed right after by
             // forceTokenSyncAfterRestore in the calling activity, which reads
             // the CURRENT Firestore token and presents it as ownership proof;
             // publishing from here with this install's own token would be
@@ -214,15 +215,53 @@ object BackupManager {
                 }
             }
 
-            val restoredPicUri = saveBase64ToFile(context, backupData.selfPictureBase64, "restored_pic.jpg")
-            if (restoredPicUri != null) {
-                setPreference(MySelf.PICTURE_KEY, restoredPicUri, context)
+            // Adopt the backup's identity preferences when the keyset came in,
+            // or when the backup predates keysets entirely (legacy behaviour,
+            // unchanged for old backups).
+            val adoptIdentity = identityRestored || backupData.identityKeyset == null
+            if (adoptIdentity) {
+                if (backupData.userId.isNotEmpty()) {
+                    setPreference(MySelf.USER_ID_KEY, backupData.userId, context)
+                }
+                backupData.privateId?.let { setPreference(MySelf.PRIVATE_ID_KEY, it, context) }
+                backupData.name?.let { setPreference(MySelf.NAME_KEY, it, context) }
+                backupData.bio?.let { setPreference("myBio", it, context) }
+
+                // The trial clock belongs to the identity, not to the handset: a
+                // restore must carry it over, or changing phone (or just
+                // uninstalling and restoring) would grant a fresh 30 days for ever.
+                TrialManager.adoptStartedAt(context, backupData.trialStartedAt)
+
+                val restoredPicUri = saveBase64ToFile(context, backupData.selfPictureBase64, "restored_pic.jpg")
+                if (restoredPicUri != null) {
+                    setPreference(MySelf.PICTURE_KEY, restoredPicUri, context)
+                }
+                val restoredPicMiniUri = saveBase64ToFile(context, backupData.selfPictureMiniBase64, "restored_mini_pic.jpg")
+                if (restoredPicMiniUri != null) {
+                    setPreference(MySelf.PICTURE_KEY_MINI, restoredPicMiniUri, context)
+                }
             }
-            val restoredPicMiniUri = saveBase64ToFile(context, backupData.selfPictureMiniBase64, "restored_mini_pic.jpg")
-            if (restoredPicMiniUri != null) {
-                setPreference(MySelf.PICTURE_KEY_MINI, restoredPicMiniUri, context)
-            }
+
             val db = DatabaseProvider.provideDatabase(context)
+
+            // Restoring ANOTHER identity's backup means becoming that phone: the
+            // previous identity's contacts and chats are somebody else's data
+            // and must go first, or its rubrica row for the restored identity
+            // survives as a contact of oneself (16 Aug: Black restored over
+            // Dooge, "Black" appeared in Black's own contact list, seen
+            // notifications to self included) and the old chats stay mixed in.
+            // Wiped only when the identity really changed hands: same identity,
+            // fresh install (no previous id) and legacy keyset-less backups
+            // merge exactly as before, and a failed keyset import never gets
+            // here because identityRestored is false.
+            val changingIdentity = identityRestored &&
+                !previousUserId.isNullOrEmpty() &&
+                backupData.userId.isNotEmpty() &&
+                previousUserId != backupData.userId
+            if (changingIdentity) {
+                withContext(Dispatchers.IO) { db.clearAllTables() }
+                debugLine(TAG, "Identity changed ($previousUserId -> ${backupData.userId}), previous local data wiped")
+            }
 
             for (peer in backupData.peers) {
                 try {
