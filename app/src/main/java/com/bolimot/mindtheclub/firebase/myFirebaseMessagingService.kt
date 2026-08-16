@@ -26,6 +26,7 @@ import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.ContentServeQueue
+import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.appIsForeground
@@ -55,6 +56,7 @@ import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.handleGroupDeliveryConfirmation
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
+import com.bolimot.mindtheclub.sending.promoteGroupAggregate
 import com.bolimot.mindtheclub.sending.reSendMessage
 import com.bolimot.mindtheclub.sending.restrictBatchToMissing
 import com.bolimot.mindtheclub.sending.receiveTransferCancelled
@@ -709,7 +711,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         val messageViewModel = getMessageViewModel(MySelf.userId()!!, fromUserId)
 
                         val delivered = ContextCompat.getString(App.context(), R.string.delivered)
-                        messageViewModel.updateStatus(messageId, delivered)
+                        // For a GROUP message the bubble is an aggregate: it may say
+                        // Delivered only when EVERY member has the message. This update
+                        // used to be unconditional and flipped the bubble on the FIRST
+                        // member's ack (16 Aug: Gio showed Delivered while Black,
+                        // correctly "sent" in the detail view, had received nothing).
+                        // The per member truth lives in GroupMessageStatus, and
+                        // promoteGroupAggregate raises the bubble once no member is
+                        // left at "sent". One to one messages keep the immediate
+                        // update: one recipient, one ack, delivered.
+                        val ackedMessage = getMessageRepository(App.context()).getMessage(messageId)
+                        if (ackedMessage?.chatGroupId.isNullOrEmpty()) {
+                            messageViewModel.updateStatus(messageId, delivered)
+                        }
 
                         deleteBatchTables(messageId)
 
@@ -755,6 +769,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             } else {
                                 debugLine(tag, "Skipped GroupMessageStatus (relayed) for $confirmedMember (already Seen) for $messageId")
                             }
+                            promoteGroupAggregate(messageId)
                         } else if (deliveryDocId != null && deliveryDocId.startsWith("refused:")) {
                             // The member swiped our transfer away. Same handling as a
                             // real delivery (it drops out of the member map, so nobody
@@ -823,6 +838,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         statusDao.updateStatus(messageId, fromUserId, Notify.SEEN)
                         debugLine(tag, "Updated GroupMessageStatus: $fromUserId → Seen for $messageId")
 
+                        // Ack AFTER the status write, so it means "processed", and
+                        // the member can stop its retry ladder: without this ack a
+                        // lost GROUP_SEEN was lost forever. Duplicate GROUP_SEENs
+                        // from retries are harmless, the write is idempotent.
+                        notifyRemotePeer(fromUserId, messageId, Notify.GROUP_SEEN_ACK)
+
                         val allStatuses = statusDao.getStatusesForMessage(messageId)
                         val allSeen = allStatuses.isNotEmpty() && allStatuses.all { it.status == Notify.SEEN }
 
@@ -837,6 +858,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             }
                         }
                     }
+                }
+            }
+
+            Notify.GROUP_SEEN_ACK -> {
+                // The original sender confirmed it processed our GROUP_SEEN:
+                // stop the retry ladder for it. Senders on older versions never
+                // send this; their entries die at the retry cap instead.
+                debugLine(tag, "Group seen acked by $fromUserId: $channelId")
+                channelId?.let { messageId ->
+                    GroupSeenTracker.remove(applicationContext, messageId, fromUserId, "acked")
                 }
             }
 

@@ -201,14 +201,22 @@ suspend fun releaseFailedGroupTarget(
             return
         }
 
+        // Release AND refund the hop this reservation consumed. Hops must measure
+        // successful hand offs down the cascade, not failed attempts: overnight on
+        // 16 Aug three reservations against switched off phones burned the whole
+        // GROUP_HOP_LIMIT, the old "hop limit reached, NOT releasing" gate then
+        // sealed the deadlock, and the proactive dispatch never recovered (the
+        // receivers had to pull everything themselves on wake up). The retry walk
+        // stays bounded regardless: MAX_FAIL_COUNT_PER_TARGET caps it per member.
+        // The refund is skipped at zero so an initial dispatch failure (whose
+        // reservation never charged a hop) cannot push the counter negative.
         val hopCount = (doc.getLong("hopCount") ?: 0L).toInt()
-        if (hopCount >= GROUP_HOP_LIMIT) {
-            debugLine("groupDispatch", "Hop limit reached, NOT releasing $toUserId")
-            return
+        val releaseUpdates = mutableMapOf<String, Any>("members.$toUserId" to true)
+        if (hopCount > 0) {
+            releaseUpdates["hopCount"] = FieldValue.increment(-1)
         }
-
-        deliveryRef.update("members.$toUserId", true).await()
-        debugLine("groupDispatch", "Released failed target $toUserId back to available (failCount=$currentFailCount)")
+        deliveryRef.update(releaseUpdates).await()
+        debugLine("groupDispatch", "Released failed target $toUserId back to available (failCount=$currentFailCount, hop refunded)")
     } catch (e: Exception) {
         debugLine("groupDispatch", "Error releasing: ${e.message}")
     }
@@ -349,6 +357,38 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
 }
 
 /**
+ * Raises the sender's bubble to Delivered once no member is left at "sent" in
+ * GroupMessageStatus. The bubble used to flip on the FIRST member's ack (the
+ * unconditional update in the ALL_RECEIVED handler, now gated to one to one
+ * messages), while the detail view showed the truth; and the only aggregate
+ * promotion lived in the "delivery doc emptied" branch, which never fires when
+ * the last confirmation reaches the origin via a relay (the relayer empties
+ * and deletes the doc first). This helper works off the status table alone, so
+ * it is immune to the doc's lifecycle. On relayers the table is empty and the
+ * call is a no op: only the original sender ever promotes.
+ */
+suspend fun promoteGroupAggregate(originalMessageId: String) {
+    try {
+        val context = App.context()
+        val statusDao = DatabaseProvider.provideDatabase(context).groupMessageStatusDao()
+        val statuses = statusDao.getStatusesForMessage(originalMessageId)
+        if (statuses.isEmpty()) return
+        val sentLabel = ContextCompat.getString(context, R.string.sent)
+        if (statuses.any { it.status == sentLabel }) return
+        val currentMsg = getMessageRepository(context).getMessage(originalMessageId) ?: return
+        if (currentMsg.status == Notify.SEEN) return
+        val delivered = ContextCompat.getString(context, R.string.delivered)
+        if (currentMsg.status == delivered) return
+        val myId = MySelf.userId() ?: return
+        val messageViewModel = com.bolimot.mindtheclub.functions.getMessageViewModel(myId, currentMsg.toUserId)
+        messageViewModel.updateStatus(originalMessageId, delivered)
+        debugLine("groupDelivery", "No member left at sent, bubble promoted to Delivered for $originalMessageId")
+    } catch (e: Exception) {
+        debugLine("groupDelivery", "Aggregate promotion failed for $originalMessageId: ${e.message}")
+    }
+}
+
+/**
  * @param countsTowardFanout false when the member REFUSED the transfer rather
  * than received it (see refuseIncomingGroupTransfer). Everything else is
  * identical, the member is dropped from the delivery map exactly the same way,
@@ -390,6 +430,7 @@ fun handleGroupDeliveryConfirmation(
                 } else {
                     debugLine("groupDelivery", "Skipped GroupMessageStatus update for $fromUserId (already Seen) for $originalMessageId")
                 }
+                promoteGroupAggregate(originalMessageId)
 
                 val count = if (countsTowardFanout) {
                     incrementDirectAllReceived(App.context(), originalMessageId)

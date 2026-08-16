@@ -66,6 +66,10 @@ object Notify {
     const val GROUP_PENDING = "groupPending"
     const val GROUP_REMOVED = "groupRemoved"
     const val GROUP_SEEN = "groupSeen"
+    // Ack for GROUP_SEEN, sent back by the original sender so the member can
+    // stop retrying (see GroupSeenTracker). Older versions ignore unknown FCM
+    // types, so this is safe in a mixed fleet.
+    const val GROUP_SEEN_ACK = "groupSeenAck"
     const val REQUEST_PROFILE = "requestProfile"
     const val CONNECTION_BUSY = "connectionBusy"
     const val CONTACT_REQUEST = "contactRequest"

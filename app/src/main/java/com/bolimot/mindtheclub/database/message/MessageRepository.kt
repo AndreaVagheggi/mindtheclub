@@ -10,6 +10,7 @@ import androidx.paging.PagingSource
 import androidx.room.Transaction
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.DeliveryHealth
+import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteFile
 import com.bolimot.mindtheclub.functions.getPeerDao
@@ -398,6 +399,13 @@ class MessageRepository(private val messageDao: MessageDao) {
         for (msg in messages) {
             if (msg.originalSenderId != myUserId) {
                 debugLine("sendGroupSeenNotifications", "GROUP_SEEN for ${msg.messageId} to ${msg.originalSenderId}")
+                // The local SEEN below removes this message from the unseen set
+                // forever, so this single FCM used to be the one and only chance:
+                // lost in transit meant the sender stayed at Delivered for good
+                // (16 Aug, Raoul's seens drowned in the 13 Aug flood). Record it
+                // as unacked; PendingRetryWorker re-sends until the sender's
+                // GROUP_SEEN_ACK clears the entry.
+                GroupSeenTracker.record(App.context(), msg.messageId, msg.originalSenderId)
                 notifyRemotePeer(msg.originalSenderId, msg.messageId, Notify.GROUP_SEEN)
             }
             messageDao.updateStatus(msg.messageId, Notify.SEEN)

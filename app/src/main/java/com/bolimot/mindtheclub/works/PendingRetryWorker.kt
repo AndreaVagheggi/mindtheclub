@@ -7,6 +7,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
+import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.contentKeyOf
@@ -95,7 +96,46 @@ class PendingRetryWorker(
     override suspend fun doWork(): Result {
         retryOutgoing()
         retryIncoming()
+        retryGroupSeen()
         return Result.success()
+    }
+
+    /**
+     * GROUP_SEEN notifications still waiting for the sender's ack: re-send them.
+     * A group seen used to be one fire and forget FCM with no second chance
+     * (16 Aug: two messages stuck at Delivered because Raoul's seens died in
+     * the 13 Aug notification flood). Entries are cleared by GROUP_SEEN_ACK;
+     * against older senders that never ack, the cap drains them quietly.
+     */
+    private suspend fun retryGroupSeen() {
+        val entries = GroupSeenTracker.getAll(applicationContext)
+        if (entries.isEmpty()) return
+
+        debugLine("GroupSeen", "Checking ${entries.size} unacked seen notification(s)")
+        val now = System.currentTimeMillis()
+
+        for (entry in entries) {
+            if (now - entry.createdAt > GroupSeenTracker.MAX_AGE_MS) {
+                GroupSeenTracker.remove(applicationContext, entry.messageId, entry.originalSenderId, "expired")
+                continue
+            }
+            if (entry.retryCount >= GroupSeenTracker.MAX_RETRIES) {
+                GroupSeenTracker.remove(applicationContext, entry.messageId, entry.originalSenderId, "retry cap reached")
+                continue
+            }
+            if (now - entry.lastRetryAt < GroupSeenTracker.getBackoffDelay(entry.retryCount)) {
+                continue
+            }
+
+            debugLine(
+                "GroupSeen",
+                "Re-sending GROUP_SEEN for ${entry.messageId} to ${entry.originalSenderId} " +
+                        "(retry #${entry.retryCount + 1}/${GroupSeenTracker.MAX_RETRIES})"
+            )
+            notifyRemotePeer(entry.originalSenderId, entry.messageId, Notify.GROUP_SEEN)
+            GroupSeenTracker.updateRetry(applicationContext, entry)
+            delay(500L)
+        }
     }
 
     /** Messages WE owe a peer: re-send the `pending` FCM. Behaviour unchanged. */
