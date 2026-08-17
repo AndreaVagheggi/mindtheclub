@@ -175,11 +175,6 @@
     <string name="manual_backup_description">Crie um arquivo de backup criptografado por senha com sua identidade, seus contatos e, opcionalmente, suas mensagens. Guarde-o em um local seguro.</string>
     <string name="create_backup">Criar backup</string>
     <string name="restore_backup">Restaurar do backup</string>
-    <string name="auto_backup_title">Backup automático do Android</string>
-    <string name="auto_backup_description">Quando ativado, o Android faz backup automático dos dados do app no seu Google Drive. Isso requer uma conta Google e usa a criptografia do Google.</string>
-    <string name="enable_auto_backup">Ativar backup automático</string>
-    <string name="auto_backup_enabled">Backup automático ativado, os dados serão sincronizados com o Google Drive</string>
-    <string name="auto_backup_disabled">Backup automático desativado</string>
     <string name="set_backup_password">Definir senha do backup</string>
     <string name="enter_backup_password">Inserir senha do backup</string>
     <string name="password">Senha</string>
@@ -356,12 +351,6 @@
     <string name="delete_group_menu">Excluir</string>
     <string name="leave">Sair</string>
     <string name="delete_group_confirm">O grupo será excluído permanentemente para todos os membros. Esta ação não pode ser desfeita.</string>
-    <string name="reclaim_title">Voltar a usar este telefone</string>
-    <string name="reclaim_explain">Escolhe o ficheiro de cópia de segurança criado neste telefone e introduz a palavra-passe. Os teus contactos e mensagens ficam como estão, só a receção de mensagens volta para aqui. O outro telefone deixa de receber.</string>
-    <string name="reclaim_button">Voltar a usar este telefone</string>
-    <string name="reclaim_wrong_password">Palavra-passe incorreta, ou a cópia pertence a outra conta</string>
-    <string name="reclaim_failed">Não foi possível recuperar a receção. Verifica a ligação e tenta de novo</string>
-    <string name="reclaim_done">Este telefone está de novo ativo</string>
     <string name="backup_share_question">O ficheiro está protegido pela tua palavra-passe. Queres enviá-lo ou guardá-lo noutro local?</string>
     <string name="backup_share_now">Enviar</string>
 </resources>

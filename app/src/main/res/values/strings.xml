@@ -176,11 +176,6 @@
     <string name="manual_backup_description">Create a password-encrypted backup file containing your identity, contacts, and optionally your messages. Store it anywhere safe.</string>
     <string name="create_backup">Create Backup</string>
     <string name="restore_backup">Restore from Backup</string>
-    <string name="auto_backup_title">Android Auto Backup</string>
-    <string name="auto_backup_description">When enabled, Android will automatically back up your app data to your Google Drive. This requires a Google account and uses Google\'s encryption.</string>
-    <string name="enable_auto_backup">Enable Auto Backup</string>
-    <string name="auto_backup_enabled">Auto Backup is enabled, data will sync to Google Drive</string>
-    <string name="auto_backup_disabled">Auto Backup is disabled</string>
     <string name="set_backup_password">Set Backup Password</string>
     <string name="enter_backup_password">Enter Backup Password</string>
     <string name="password">Password</string>
@@ -354,12 +349,6 @@
     <string name="delete_group_menu">Delete</string>
     <string name="leave">Leave</string>
     <string name="delete_group_confirm">This will permanently delete the group for all members. This action cannot be undone.</string>
-    <string name="reclaim_title">Use this phone again</string>
-    <string name="reclaim_explain">Pick the backup file you made on this phone and enter its password. Your contacts and messages stay as they are, only message delivery comes back here. The other phone stops receiving.</string>
-    <string name="reclaim_button">Use this phone again</string>
-    <string name="reclaim_wrong_password">Wrong password, or the backup belongs to another account</string>
-    <string name="reclaim_failed">Could not take delivery back. Check the connection and try again</string>
-    <string name="reclaim_done">This phone is active again</string>
     <string name="backup_share_question">The file is protected by your password. Do you want to send it or save it somewhere else?</string>
     <string name="backup_share_now">Send</string>
 </resources>

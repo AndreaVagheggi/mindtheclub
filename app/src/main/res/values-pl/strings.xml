@@ -175,11 +175,6 @@
     <string name="manual_backup_description">Utwórz zaszyfrowany hasłem plik kopii zapasowej zawierający twoją tożsamość, kontakty i opcjonalnie wiadomości. Przechowuj go w bezpiecznym miejscu.</string>
     <string name="create_backup">Utwórz kopię zapasową</string>
     <string name="restore_backup">Przywróć z kopii zapasowej</string>
-    <string name="auto_backup_title">Automatyczna kopia zapasowa Androida</string>
-    <string name="auto_backup_description">Gdy ta opcja jest włączona, Android będzie automatycznie tworzyć kopię zapasową danych aplikacji na twoim Dysku Google. Wymaga to konta Google i korzysta z szyfrowania Google.</string>
-    <string name="enable_auto_backup">Włącz automatyczną kopię zapasową</string>
-    <string name="auto_backup_enabled">Automatyczna kopia zapasowa jest włączona, dane będą synchronizowane z Dyskiem Google</string>
-    <string name="auto_backup_disabled">Automatyczna kopia zapasowa jest wyłączona</string>
     <string name="set_backup_password">Ustaw hasło kopii zapasowej</string>
     <string name="enter_backup_password">Wpisz hasło kopii zapasowej</string>
     <string name="password">Hasło</string>
@@ -356,12 +351,6 @@
     <string name="delete_group_menu">Usuń grupę</string>
     <string name="leave">Opuść</string>
     <string name="delete_group_confirm">Grupa zostanie trwale usunięta dla wszystkich członków. Tej operacji nie można cofnąć.</string>
-    <string name="reclaim_title">Znowu używaj tego telefonu</string>
-    <string name="reclaim_explain">Wybierz plik kopii zapasowej utworzony na tym telefonie i podaj jego hasło. Kontakty i wiadomości pozostają bez zmian, wraca tu tylko odbieranie wiadomości. Drugi telefon przestaje odbierać.</string>
-    <string name="reclaim_button">Znowu używaj tego telefonu</string>
-    <string name="reclaim_wrong_password">Błędne hasło albo kopia należy do innego konta</string>
-    <string name="reclaim_failed">Nie udało się odzyskać odbierania. Sprawdź połączenie i spróbuj ponownie</string>
-    <string name="reclaim_done">Ten telefon jest znowu aktywny</string>
     <string name="backup_share_question">Plik jest chroniony twoim hasłem. Chcesz go wysłać lub zapisać w innym miejscu?</string>
     <string name="backup_share_now">Wyślij</string>
 </resources>

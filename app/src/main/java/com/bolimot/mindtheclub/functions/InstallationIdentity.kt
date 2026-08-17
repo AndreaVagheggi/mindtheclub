@@ -68,7 +68,7 @@ object InstallationIdentity {
         debugLine(TAG, "Deactivated: identity moved to another installation")
     }
 
-    /** The user reclaimed or restored here: this installation owns the identity again. */
+    /** A backup was restored here, or the ownership check found nobody else: this installation owns the identity again. */
     fun clearDeactivated(context: Context) {
         if (prefs(context).contains(KEY_MOVED)) {
             prefs(context).edit { remove(KEY_MOVED) }

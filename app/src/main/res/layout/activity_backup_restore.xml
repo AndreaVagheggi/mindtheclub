@@ -11,8 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/mtc_opaque"
-        app:titleTextColor="@android:color/white"
-        app:navigationIconTint="@android:color/white" />
+        app:titleTextColor="@color/white"
+        app:navigationIconTint="@color/white" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -55,39 +55,6 @@
                 android:layout_height="wrap_content"
                 android:text="@string/restore_backup"
                 android:layout_marginBottom="32dp" />
-
-            <!-- Divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@android:color/darker_gray"
-                android:layout_marginBottom="32dp" />
-
-            <!-- Auto Backup Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/auto_backup_title"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/white"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/auto_backup_description"
-                android:textSize="14sp"
-                android:textColor="@android:color/darker_gray"
-                android:layout_marginBottom="16dp" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchAutoBackup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/enable_auto_backup"
-                android:textColor="@android:color/white"
-                android:layout_marginBottom="24dp" />
 
             <!-- Status -->
             <TextView

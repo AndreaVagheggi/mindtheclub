@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<full-backup-content>
-    <include domain="device_sharedpref" path="default.xml" />
-    <include domain="device_database" path="mtc.db" />
-    <include domain="device_database" path="mtc.db-wal" />
-    <include domain="device_database" path="mtc.db-shm" />
-</full-backup-content>

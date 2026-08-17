@@ -175,11 +175,6 @@
     <string name="manual_backup_description">Crea un archivo de copia de seguridad cifrado con contraseña que contenga tu identidad, tus contactos y, opcionalmente, tus mensajes. Guárdalo en un lugar seguro.</string>
     <string name="create_backup">Crear copia de seguridad</string>
     <string name="restore_backup">Restaurar desde copia</string>
-    <string name="auto_backup_title">Copia de seguridad automática de Android</string>
-    <string name="auto_backup_description">Cuando está activada, Android hará una copia de seguridad automática de los datos de la app en tu Google Drive. Requiere una cuenta de Google y usa el cifrado de Google.</string>
-    <string name="enable_auto_backup">Activar copia automática</string>
-    <string name="auto_backup_enabled">Copia automática activada, los datos se sincronizarán con Google Drive</string>
-    <string name="auto_backup_disabled">Copia automática desactivada</string>
     <string name="set_backup_password">Establecer contraseña de la copia</string>
     <string name="enter_backup_password">Introducir contraseña de la copia</string>
     <string name="password">Contraseña</string>
@@ -357,12 +352,6 @@
     <string name="delete_group_menu">Eliminar</string>
     <string name="leave">Salir</string>
     <string name="delete_group_confirm">El grupo se eliminará permanentemente para todos los miembros. Esta acción no se puede deshacer.</string>
-    <string name="reclaim_title">Volver a usar este teléfono</string>
-    <string name="reclaim_explain">Elige el archivo de copia de seguridad creado en este teléfono e introduce su contraseña. Tus contactos y mensajes se quedan como están, solo vuelve aquí la recepción de mensajes. El otro teléfono deja de recibir.</string>
-    <string name="reclaim_button">Volver a usar este teléfono</string>
-    <string name="reclaim_wrong_password">Contraseña incorrecta, o la copia pertenece a otra cuenta</string>
-    <string name="reclaim_failed">No se pudo recuperar la recepción. Comprueba la conexión e inténtalo de nuevo</string>
-    <string name="reclaim_done">Este teléfono vuelve a estar activo</string>
     <string name="backup_share_question">El archivo está protegido por tu contraseña. ¿Quieres enviarlo o guardarlo en otro sitio?</string>
     <string name="backup_share_now">Enviar</string>
 </resources>

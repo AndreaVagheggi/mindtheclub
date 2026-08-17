@@ -1,15 +1,40 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?><!--
+    MindTheClub keeps no automatic copy of user data outside the phone.
+
+    android:allowBackup="false" in the manifest already switches Android Auto
+    Backup off, so nothing is ever uploaded to the user's Google Drive. These
+    rules make the same intent explicit for both extraction channels, and they
+    are what covers device-to-device transfer, which allowBackup does not
+    govern on Android 12 and higher.
+
+    Excluding device-to-device is not caution for its own sake: a silent clone
+    of the app data at setup time would put the identity keyset on two handsets
+    at once, which is precisely the split the InstallationIdentity pause exists
+    to detect. The supported way to move to a new phone is the manual encrypted
+    backup in Options, Backup and restore, which the user controls with a
+    password only they know.
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="device_sharedpref" path="default.xml" />
-        <include domain="device_database" path="mtc.db" />
-        <include domain="device_database" path="mtc.db-wal" />
-        <include domain="device_database" path="mtc.db-shm" />
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="device_root" />
+        <exclude domain="device_database" />
+        <exclude domain="device_sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="device_file" />
+        <exclude domain="external" />
     </cloud-backup>
     <device-transfer>
-        <include domain="device_sharedpref" path="default.xml" />
-        <include domain="device_database" path="mtc.db" />
-        <include domain="device_database" path="mtc.db-wal" />
-        <include domain="device_database" path="mtc.db-shm" />
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="device_root" />
+        <exclude domain="device_database" />
+        <exclude domain="device_sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="device_file" />
+        <exclude domain="external" />
     </device-transfer>
 </data-extraction-rules>

@@ -2,7 +2,6 @@
 
 package com.bolimot.mindtheclub.views
 
-import android.app.backup.BackupManager as AndroidBackupManager
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
@@ -20,7 +19,6 @@ import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.start.forceTokenSyncAfterRestore
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,25 +55,11 @@ class BackupRestoreActivity : BaseActivity() {
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         val backupButton: Button = findViewById(R.id.btnBackup)
         val restoreButton: Button = findViewById(R.id.btnRestore)
-        val autoBackupSwitch: SwitchMaterial = findViewById(R.id.switchAutoBackup)
         statusText = findViewById(R.id.statusText)
 
         setSupportActionBar(toolbar)
         supportActionBar?.title = getString(R.string.backup_restore)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
-        // Initialise auto-backup toggle
-        autoBackupSwitch.isChecked = BackupManager.isAutoBackupEnabled(this)
-        autoBackupSwitch.setOnCheckedChangeListener { _, isChecked ->
-            BackupManager.setAutoBackupEnabled(this, isChecked)
-            if (isChecked) {
-                statusText.text = getString(R.string.auto_backup_enabled)
-                // Notify the system that backup data has changed
-                AndroidBackupManager(this).dataChanged()
-            } else {
-                statusText.text = getString(R.string.auto_backup_disabled)
-            }
-        }
 
         backupButton.setOnClickListener {
             val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.UK)
