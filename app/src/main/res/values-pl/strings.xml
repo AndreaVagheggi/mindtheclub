@@ -188,6 +188,8 @@
     <string name="restore_in_progress">Przywracanie kopii zapasowej…</string>
     <string name="restore_completed">Przywracanie zakończone</string>
     <string name="restore_failed">Przywracanie nie powiodło się, błędne hasło lub uszkodzony plik</string>
+    <string name="restore_identity_conflict_title">Tożsamość już istnieje</string>
+    <string name="restore_identity_conflict_message">Ten telefon ma już tożsamość MindTheClub, a kopia zapasowa zawiera inną. Aby przywrócić tę kopię, odinstaluj aplikację, zainstaluj ją ponownie, a następnie powtórz przywracanie. Uwaga: odinstalowanie usuwa dane tożsamości, która jest teraz na tym telefonie. Jeśli nadal są potrzebne, najpierw zrób kopię zapasową.</string>
     <string name="invite_friends">Zaproś znajomych</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Inne aplikacje</string>

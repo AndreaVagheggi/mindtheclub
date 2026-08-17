@@ -193,7 +193,17 @@ class BackupRestoreActivity : BaseActivity() {
                 BackupManager.restoreBackup(this@BackupRestoreActivity, uri, password)
             }
 
-            if (summary != null) {
+            if (summary == BackupManager.RESTORE_IDENTITY_CONFLICT) {
+                // Nothing was written: the restore stopped before touching the
+                // keyset, the preferences and the database.
+                statusText.text = getString(R.string.restore_identity_conflict_title)
+                debugLine("BackupRestoreActivity", "Restore refused: another identity is installed")
+                AlertDialog.Builder(this@BackupRestoreActivity)
+                    .setTitle(R.string.restore_identity_conflict_title)
+                    .setMessage(R.string.restore_identity_conflict_message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            } else if (summary != null) {
                 statusText.text = summary
                 showToast(getString(R.string.restore_completed), this@BackupRestoreActivity)
                 debugLine("BackupRestoreActivity", summary)

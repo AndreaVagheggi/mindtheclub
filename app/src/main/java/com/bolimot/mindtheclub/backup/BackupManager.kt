@@ -32,6 +32,14 @@ import androidx.core.net.toUri
 object BackupManager {
 
     private const val TAG = "BackupManager"
+
+    /**
+     * Returned by [restoreBackup] when the backup carries a DIFFERENT identity
+     * than the one this installation already holds. Not a message: a marker the
+     * calling activity turns into its own explanation.
+     */
+    const val RESTORE_IDENTITY_CONFLICT = "mtc_restore_identity_conflict"
+
     private const val SALT_LENGTH = 16
     private const val IV_LENGTH = 12
     private const val GCM_TAG_LENGTH = 128
@@ -142,6 +150,33 @@ object BackupManager {
             // restore CHANGES the phone's identity, so it must reflect who the
             // phone WAS, not who the backup says it becomes.
             val previousUserId = MySelf.userId()
+
+            // Taking over ANOTHER identity on a phone that already has one is
+            // refused, and the user is told to uninstall first. Reason: the FCM
+            // token belongs to the installation, not to the identity, so a
+            // restore in place leaves the abandoned identity's Firestore
+            // document holding a token that is still alive. Peers keep waking a
+            // user that no longer exists, and the only signal they know how to
+            // read (the callable answering not-found on a missing or
+            // unregistered token) never fires. Uninstalling kills the token,
+            // which is exactly that signal, so the supported path produces a
+            // clean handover with no server-side bookkeeping.
+            //
+            // Deliberately decided on local state alone, with no Firestore
+            // lookup: a restore often runs on a phone that has just been set up
+            // and may well be offline, and a check that needs the network would
+            // fail open precisely when it matters. Same identity over itself and
+            // a fresh install with no identity yet are NOT affected.
+            if (!previousUserId.isNullOrEmpty() &&
+                backupData.userId.isNotEmpty() &&
+                previousUserId != backupData.userId
+            ) {
+                debugLine(
+                    TAG,
+                    "Restore refused: this install holds $previousUserId, backup carries ${backupData.userId}"
+                )
+                return RESTORE_IDENTITY_CONFLICT
+            }
 
             // Keyset FIRST, identity preferences second. The old order overwrote
             // the preferences before knowing whether the keyset import would

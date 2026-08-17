@@ -188,6 +188,8 @@
     <string name="restore_in_progress">Ripristino del backup…</string>
     <string name="restore_completed">Ripristino completato</string>
     <string name="restore_failed">Ripristino non riuscito, password errata o file danneggiato</string>
+    <string name="restore_identity_conflict_title">Identità già presente</string>
+    <string name="restore_identity_conflict_message">Questo telefono ha già un\'identità MindTheClub e il backup ne contiene una diversa. Per ripristinare questo backup devi prima disinstallare l\'app, installarla di nuovo e poi ripetere il ripristino. Attenzione: disinstallando perdi i dati dell\'identità che si trova ora su questo telefono. Se ti servono ancora, fai prima un backup.</string>
     <string name="invite_friends">Invita amici</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Altre app</string>

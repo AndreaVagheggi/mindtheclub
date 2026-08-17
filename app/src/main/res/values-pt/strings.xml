@@ -188,6 +188,8 @@
     <string name="restore_in_progress">Restaurando backup…</string>
     <string name="restore_completed">Restauração concluída</string>
     <string name="restore_failed">Falha na restauração, senha incorreta ou arquivo corrompido</string>
+    <string name="restore_identity_conflict_title">Identidade já presente</string>
+    <string name="restore_identity_conflict_message">Este telefone já tem uma identidade MindTheClub e o backup contém uma diferente. Para restaurar este backup, desinstale o aplicativo, instale-o novamente e repita a restauração. Atenção: ao desinstalar perde os dados da identidade que está agora neste telefone. Se ainda precisar deles, faça primeiro um backup.</string>
     <string name="invite_friends">Convidar amigos</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Outros apps</string>

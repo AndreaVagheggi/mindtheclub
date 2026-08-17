@@ -14,6 +14,7 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
+import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
@@ -28,7 +29,8 @@ import java.util.concurrent.TimeUnit
  * Runs every 15 minutes. For each tracked pending message whose backoff delay
  * has elapsed, re-sends the `pending` FCM to the receiver.
  *
- * Entries older than 24 hours are pruned automatically.
+ * Entries are pruned automatically after 14 days, and as soon as the contact
+ * they were addressed to is deleted from the address book.
  */
 class PendingRetryWorker(
     context: Context,
@@ -39,6 +41,36 @@ class PendingRetryWorker(
         private const val UNIQUE_WORK_NAME = "PendingRetryWorker"
         private const val INTERVAL_MINUTES = 15L
         private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
+
+        /**
+         * A one-to-one entry whose peer is no longer in the address book: the
+         * user deleted the contact, so its queue must go with it. The queue
+         * lives in its own preferences file, not in the Peer table, so nothing
+         * else would ever remove it — the only other cleanup is the not-found
+         * answer from the FCM callable, which never comes when the identity is
+         * dead but its token is still alive (a restored backup on the peer's
+         * phone keeps the installation, and therefore the token, working).
+         *
+         * Group entries are deliberately exempt: a group member is a legitimate
+         * recipient even when they are not a contact (they show as "Member"),
+         * and dropping their queue would silently break group delivery. The two
+         * cases are told apart by chatGroupId, which the group dispatch path
+         * always records (DispatchWorker) and the one-to-one path never does.
+         *
+         * Fails safe: a database error leaves the entry alone.
+         */
+        private suspend fun isOrphanedDirectEntry(
+            context: Context,
+            entry: PendingMessageTracker.PendingEntry
+        ): Boolean {
+            if (!entry.chatGroupId.isNullOrEmpty()) return false
+            return try {
+                !getPeerDao(context).exist(entry.toUserId)
+            } catch (e: Exception) {
+                debugLine("PendingRetryWorker", "Peer check failed for ${entry.toUserId}: ${e.message}")
+                false
+            }
+        }
 
         suspend fun retryAllNow(context: Context) {
             val entries = PendingMessageTracker.getAll(context)
@@ -52,6 +84,12 @@ class PendingRetryWorker(
                 if (entry.toUserId == myUserId) {
                     PendingMessageTracker.remove(context, entry.messageId, entry.toUserId)
                     debugLine("PendingRetryWorker", "Purged self-addressed pending: ${entry.messageId}")
+                    continue
+                }
+
+                if (isOrphanedDirectEntry(context, entry)) {
+                    PendingMessageTracker.remove(context, entry.messageId, entry.toUserId)
+                    debugLine("PendingRetryWorker", "Dropped pending for deleted contact: ${entry.messageId} → ${entry.toUserId}")
                     continue
                 }
 
@@ -138,7 +176,7 @@ class PendingRetryWorker(
         }
     }
 
-    /** Messages WE owe a peer: re-send the `pending` FCM. Behaviour unchanged. */
+    /** Messages WE owe a peer: re-send the `pending` FCM. */
     private suspend fun retryOutgoing() {
         val entries = PendingMessageTracker.getAll(applicationContext)
 
@@ -158,6 +196,13 @@ class PendingRetryWorker(
                 debugLine("PendingRetryWorker", "Pruned stale entry: ${entry.messageId} → ${entry.toUserId} (age: ${(now - entry.createdAt) / 3600000}h)")
                 continue
             }
+
+            if (isOrphanedDirectEntry(applicationContext, entry)) {
+                PendingMessageTracker.remove(applicationContext, entry.messageId, entry.toUserId)
+                debugLine("PendingRetryWorker", "Dropped pending for deleted contact: ${entry.messageId} → ${entry.toUserId}")
+                continue
+            }
+
             val backoffDelay = PendingMessageTracker.getBackoffDelay(entry.retryCount)
             val elapsed = now - entry.lastRetryAt
 

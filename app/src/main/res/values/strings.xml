@@ -189,6 +189,8 @@
     <string name="restore_in_progress">Restoring backup…</string>
     <string name="restore_completed">Restore completed</string>
     <string name="restore_failed">Restore failed, wrong password or corrupted file</string>
+    <string name="restore_identity_conflict_title">Identity already present</string>
+    <string name="restore_identity_conflict_message">This phone already holds a MindTheClub identity, and the backup carries a different one. To restore this backup, uninstall the app, install it again, then repeat the restore. Warning: uninstalling deletes the data of the identity that is on this phone now. If you still need it, back it up first.</string>
     <string name="invite_friends">Invite friends</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Other apps</string>

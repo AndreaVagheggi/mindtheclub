@@ -24,11 +24,6 @@ class AcquireContactWorker(
 
     override suspend fun doWork(): Result {
 
-        if (!hasNetworkAvailable(applicationContext)) {
-            debugLine("SendFcmWorker", "No internet connection at start. Retrying later.")
-            return Result.retry()
-        }
-
         val userId = inputData.getString("userId") ?: return Result.failure()
         val name = inputData.getString("name") ?: ""
         val bio = inputData.getString("bio") ?: ""
@@ -51,11 +46,27 @@ class AcquireContactWorker(
         )
 
         try {
-            try {
-                getPeerDao(applicationContext).insert(peer)
-                debugLine(tag, "Local peer ensured in database.")
-            } catch (e: Exception) {
-                debugLine(tag, "Peer insert skipped (likely already exists): ${e.message}")
+            // The peer row is created ONLY on the first attempt, and before the
+            // network check: every later attempt then starts from a certainty,
+            // namely that a missing row means the user removed the pending
+            // contact. The old unconditional insert recreated it on every retry,
+            // so a contact whose key never gets published came back a few
+            // seconds after each manual removal, with no way to get rid of it.
+            if (runAttemptCount == 0) {
+                try {
+                    getPeerDao(applicationContext).insert(peer)
+                    debugLine(tag, "Local peer ensured in database.")
+                } catch (e: Exception) {
+                    debugLine(tag, "Peer insert skipped (likely already exists): ${e.message}")
+                }
+            } else if (!getPeerDao(applicationContext).exist(userId)) {
+                debugLine(tag, "Pending contact removed by the user, aborting acquisition for $userId")
+                return Result.failure()
+            }
+
+            if (!hasNetworkAvailable(applicationContext)) {
+                debugLine(tag, "No internet connection at start. Retrying later.")
+                return Result.retry()
             }
 
             // Verify and store the remote peer's public key FIRST.

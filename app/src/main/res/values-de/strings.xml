@@ -188,6 +188,8 @@
     <string name="restore_in_progress">Backup wird wiederhergestellt…</string>
     <string name="restore_completed">Wiederherstellung abgeschlossen</string>
     <string name="restore_failed">Wiederherstellung fehlgeschlagen, falsches Passwort oder beschädigte Datei</string>
+    <string name="restore_identity_conflict_title">Identität bereits vorhanden</string>
+    <string name="restore_identity_conflict_message">Auf diesem Telefon ist bereits eine MindTheClub Identität vorhanden, und das Backup enthält eine andere. Um dieses Backup wiederherzustellen, deinstalliere die App, installiere sie erneut und wiederhole dann die Wiederherstellung. Achtung: Beim Deinstallieren gehen die Daten der Identität verloren, die jetzt auf diesem Telefon ist. Wenn du sie noch brauchst, erstelle vorher ein Backup.</string>
     <string name="invite_friends">Freunde einladen</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Andere Apps</string>

@@ -188,6 +188,8 @@
     <string name="restore_in_progress">Restaurando copia…</string>
     <string name="restore_completed">Restauración completada</string>
     <string name="restore_failed">Error en la restauración, contraseña incorrecta o archivo dañado</string>
+    <string name="restore_identity_conflict_title">Identidad ya presente</string>
+    <string name="restore_identity_conflict_message">Este teléfono ya tiene una identidad de MindTheClub y el backup contiene una distinta. Para restaurar este backup, desinstala la aplicación, vuelve a instalarla y repite la restauración. Atención: al desinstalar se pierden los datos de la identidad que está ahora en este teléfono. Si todavía los necesitas, haz antes un backup.</string>
     <string name="invite_friends">Invitar amigos</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Otras apps</string>

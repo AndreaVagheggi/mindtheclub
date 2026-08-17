@@ -190,6 +190,8 @@
     <string name="restore_in_progress">Memulihkan cadangan…</string>
     <string name="restore_completed">Pemulihan selesai</string>
     <string name="restore_failed">Pemulihan gagal, kata sandi salah atau berkas rusak</string>
+    <string name="restore_identity_conflict_title">Identitas sudah ada</string>
+    <string name="restore_identity_conflict_message">Ponsel ini sudah memiliki identitas MindTheClub dan cadangan berisi identitas yang berbeda. Untuk memulihkan cadangan ini, hapus instalasi aplikasi, pasang kembali, lalu ulangi pemulihan. Perhatian: menghapus instalasi akan menghapus data identitas yang ada di ponsel ini sekarang. Jika masih dibutuhkan, buat cadangan terlebih dahulu.</string>
     <string name="invite_friends">Undang teman</string>
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Aplikasi lain</string>
