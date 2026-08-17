@@ -304,6 +304,8 @@
     <!-- Battery throttling banner on the main screen -->
     <string name="battery_banner_text">Messages may arrive late, this phone is limiting the app</string>
     <string name="battery_banner_fix">Fix</string>
+    <string name="backup_banner_text">No backup for a while. If you lose this phone, your messages and identity go with it</string>
+    <string name="backup_banner_fix">Back up</string>
 
     <!-- Per brand instructions for background delivery -->
     <string name="battery_help_title">Message delays</string>

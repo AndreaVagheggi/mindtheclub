@@ -306,6 +306,8 @@
     <!-- Battery throttling banner on the main screen -->
     <string name="battery_banner_text">Wiadomo&#347;ci mog&#261; przychodzi&#263; z op&#243;&#378;nieniem, ten telefon ogranicza aplikacj&#281;</string>
     <string name="battery_banner_fix">Napraw</string>
+    <string name="backup_banner_text">Od dawna brak kopii zapasowej. Je&#347;li zgubisz ten telefon, stracisz wiadomo&#347;ci i to&#380;samo&#347;&#263;</string>
+    <string name="backup_banner_fix">Kopia</string>
 
     <!-- Per brand instructions for background delivery -->
     <string name="battery_help_title">Opóźnione wiadomości</string>

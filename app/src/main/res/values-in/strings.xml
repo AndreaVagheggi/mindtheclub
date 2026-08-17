@@ -307,6 +307,8 @@
     <!-- Battery throttling banner on the main screen -->
     <string name="battery_banner_text">Pesan bisa datang terlambat, ponsel ini membatasi aplikasi</string>
     <string name="battery_banner_fix">Perbaiki</string>
+    <string name="backup_banner_text">Sudah lama tidak ada cadangan. Jika ponsel ini hilang, pesan dan identitas ikut hilang</string>
+    <string name="backup_banner_fix">Cadangkan</string>
 
     <!-- Per brand instructions for background delivery -->
     <string name="battery_help_title">Pesan terlambat</string>

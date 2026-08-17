@@ -37,6 +37,7 @@ import com.bolimot.mindtheclub.fragments.PeersFragment
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
 import com.bolimot.mindtheclub.functions.NOTIF_BANNER_SNOOZE_MS
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.BackupHealth
 import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.PREF_NOTIF_BANNER_SNOOZE_UNTIL
 import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
@@ -281,6 +282,7 @@ class AppTab : BaseActivity() {
         updateNotificationsBanner()
         updateTrialBanner()
         updateBatteryBanner()
+        updateBackupBanner()
     }
 
     /**
@@ -372,6 +374,31 @@ class AppTab : BaseActivity() {
         }
         findViewById<View>(R.id.batteryBannerDismiss).setOnClickListener {
             DeliveryHealth.snooze(this)
+            banner.visibility = View.GONE
+        }
+    }
+
+    /**
+     * No-recent-backup nudge. Since automatic copies were switched off, the
+     * manual encrypted backup is the only thing standing between a lost phone
+     * and a lost identity, and nobody can recover it afterwards, so the app has
+     * to say so at least once. Shown a month after the last backup, or a month
+     * after the user's first message if they never made one. Dismiss snoozes it
+     * for 30 days, making a backup resets it for another 30.
+     */
+    private fun updateBackupBanner() {
+        val banner = findViewById<View>(R.id.backupBanner) ?: return
+
+        val show = BackupHealth.shouldWarn(this)
+        banner.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+
+        findViewById<View>(R.id.backupBannerFix).setOnClickListener {
+            banner.visibility = View.GONE
+            startActivity(Intent(this, BackupRestoreActivity::class.java))
+        }
+        findViewById<View>(R.id.backupBannerDismiss).setOnClickListener {
+            BackupHealth.snooze(this)
             banner.visibility = View.GONE
         }
     }

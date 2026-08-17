@@ -14,6 +14,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.backup.BackupManager
+import com.bolimot.mindtheclub.functions.BackupHealth
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
@@ -142,6 +143,8 @@ class BackupRestoreActivity : BaseActivity() {
 
             if (success) {
                 statusText.text = getString(R.string.backup_completed)
+                // Resets the "no recent backup" reminder for another month.
+                BackupHealth.recordBackup(this@BackupRestoreActivity)
                 offerToShare(uri)
             } else {
                 statusText.text = getString(R.string.backup_failed)

@@ -307,6 +307,8 @@
     <!-- Battery throttling banner on the main screen -->
     <string name="battery_banner_text">Los mensajes pueden llegar tarde, este tel&#233;fono est&#225; limitando la app</string>
     <string name="battery_banner_fix">Corregir</string>
+    <string name="backup_banner_text">Hace tiempo que no hay copia de seguridad. Si pierdes este tel&#233;fono, pierdes mensajes e identidad</string>
+    <string name="backup_banner_fix">Copia</string>
 
     <!-- Per brand instructions for background delivery -->
     <string name="battery_help_title">Mensajes con retraso</string>
