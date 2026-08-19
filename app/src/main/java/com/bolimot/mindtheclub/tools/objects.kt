@@ -78,9 +78,11 @@ object Notify {
 
 const val NO_PICTURE = "//no-picture"
 
-// Size cap for messages sent to a group, checked in the Send* screens.
-// Raised to 250 MB for stress testing — the previous production value
-// was 50 MB (52428800L).
+// Size cap for messages sent to a group, checked in the Send* screens and
+// applied AFTER the video transcoding pass (see VideoCompressor), so it judges
+// what actually goes on the wire rather than what came out of the camera.
+// The user facing strings were left saying 250 MB by an old stress test; they
+// now match this number.
 const val MAX_GROUP_MESSAGE_BYTES = 52428800L
 
 object CallEvent {

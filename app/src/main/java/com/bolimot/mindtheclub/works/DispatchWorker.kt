@@ -320,7 +320,12 @@ class DispatchWorker(
                                 originalMessageId = originalMsgId,
                                 chatGroupId = chatGroupId,
                                 originalSenderId = originalSenderId,
-                                messageDate = messageDate
+                                messageDate = messageDate,
+                                // "Moving to next member" must mean it. The line
+                                // above has just put this target back among the
+                                // available ones, and without this the draw can
+                                // hand it straight back.
+                                excludeUserId = toUserId
                             )
                         }
                     } catch (e: Exception) {

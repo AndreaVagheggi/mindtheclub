@@ -141,7 +141,8 @@
     <string name="info">Informacje</string>
     <string name="group_member_limit_exceeded">Grupy nie mogą mieć więcej niż %d członków.</string>
     <string name="media_lost">Multimedia niedostępne</string>
-    <string name="message_size_limit">Przekroczono limit 250 MB dla wiadomości grupowych</string>
+    <string name="message_size_limit">Przekroczono limit 50 MB dla wiadomo&#347;ci grupowych</string>
+    <string name="compressing_video">Przygotowywanie wideo...</string>
     <string name="no_results">Brak wyników</string>
     <string name="connected_and_ready">Połączono</string>
     <string name="bug">Błąd</string>

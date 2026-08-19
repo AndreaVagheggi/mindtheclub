@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.work.BackoffPolicy
+import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
@@ -15,12 +17,13 @@ import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.groupMessageStatus.GroupMessageStatus
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getMessageRepository
-import com.bolimot.mindtheclub.functions.guid
+import com.bolimot.mindtheclub.functions.groupHopId
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
+import com.bolimot.mindtheclub.works.GroupPropagateWorker
 import com.bolimot.mindtheclub.works.GroupSendWorker
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
@@ -80,12 +83,34 @@ fun clearDirectAllReceivedCount(context: Context, originalMessageId: String) {
         .edit { remove(counterKey(originalMessageId)) }
 }
 
+/**
+ * [excludeUserId] is the member that has just exhausted its attempts, when this
+ * is called from the failure path. It is kept OUT of this one draw.
+ *
+ * Until 1.32 the switch to somebody else happened by accident: hopCount climbed
+ * with every reservation, and once it hit GROUP_HOP_LIMIT releaseFailedGroupTarget
+ * bailed out with "Hop limit reached, NOT releasing", leaving the failed member
+ * marked unavailable so the next draw could not pick it. Refunding the hop (which
+ * fixed a real deadlock against switched off phones, 16 Aug) removed that side
+ * effect with it: the counter stops climbing, the bail out never fires, and the
+ * member that just failed three times goes straight back into the hat. On 19 Aug
+ * an album was drawn towards the same unreachable phone three times running while
+ * the other two members were never contacted at all.
+ *
+ * Excluding it here is the direct expression of what the old code achieved by
+ * accident, and it acts on the FIRST failure rather than after three.
+ *
+ * Default null, so the success path at handleGroupDeliveryConfirmation keeps
+ * drawing from everybody exactly as before. And an exclusion that would empty the
+ * pool is dropped: better to retry the same member than to dispatch to nobody.
+ */
 suspend fun tryDispatchNextGroupMember(
     context: Context,
     originalMessageId: String,
     chatGroupId: String,
     originalSenderId: String,
-    messageDate: Long
+    messageDate: Long,
+    excludeUserId: String? = null
 ) {
     val myUserId: String = MySelf.userId() ?: return
 
@@ -138,7 +163,14 @@ suspend fun tryDispatchNextGroupMember(
             return
         }
 
-        val nextTarget = available.shuffled().first()
+        // ifEmpty is the safety net: excluding must never turn a dispatch that
+        // would have happened into one that does not.
+        val candidates = available.filterNot { it == excludeUserId }.ifEmpty { available }
+        if (candidates.size < available.size) {
+            debugLine("groupDispatch", "Excluding just failed $excludeUserId from this draw (${candidates.size} left)")
+        }
+
+        val nextTarget = candidates.shuffled().first()
         deliveryRef.update(
             mapOf(
                 "members.$nextTarget" to false,
@@ -148,7 +180,9 @@ suspend fun tryDispatchNextGroupMember(
         debugLine("groupDispatch", "Reserved $nextTarget (hop ${hopCount + 1})")
 
         val totalMembers = (doc.getLong("totalMembers") ?: members.size.toLong()).toInt()
-        val newMemberMessageId = guid()
+        // Stable per (content, target): a target picked up again resumes from
+        // the chunks it was left at instead of restarting. See groupHopId.
+        val newMemberMessageId = groupHopId(chatGroupId, originalSenderId, messageDate, nextTarget)
         val memberMessage = MessageData.fromMessage(message).copy(
             toUserId = nextTarget,
             messageId = newMemberMessageId,
@@ -328,7 +362,7 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
     for ((index, userId) in targets.withIndex()) {
         if (index > 0) kotlinx.coroutines.delay(2000)
 
-        val memberMessageId = guid()
+        val memberMessageId = groupHopId(groupId, senderUserId, message.date, userId)
         val memberMessage = message.copy(
             toUserId = userId,
             messageId = memberMessageId,
@@ -534,48 +568,127 @@ fun propagateGroupMessage(receivedMessage: MessageData) {
 
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            val db = Firebase.firestore
-            val deliveryRef = db.collection("groupDelivery").document(deliveryDocId)
-            val deliveryDoc = deliveryRef.get().await()
-
-            if (!deliveryDoc.exists()) {
-                debugLine("propagate", "No delivery doc found, all members already served")
-                return@launch
-            }
-
-            @Suppress("UNCHECKED_CAST")
-            val members = deliveryDoc.get("members") as? Map<String, Boolean> ?: emptyMap()
-            val availableMembers = members.filter { it.value }.keys
-                .filter { it != MySelf.userId() }
-                .toList()
-
-            if (availableMembers.isEmpty()) {
-                debugLine("propagate", "No available members to forward to")
-                return@launch
-            }
-
-            val targets = availableMembers.shuffled().take(GROUP_DISPATCH_FANOUT)
-
-            for ((index, userId) in targets.withIndex()) {
-                if (index > 0) kotlinx.coroutines.delay(2000)
-                val newMemberMessageId = guid()
-                val forwardMessage = receivedMessage.copy(
-                    toUserId = userId,
-                    messageId = newMemberMessageId
-                )
-
-                debugLine("propagate", "Forwarding to $userId")
-                sendSingleMessage(forwardMessage)
-
-                deliveryRef.update("members.$userId", false).await()
-            }
-
-            debugLine("propagate", "Forwarded to ${targets.size} members")
-
+            propagateGroupMessageSuspend(receivedMessage, deliveryDocId)
         } catch (e: Exception) {
-            debugLine("propagate", "Error: ${e.message}")
+            debugLine("propagate", "Error: ${e.message}. Scheduling retry.")
+            submitGroupPropagateWorker(receivedMessage, App.context())
         }
     }
+}
+
+/**
+ * The relay itself. Throws when it could not even find out who to forward to,
+ * which is the signal for the caller to schedule a retry.
+ *
+ * Split out of [propagateGroupMessage] on 19 Aug. Until then the relay was a
+ * single shot inside a fire and forget coroutine: one read of the delivery
+ * document, and on any error a log line and nothing else. A member received an
+ * 11 photo album in 21 seconds and three seconds later its Firestore read failed
+ * with "the client is offline" while the link was collapsing. The cascade ended
+ * there, and the other two members of the group never learned the album existed
+ * (the origin had already stopped, its fanout of 1 satisfied, and nobody had
+ * sent them so much as a pending to react to). The single photo five minutes
+ * earlier went through on the same code, because Firestore happened to answer.
+ *
+ * Once ANY member has been forwarded to, a failure stops being retryable: the
+ * delivery document still lists that member as available, so a second run could
+ * hand it the same file twice. Whoever is left over is reached by the ordinary
+ * recovery path instead. That is what [forwarded] guards.
+ */
+internal suspend fun propagateGroupMessageSuspend(
+    receivedMessage: MessageData,
+    deliveryDocId: String
+) {
+    val chatGroupId = receivedMessage.chatGroupId ?: return
+    val originalSenderId = receivedMessage.originalSenderId ?: return
+
+    var forwarded = 0
+    try {
+        val db = Firebase.firestore
+        val deliveryRef = db.collection("groupDelivery").document(deliveryDocId)
+        val deliveryDoc = deliveryRef.get().await()
+
+        if (!deliveryDoc.exists()) {
+            debugLine("propagate", "No delivery doc found, all members already served")
+            return
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val members = deliveryDoc.get("members") as? Map<String, Boolean> ?: emptyMap()
+        val availableMembers = members.filter { it.value }.keys
+            .filter { it != MySelf.userId() }
+            .toList()
+
+        if (availableMembers.isEmpty()) {
+            debugLine("propagate", "No available members to forward to")
+            return
+        }
+
+        val targets = availableMembers.shuffled().take(GROUP_DISPATCH_FANOUT)
+
+        for ((index, userId) in targets.withIndex()) {
+            if (index > 0) kotlinx.coroutines.delay(2000)
+            val newMemberMessageId = groupHopId(chatGroupId, originalSenderId, receivedMessage.date, userId)
+            val forwardMessage = receivedMessage.copy(
+                toUserId = userId,
+                messageId = newMemberMessageId
+            )
+
+            debugLine("propagate", "Forwarding to $userId")
+            sendSingleMessage(forwardMessage)
+
+            deliveryRef.update("members.$userId", false).await()
+            forwarded++
+        }
+
+        debugLine("propagate", "Forwarded to ${targets.size} members")
+
+    } catch (e: Exception) {
+        if (forwarded > 0) {
+            debugLine("propagate", "Error after forwarding to $forwarded member(s): ${e.message}. Not retrying.")
+            return
+        }
+        throw e
+    }
+}
+
+/**
+ * Retry for a relay that could not read the delivery document.
+ *
+ * Twin of [submitGroupSendWorker], with one addition: a CONNECTED constraint, so
+ * it sleeps until the phone actually has a network instead of spending its
+ * attempts against a radio that is still down. The unique name is per content
+ * and the policy is KEEP, so a second failure for the same album cannot stack a
+ * second worker on top of the first.
+ */
+fun submitGroupPropagateWorker(message: MessageData, context: Context) {
+    val messageDataJson = Json.encodeToString(message)
+    val inputData = workDataOf("messageDataJson" to messageDataJson)
+
+    val workRequest = OneTimeWorkRequestBuilder<GroupPropagateWorker>()
+        .setInputData(inputData)
+        .setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        )
+        .setInitialDelay(15, TimeUnit.SECONDS)
+        .setBackoffCriteria(
+            BackoffPolicy.EXPONENTIAL,
+            WorkRequest.MIN_BACKOFF_MILLIS,
+            TimeUnit.MILLISECONDS
+        )
+        .build()
+
+    val uniqueWorkName = "groupPropagate_${message.chatGroupId}_${message.originalSenderId}_${message.date}"
+
+    WorkManager.getInstance(context).enqueueUniqueWork(
+        uniqueWorkName,
+        ExistingWorkPolicy.KEEP,
+        workRequest
+    )
+
+    debugLine("submitGroupPropagateWorker", "Scheduled relay retry for $uniqueWorkName")
 }
 
 fun computeDeliveryDocId(chatGroupId: String, originalSenderId: String, date: Long): String {

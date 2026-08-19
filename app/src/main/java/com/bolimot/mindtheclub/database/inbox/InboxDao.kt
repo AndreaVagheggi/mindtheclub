@@ -128,4 +128,46 @@ interface InboxDao{
 
     @Query("DELETE FROM Inbox WHERE contentKey = :contentKey")
     suspend fun deleteByContent(contentKey: String): Int
+
+    /**
+     * Every id under which leftover chunks of [chatId] are filed: the hop
+     * messageId AND the groupId (the original message id), because the pending
+     * trackers are keyed on the latter while the Inbox rows carry both.
+     *
+     * The chat predicate is deliberately narrow. Matching a group by its
+     * chatGroupId is exact. Matching a one to one peer by fromUserId is only
+     * done when chatGroupId is empty, or deleting a contact would take with it
+     * the partial group content that same contact happened to be relaying for a
+     * group still on this phone.
+     */
+    @Query(
+        "SELECT DISTINCT messageId FROM Inbox " +
+        "WHERE chatGroupId = :chatId " +
+        "   OR (fromUserId = :chatId AND (chatGroupId IS NULL OR chatGroupId = '')) " +
+        "UNION " +
+        "SELECT DISTINCT groupId FROM Inbox " +
+        "WHERE groupId != '' AND (chatGroupId = :chatId " +
+        "   OR (fromUserId = :chatId AND (chatGroupId IS NULL OR chatGroupId = '')))"
+    )
+    suspend fun getMessageIdsForChat(chatId: String): List<String>
+
+    /**
+     * Content identities of everything [chatId] has half received. Deleting the
+     * chat marks these as refused, and receiveData drops any further chunk that
+     * carries them whatever messageId the relay minted for it.
+     */
+    @Query(
+        "SELECT DISTINCT contentKey FROM Inbox " +
+        "WHERE contentKey != '' AND (chatGroupId = :chatId " +
+        "   OR (fromUserId = :chatId AND (chatGroupId IS NULL OR chatGroupId = '')))"
+    )
+    suspend fun getContentKeysForChat(chatId: String): List<String>
+
+    /** Companion of [getMessageIdsForChat]: same predicate, deletes the rows. */
+    @Query(
+        "DELETE FROM Inbox " +
+        "WHERE chatGroupId = :chatId " +
+        "   OR (fromUserId = :chatId AND (chatGroupId IS NULL OR chatGroupId = ''))"
+    )
+    suspend fun deleteByChat(chatId: String): Int
 }

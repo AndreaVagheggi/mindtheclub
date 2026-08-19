@@ -43,7 +43,7 @@ import com.bolimot.mindtheclub.functions.getMessageViewModel
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.pickRecoverySource
-import com.bolimot.mindtheclub.functions.guid
+import com.bolimot.mindtheclub.functions.groupHopId
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.functions.saveNewGroupAsPeer
 import com.bolimot.mindtheclub.functions.stringToListInt
@@ -300,6 +300,28 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         val parts = channelId.split("#", limit = 2)
                         val msgId = parts[0]
                         val chatGroupId = parts.getOrNull(1)
+
+                        // Second door onto the same defect the Inbox purge closes
+                        // (see MessageRepository.purgeChatLeftovers): an
+                        // announcement for a group this device no longer has.
+                        // On 19 Aug the handler logged "Group ... not found" and
+                        // then solicited the content anyway through its fallback,
+                        // pulling a 923 chunk video into a deleted chat. That
+                        // fallback exists for a TRANSIENT Firestore miss and is
+                        // right to stay; the peer row is the local, authoritative
+                        // fact and a network hiccup cannot fake it.
+                        //
+                        // The trade: an announcement that overtakes the group
+                        // invitation for a genuinely new member is dropped too.
+                        // That costs one sender retry cycle and heals itself,
+                        // whereas the other direction re-downloads whole videos
+                        // into a chat that cannot even display them.
+                        if (!chatGroupId.isNullOrEmpty() &&
+                            !getPeerDao(applicationContext).exist(chatGroupId)
+                        ) {
+                            debugLine(tag, "Pending for group $chatGroupId which is not on this device, ignoring")
+                            return@launch
+                        }
 
                         if (CancelledTransferRegistry.isCancelled(applicationContext, msgId)) {
                             debugLine(tag, "Transfer $msgId was cancelled, ignoring pending")
@@ -599,7 +621,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                             debugLine(tag, "I have the message, re-sending to $targetUserId")
 
-                            val memberMessageId = guid()
+                            val memberMessageId = groupHopId(chatGroupId, originalSenderId, date, targetUserId)
                             val memberMessage = MessageData.fromMessage(message).copy(
                                 toUserId = targetUserId,
                                 messageId = memberMessageId,

@@ -186,4 +186,37 @@
 		</androidx.constraintlayout.widget.ConstraintLayout>
 	</androidx.appcompat.widget.Toolbar>
 
+
+	<!-- Shown only while a video is being transcoded before sending. -->
+	<LinearLayout
+		android:id="@+id/compressOverlay"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		android:gravity="center"
+		android:background="#CC000000"
+		android:visibility="gone"
+		android:clickable="true"
+		android:focusable="true"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent">
+
+		<ProgressBar
+			android:id="@+id/compressBar"
+			style="?android:attr/progressBarStyleHorizontal"
+			android:layout_width="220dp"
+			android:layout_height="wrap_content"
+			android:max="100" />
+
+		<TextView
+			android:id="@+id/compressText"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="12dp"
+			android:textColor="@color/white"
+			android:textSize="15sp"
+			android:text="@string/compressing_video" />
+
+	</LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

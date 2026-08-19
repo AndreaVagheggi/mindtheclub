@@ -9,16 +9,24 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.room.Transaction
 import com.bolimot.mindtheclub.R
+import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.GroupSeenTracker
+import com.bolimot.mindtheclub.functions.IncomingPendingTracker
+import com.bolimot.mindtheclub.functions.PendingMessageTracker
+import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteFile
+import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.database.reaction.toPillText
 import com.bolimot.mindtheclub.functions.getReactionRepository
 import com.bolimot.mindtheclub.functions.splitToList
+import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
+import com.bolimot.mindtheclub.sending.stopSendPipeline
+import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
@@ -252,7 +260,161 @@ class MessageRepository(private val messageDao: MessageDao) {
             getReactionRepository(App.context()).deleteReactions(message.messageId)
         }
 
+        purgeChatLeftovers(remoteUserId, messages)
+
         return result
+    }
+
+    /**
+     * Deleting a chat deletes EVERYTHING about that chat. The Message rows and
+     * the files are gone by the time this runs; this is the rest of it, and
+     * without it "delete" only ever meant "hide".
+     *
+     * On 19 Aug a group was deleted at 09:34:32 and two minutes later the phone
+     * was pulling a 923 chunk video of that same group, from two peers at once,
+     * into a chat that no longer existed. It ran for hours. The deletion did not
+     * merely fail to stop it, it STARTED it: InboxRecoveryWorker's orphan pass
+     * skips any chunk set that still has a Message row, so removing that row
+     * turned the leftovers into orphans and the worker solicited them. The first
+     * chunk back then recreated the placeholder, and the placeholder workers took
+     * over and kept asking.
+     *
+     * So the cure is not a guard on each of those workers, it is to leave them
+     * nothing to work on and to shut the door:
+     *
+     *  - the content is marked REFUSED by contentKey, which receiveData checks on
+     *    every incoming chunk. That is the door: a relay mints a new messageId at
+     *    every hop, and only the contentKey recognises the same file coming back
+     *    under a different name. Nothing gets in, so no placeholder is ever
+     *    recreated and the loop cannot restart;
+     *  - each messageId is marked cancelled and put through stopSendPipeline,
+     *    which cancels the build and dispatch workers and drops the batch tables,
+     *    so this device also stops SENDING that content onward. On 19 Aug it was
+     *    still relaying a group it had been removed from;
+     *  - both pending trackers are cleared, and only then the chunks.
+     *
+     * Order matters. The trackers must go BEFORE the chunks: an entry left with
+     * no chunks to compare against computes "nothing received" and asks for the
+     * WHOLE message with no missing range (see PendingRetryWorker), which is
+     * worse than doing nothing.
+     *
+     * The one thing this cannot do is empty another phone's queue. That is why
+     * the same code has to reach every member: each device vaporises its own side.
+     */
+    private suspend fun purgeChatLeftovers(chatId: String, deleted: List<Message>) {
+        if (chatId.isEmpty()) return
+        try {
+            val context = App.context()
+            val inboxDao = getInboxDao(context)
+
+            // Every name this chat's content travels under, in both directions.
+            val ids = LinkedHashSet<String>()
+            val contentKeys = LinkedHashSet<String>()
+
+            for (message in deleted) {
+                ids.add(message.messageId)
+                contentKeys.add(
+                    contentKeyOf(
+                        message.messageId, message.chatGroupId,
+                        message.originalSenderId, message.date
+                    )
+                )
+            }
+            ids.addAll(inboxDao.getMessageIdsForChat(chatId))
+            contentKeys.addAll(inboxDao.getContentKeysForChat(chatId))
+
+            val outgoing = PendingMessageTracker.getAll(context)
+                .filter { it.chatGroupId == chatId || it.toUserId == chatId || it.messageId in ids }
+            ids.addAll(outgoing.map { it.messageId })
+
+            for (key in contentKeys) {
+                if (key.isNotEmpty()) CancelledTransferRegistry.markContentCancelled(context, key)
+            }
+
+            for (id in ids) {
+                if (id.isEmpty()) continue
+                CancelledTransferRegistry.markCancelled(context, id)
+                stopSendPipeline(id, "", context)
+            }
+
+            for (entry in outgoing) {
+                PendingMessageTracker.remove(context, entry.messageId, entry.toUserId)
+            }
+            PendingMessageTracker.removeAllForPeer(context, chatId)
+
+            for (entry in IncomingPendingTracker.getAll(context)) {
+                if (entry.messageId in ids) {
+                    IncomingPendingTracker.remove(
+                        context, entry.messageId, entry.fromUserId, "chat deleted"
+                    )
+                }
+            }
+
+            refuseGroupContentToSenders(contentKeys, inboxDao)
+
+            val dropped = inboxDao.deleteByChat(chatId)
+            debugLine(
+                "purgeChatLeftovers",
+                "Deleted chat $chatId: ${ids.size} message(s), ${contentKeys.size} content(s) refused, " +
+                        "$dropped chunk(s) dropped, ${outgoing.size} outgoing transfer(s) stopped"
+            )
+        } catch (e: Exception) {
+            debugLine("purgeChatLeftovers", "Failed to purge leftovers for $chatId: ${e.message}")
+        }
+    }
+
+    /**
+     * Tells whoever could still be pushing this group content that we do not
+     * want it, so they stop NOW instead of burning their whole retry ladder
+     * against a phone that refuses every chunk at the door.
+     *
+     * Closes the gap left by "leave group", which only removes the leaver from
+     * the Firestore member map and tells nobody: the other members keep a live
+     * queue aimed at a chat that no longer exists. Deleting a group does notify
+     * everyone (GROUP_REMOVED), and there this is simply a faster stop.
+     *
+     * The signal is the same one [refuseIncomingGroupTransfer] already uses, an
+     * allReceived carrying a "refused:" marker, chosen because every build in the
+     * fleet already understands it: senders drop their batch tables for us and
+     * the delivery document drops us from its member map, so nobody picks us as
+     * a relay target for this content again. Nothing new to deploy on their side.
+     *
+     * Group content only. A one to one chat has its own CANCEL_TRANSFER path, and
+     * an allReceived there would tell a sender we received something we did not;
+     * a blocked peer must not be messaged at all. The per row check on chatGroupId
+     * is what enforces it: the chat predicate behind [contentKeys] only ever
+     * returns rows with an empty chatGroupId when the deleted chat is a person.
+     */
+    private suspend fun refuseGroupContentToSenders(
+        contentKeys: Set<String>,
+        inboxDao: com.bolimot.mindtheclub.database.inbox.InboxDao
+    ) {
+        val myUserId = MySelf.userId()
+        for (key in contentKeys) {
+            if (key.isEmpty()) continue
+            try {
+                val row = inboxDao.getFirstByContent(key) ?: continue
+                val chatGroupId = row.chatGroupId
+                val originalSenderId = row.originalSenderId
+                if (chatGroupId.isNullOrEmpty() || originalSenderId.isNullOrEmpty() || row.date <= 0L) continue
+
+                val deliveryId = "refused:" + computeDeliveryDocId(chatGroupId, originalSenderId, row.date)
+
+                val targets = LinkedHashSet<String>()
+                targets.add(originalSenderId)
+                targets.addAll(ConnectionManager.instance.admittedSendersFor(key))
+                targets.add(row.fromUserId)
+                targets.remove(myUserId)
+                targets.remove("")
+
+                for (target in targets) {
+                    debugLine("purgeChatLeftovers", "Refusing $key to $target")
+                    notifyRemotePeer(target, row.messageId, Notify.ALL_RECEIVED, deliveryId)
+                }
+            } catch (e: Exception) {
+                debugLine("purgeChatLeftovers", "Could not refuse $key: ${e.message}")
+            }
+        }
     }
 
     private suspend fun deleteLinkedFiles(message: Message): Boolean {

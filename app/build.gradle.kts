@@ -45,8 +45,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1033
-        versionName = "Release 1.33" +
+        versionCode = 1035
+        versionName = "Release 1.35" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "")
 
@@ -173,6 +173,14 @@ dependencies {
     implementation("com.google.mlkit:vision-common:17.3.0")
     implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
+
+    // Video transcoding before sending (see functions/VideoCompressor.kt). The
+    // official AndroidX path: writing this on raw MediaCodec plus MediaMuxer
+    // means hundreds of lines of rotation, timestamp and end-of-stream handling.
+    implementation("androidx.media3:media3-transformer:1.8.0")
+    implementation("androidx.media3:media3-effect:1.8.0")
+    implementation("androidx.media3:media3-common:1.8.0")
+
     implementation("androidx.room:room-runtime-android:2.7.2")
     implementation("androidx.compose.foundation:foundation-android:1.8.3")
     implementation("androidx.emoji2:emoji2-bundled:1.5.0")

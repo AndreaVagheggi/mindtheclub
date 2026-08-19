@@ -169,7 +169,7 @@ suspend fun receiveTransferCancelled(fromUserId: String, messageId: String, cont
 }
 
 // Stops every sender-side vehicle that could still move this message.
-private fun stopSendPipeline(messageId: String, toUserId: String, context: Context) {
+internal fun stopSendPipeline(messageId: String, toUserId: String, context: Context) {
     val workManager = WorkManager.getInstance(context)
     workManager.cancelUniqueWork("build$messageId")   // SendMessageWorker (batch build)
     workManager.cancelUniqueWork(messageId)           // DispatchWorker

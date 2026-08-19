@@ -22,6 +22,7 @@ import com.bolimot.mindtheclub.views.MyProfile
 import com.bolimot.mindtheclub.views.OnboardingActivity
 import com.bolimot.mindtheclub.works.AppCheckWorker
 import com.bolimot.mindtheclub.works.InboxRecoveryWorker
+import com.bolimot.mindtheclub.functions.VideoCompressor
 import com.bolimot.mindtheclub.works.PendingRetryWorker
 import com.bolimot.mindtheclub.works.SoakTestWorker
 import com.google.android.gms.common.ConnectionResult
@@ -181,6 +182,10 @@ class MainActivity : BaseActivity() {
 
         PendingRetryWorker.schedule(this)
         InboxRecoveryWorker.schedule(this)
+
+        // Transcoded videos live in the cache and are consumed by the send that
+        // produced them; a send abandoned halfway leaves one behind.
+        VideoCompressor.purgeStaleOutputs()
 
         // No-op unless BuildConfig.SOAK_TEST, i.e. anywhere but a debug build.
         App.instance!!.applicationScope.launch(Dispatchers.IO) {

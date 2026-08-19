@@ -7,7 +7,9 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.net.Uri
 import android.widget.MediaController
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.VideoView
 import androidx.activity.OnBackPressedCallback
@@ -17,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.closeKeyboard
+import com.bolimot.mindtheclub.functions.VideoCompressor
 import com.bolimot.mindtheclub.sending.sendObject
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.viewModel.ViewModelProviderHolder
@@ -25,6 +28,7 @@ import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import androidx.core.net.toUri
 import com.bolimot.mindtheclub.functions.showToast
+import kotlinx.coroutines.launch
 
 class SendVideo : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,26 +122,53 @@ class SendVideo : BaseActivity() {
         }
         onBackPressedDispatcher.addCallback(this, callback)
 
+        val compressOverlay = findViewById<View>(R.id.compressOverlay)
+        val compressBar = findViewById<ProgressBar>(R.id.compressBar)
+
         send.setOnClickListener {
             send.isEnabled = false
-            val viewModel =ViewModelProviderHolder.messageViewModel
+            val viewModel = ViewModelProviderHolder.messageViewModel
 
             closeKeyboard(this)
 
-            if (selectedPeerUserIds.any { it.startsWith("group") }) {
-                val size = com.bolimot.mindtheclub.functions.getFileDetails(contentResolver,
-                    imagePath.toUri()).size
-                if (size > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
-                    showToast(getString(R.string.message_size_limit), this)
-                    caption.text.clear()
-                    send.isEnabled = true
-                    return@setOnClickListener
-                }
-            }
+            // Transcode BEFORE the size check, not after. A 60 MB clip that comes
+            // out at 8 MB used to be refused for a limit it would never have hit;
+            // now the limit judges what actually goes on the wire. A forward is
+            // left alone: that video already went through this once when it was
+            // first sent, and a second pass would only shave quality.
+            val isForward = !messageToForward.isNullOrEmpty()
 
-            sendObject(selectedPeerUserIds, imagePath, caption.text.toString(), messageToForward, fromName, lifecycleScope, viewModel,"video")
-            setResult(RESULT_OK)
-            finish()
+            lifecycleScope.launch {
+                var pathToSend = imagePath
+                val sourceUri = imagePath.toUri()
+                val originalSize = VideoCompressor.sizeOf(this@SendVideo, sourceUri)
+
+                if (!isForward && VideoCompressor.isWorthCompressing(this@SendVideo, sourceUri, originalSize)) {
+                    compressBar.progress = 0
+                    compressOverlay.visibility = View.VISIBLE
+                    val compressed = VideoCompressor.compress(this@SendVideo, sourceUri) { percent ->
+                        compressBar.progress = percent
+                    }
+                    compressOverlay.visibility = View.GONE
+                    // null means "keep the original": a failed or pointless
+                    // transcode must never stop a message from being sent.
+                    if (compressed != null) pathToSend = Uri.fromFile(compressed).toString()
+                }
+
+                if (selectedPeerUserIds.any { it.startsWith("group") }) {
+                    val size = VideoCompressor.sizeOf(this@SendVideo, pathToSend.toUri())
+                    if (size > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
+                        showToast(getString(R.string.message_size_limit), this@SendVideo)
+                        caption.text.clear()
+                        send.isEnabled = true
+                        return@launch
+                    }
+                }
+
+                sendObject(selectedPeerUserIds, pathToSend, caption.text.toString(), messageToForward, fromName, lifecycleScope, viewModel, "video")
+                setResult(RESULT_OK)
+                finish()
+            }
         }
     }
 
