@@ -117,6 +117,11 @@ fun reSendMessage(userId: String, messageId: String, missingItems: List<Int>, co
             val coords = batchContentCoordinates(messageId)
             submitDispatchWorker(
                 messageId, userId, context,
+                // Without this the worker falls back to naming the message by its
+                // per hop id, and every announcement, pending entry and delivery
+                // confirmation built from it stops matching. See DispatchWorker's
+                // messageKey.
+                groupId = coords?.groupId ?: "",
                 chatGroupId = coords?.chatGroupId ?: "",
                 originalSenderId = coords?.originalSenderId ?: "",
                 messageDate = coords?.messageDate ?: 0L

@@ -29,6 +29,7 @@ import com.bolimot.mindtheclub.functions.ContentServeQueue
 import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
+import com.bolimot.mindtheclub.functions.RecoveryProgress
 import com.bolimot.mindtheclub.functions.appIsForeground
 import com.bolimot.mindtheclub.functions.batchContentCoordinates
 import com.bolimot.mindtheclub.functions.batchTablesExists
@@ -328,9 +329,31 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             return@launch
                         }
 
-                        val existingMessage = getMessageRepository(App.context()).getMessage(msgId)
+                        // Resolved the way the DATA_CALL gate resolves it, and for the
+                        // same reason: the id in an announcement is the ANNOUNCER's
+                        // relay id, while our copy of the message is filed under the
+                        // original sender's id. Looking it up directly finds nothing,
+                        // and the code below then concludes we have never seen this
+                        // content, falls back to counting inbox chunks, and asks for
+                        // whatever residue says is missing.
+                        //
+                        // On 20 Aug the two checks contradicted each other four seconds
+                        // apart on the same contentKey: the gate answered "already
+                        // complete", this one announced "41 chunks out of 68". Six and
+                        // a half hours and forty five rounds later it was still asking
+                        // for the same 27 chunks of an album sitting complete in the
+                        // chat. Answering allReceived here also lets the announcer drop
+                        // its pending entry, so both halves of the loop stop.
+                        val directMessage = getMessageRepository(App.context()).getMessage(msgId)
+                        val existingMessage = directMessage ?: run {
+                            val inboxDao = getInboxDao(applicationContext)
+                            val firstRow = inboxDao.getFirstMessage(msgId)
+                            val anchorId = firstRow?.groupId?.takeIf { it.isNotEmpty() }
+                            anchorId?.let { getMessageRepository(App.context()).getMessage(it) }
+                        }
                         if (existingMessage != null && existingMessage.status != Status.RECEIVING) {
                             debugLine(tag, "Message $msgId already received, sending allReceived to $fromUserId")
+                            RecoveryProgress.clear(applicationContext, msgId)
                             val deliveryId = existingMessage.chatGroupId?.let {
                                 computeDeliveryDocId(it, existingMessage.originalSenderId ?: "", existingMessage.date)
                             }
@@ -351,11 +374,22 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             // Every chunk is already here: requesting a re-send would be
                             // pure waste. Assembly (worker/recovery) finishes the job.
                             debugLine(tag, "All chunks already present for $msgId — skipping sendMe, awaiting assembly")
+                            RecoveryProgress.clear(applicationContext, msgId)
                             return@launch
                         }
                         val missingRange = if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
                         if (missingRange != null) {
                             debugLine(tag, "Partial state for $msgId: requesting chunks $missingRange (${missing.size} missing)")
+                        }
+
+                        // Answer only if the previous answers achieved something.
+                        // Measured on chunks actually held, so a slow transfer that
+                        // keeps gaining ground is never interrupted; only a transfer
+                        // standing perfectly still is, and only for a few hours.
+                        // See RecoveryProgress for why this is not a cap on attempts.
+                        val heldChunks = getInboxDao(applicationContext).countChunksByContent(pendingContentKey)
+                        if (!RecoveryProgress.shouldAsk(applicationContext, msgId, heldChunks)) {
+                            return@launch
                         }
 
                         // Remember that this message is owed to us, so PendingRetryWorker
@@ -523,6 +557,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                 // content, which is what the guard above matches on.
                                 submitDispatchWorker(
                                     msgId, fromUserId, applicationContext,
+                                    // See send.kt: omitting this leaves the worker
+                                    // naming the message by the hop id.
+                                    groupId = coords?.groupId ?: "",
                                     chatGroupId = coords?.chatGroupId ?: "",
                                     originalSenderId = coords?.originalSenderId ?: "",
                                     messageDate = coords?.messageDate ?: 0L
@@ -900,6 +937,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     messageId = entry.messageId,
                                     toUserId = fromUserId,
                                     context = applicationContext,
+                                    // messageKey is stored as "id#chatGroupId" for
+                                    // group content, so the suffix comes off here.
+                                    groupId = entry.messageKey.substringBefore("#"),
                                     chatGroupId = entry.chatGroupId ?: "",
                                     originalSenderId = entry.originalSenderId ?: "",
                                     messageDate = entry.messageDate

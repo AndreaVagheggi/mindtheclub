@@ -141,7 +141,14 @@ fun batchTablesExists(messageId: String): Boolean {
 data class BatchContentCoordinates(
     val chatGroupId: String,
     val originalSenderId: String,
-    val messageDate: Long
+    val messageDate: Long,
+    /**
+     * The ORIGINAL message id, the one every peer knows the content by, as
+     * opposed to the per hop id this batch happens to be filed under. Carried
+     * here because the recovery paths rebuild a dispatch from the batch tables
+     * alone and would otherwise have no way to name the message.
+     */
+    val groupId: String
 )
 
 /**
@@ -159,7 +166,7 @@ fun batchContentCoordinates(messageId: String): BatchContentCoordinates? {
     return try {
         val db = AppDatabase.getInstance(App.context()).openHelper.readableDatabase
         db.query(
-            "SELECT chatGroupId, originalSenderId, date FROM batch${messageId}1 LIMIT 1",
+            "SELECT chatGroupId, originalSenderId, date, groupId FROM batch${messageId}1 LIMIT 1",
             emptyArray()
         ).use { cursor ->
             if (!cursor.moveToFirst()) return null
@@ -167,7 +174,8 @@ fun batchContentCoordinates(messageId: String): BatchContentCoordinates? {
             val originalSenderId = cursor.getString(1) ?: return null
             val date = cursor.getLong(2)
             if (chatGroupId.isEmpty() || originalSenderId.isEmpty() || date <= 0L) return null
-            BatchContentCoordinates(chatGroupId, originalSenderId, date)
+            val groupId = cursor.getString(3) ?: ""
+            BatchContentCoordinates(chatGroupId, originalSenderId, date, groupId)
         }
     } catch (e: Exception) {
         debugLine("batchContentCoordinates", "Lookup failed for $messageId: ${e.message}")

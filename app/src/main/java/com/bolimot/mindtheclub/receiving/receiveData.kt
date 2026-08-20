@@ -92,6 +92,35 @@ suspend fun receiveData(remoteUserId: String,
     // file. A totalNo that no longer matches is the signal that this happened:
     // the partial set is worthless, drop it and rebuild from this chunk on.
     val storedTotal = inboxDao.getTotalChunksByContent(newMessage.contentKey)
+
+    // A chunk for something already assembled starts a NEW partial set that
+    // nothing will ever clear, and that set then lies to every check that counts
+    // chunks instead of looking at the message.
+    //
+    // deleteByContent runs once, when the message is assembled. Senders keep
+    // streaming until they get the ack, so the tail lands just after and settles
+    // in. On 20 Aug an album of 68 chunks was received in full at 10:36:46,
+    // assembled at 10:36:48, cleaned at 10:36:50, and by 10:36:52 it was back up
+    // to 41 chunks out of 68. Those 41 never moved again: at 17:06, six and a
+    // half hours later, the phone was still asking for the missing 27, round 45,
+    // while the DATA_CALL gate four seconds away answered "already complete" on
+    // the very same contentKey.
+    //
+    // Only checked when the set is EMPTY, which is the only way a residue can
+    // start, so a transfer in flight pays nothing: storedTotal is non zero from
+    // its second chunk onwards.
+    if (storedTotal == 0) {
+        val anchorId = newMessage.groupId.ifEmpty { newMessage.messageId }
+        val assembled = getMessageDao(App.context()).getMessage(anchorId)
+        if (assembled != null && assembled.status != Status.RECEIVING) {
+            debugLine(
+                "receiveData",
+                "Dropping chunk ${newMessage.sequenceNo}: $anchorId is already assembled"
+            )
+            return
+        }
+    }
+
     if (storedTotal > 0 && storedTotal != newMessage.totalNo) {
         val dropped = inboxDao.deleteByContent(newMessage.contentKey)
         debugLine(
