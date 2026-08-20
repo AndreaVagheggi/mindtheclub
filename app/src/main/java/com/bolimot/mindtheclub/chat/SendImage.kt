@@ -13,6 +13,8 @@ import androidx.cardview.widget.CardView
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.bolimot.mindtheclub.functions.compressedSizeOfImages
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.closeKeyboard
 import com.bolimot.mindtheclub.functions.safeUrl
@@ -117,29 +119,40 @@ class SendImage : BaseActivity() {
 
             closeKeyboard(this)
 
-            if (selectedPeerUserIds.any { it.startsWith("group") }) {
-                val size = com.bolimot.mindtheclub.functions.getFileDetails(contentResolver,
-                    imagePath.toUri()).size
-                if (size > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
-                    showToast(getString(R.string.message_size_limit), this)
-                    caption.text.clear()
-                    send.isEnabled = true
-                    return@setOnClickListener
-                }
+            val dispatch = {
+                sendObject(
+                    selectedPeerUserIds,
+                    imagePath,
+                    caption.text.toString(),
+                    messageToForward,
+                    fromName,
+                    lifecycleScope,
+                    viewModel,
+                    Type.IMAGE)
+
+                setResult(RESULT_OK)
+                finish()
             }
 
-            sendObject(
-                selectedPeerUserIds,
-                imagePath,
-                caption.text.toString(),
-                messageToForward,
-                fromName,
-                lifecycleScope,
-                viewModel,
-                Type.IMAGE)
-
-            setResult(RESULT_OK)
-            finish()
+            if (selectedPeerUserIds.any { it.startsWith("group") }) {
+                // Same correction as SendImages: this photo goes out through
+                // saveBitmapFromUri at 2048px and quality 80, so the cap has to be
+                // measured on that and not on the gallery original. Rarer to bite
+                // here than on an album, but a panorama or a raw file is quite
+                // capable of clearing 50 MB before compression and nothing after it.
+                lifecycleScope.launch {
+                    val wireSize = compressedSizeOfImages(listOf(imagePath.toUri()))
+                    if (wireSize > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
+                        showToast(getString(R.string.message_size_limit), this@SendImage)
+                        caption.text.clear()
+                        send.isEnabled = true
+                        return@launch
+                    }
+                    dispatch()
+                }
+            } else {
+                dispatch()
+            }
         }
     }
 

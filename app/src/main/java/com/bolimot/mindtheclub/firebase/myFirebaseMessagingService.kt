@@ -852,6 +852,45 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                         PendingMessageTracker.remove(applicationContext, messageId, fromUserId)
 
+                        // Same acknowledgement, matched by CONTENT as well as by id.
+                        //
+                        // The line above only finds an entry filed under the exact
+                        // messageId the peer quoted, and there are two different ids
+                        // in play. A peer that actually received our chunks echoes
+                        // back the id it saw on them (allReceivedEvent), which is the
+                        // one we filed the entry under, so that case matches. But a
+                        // peer answering the DATA_CALL gate — "I already have this
+                        // content, do not connect" — replies with firstRow.groupId,
+                        // the ORIGINAL message id, while our entry is filed under our
+                        // own relay id. Nothing matched, and the piggyback block right
+                        // below then re-dispatched that very entry back at them.
+                        //
+                        // So the acknowledgement was DRIVING the loop it was meant to
+                        // stop: on 20 Aug a member answered "already complete" fifteen
+                        // times to an album it had held for three hours, and was woken
+                        // again every five minutes, with zero PendingTracker;Cleared
+                        // in the whole log. Only reachable in a group, where content
+                        // arrives by one route while another peer is still offering
+                        // it — which is exactly what the cascade is for.
+                        //
+                        // Group content only: the coordinates are what makes the match
+                        // exact, and a one to one entry has none and needs none.
+                        val acked = ackedMessage
+                        val ackedGroupId = acked?.chatGroupId
+                        if (acked != null && !ackedGroupId.isNullOrEmpty()) {
+                            for (entry in PendingMessageTracker.getAll(applicationContext)) {
+                                if (entry.messageId == messageId) continue
+                                if (entry.toUserId != fromUserId) continue
+                                if (entry.chatGroupId != ackedGroupId) continue
+                                if (entry.originalSenderId != acked.originalSenderId) continue
+                                if (entry.messageDate != acked.date) continue
+
+                                debugLine(tag, "Clearing pending ${entry.messageId} → $fromUserId: same content acked as $messageId")
+                                PendingMessageTracker.remove(applicationContext, entry.messageId, entry.toUserId)
+                                deleteBatchTables(entry.messageId)
+                            }
+                        }
+
                         val stalePending = PendingMessageTracker.getPendingForPeer(applicationContext, fromUserId)
                         if (stalePending.isNotEmpty()) {
                             debugLine(tag, "Piggyback: ${stalePending.size} stale pending message(s) for $fromUserId")

@@ -23,7 +23,9 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.SendImagesAdapter
 import com.bolimot.mindtheclub.adapters.SendPreviewImagesAdapter
 import com.bolimot.mindtheclub.dataModels.ImageItem
+import kotlinx.coroutines.launch
 import com.bolimot.mindtheclub.functions.closeKeyboard
+import com.bolimot.mindtheclub.functions.compressedSizeOfImages
 import com.bolimot.mindtheclub.functions.safeUrl
 import com.bolimot.mindtheclub.functions.toCSVString
 import com.bolimot.mindtheclub.sending.sendMultipleImage
@@ -159,31 +161,44 @@ class SendImages : BaseActivity() {
 
             closeKeyboard(this)
 
-            if (selectedPeerUserIds.any { it.startsWith("group") }) {
-                var totalSize = 0L
-                for (u in uriList) {
-                    totalSize += com.bolimot.mindtheclub.functions.getFileDetails(contentResolver, u).size
+            val dispatch = {
+                viewModel?.let {
+                    sendMultipleImage(
+                        selectedPeerUserIds, // List of peers I need to send this message to
+                        toCSVString(uriList), // List of URI pointing to the images
+                        caption.text.toString(), // Text of the message
+                        messageToForward, // Eventual original text message in case of Forward action
+                        fromName,  // Eventual original sender name in case of Forward action
+                        lifecycleScope,
+                        viewModel
+                    )
                 }
-                if (totalSize > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
-                    showToast(getString(R.string.message_size_limit), this)
-                    caption.text.clear()
-                    send.isEnabled = true
-                    return@setOnClickListener
-                }
+                finish()
             }
 
-            viewModel?.let {
-                sendMultipleImage(
-                    selectedPeerUserIds, // List of peers I need to send this message to
-                    toCSVString(uriList), // List of URI pointing to the images
-                    caption.text.toString(), // Text of the message
-                    messageToForward, // Eventual original text message in case of Forward action
-                    fromName,  // Eventual original sender name in case of Forward action
-                    lifecycleScope,
-                    viewModel
-                )
+            if (selectedPeerUserIds.any { it.startsWith("group") }) {
+                // Measured on the recompressed bytes, not on the gallery originals.
+                // Summing the originals refused an ordinary eleven photo album for
+                // exceeding 50 MB when what actually leaves the phone is about six:
+                // mergeImages puts every image through saveBitmapFromUri at 2048px
+                // and quality 80 (see compressedSizeOfImages).
+                //
+                // It costs a decode and an encode per image, so it runs off the main
+                // thread. The button was disabled at the top of this handler, which
+                // is what keeps a second tap out during the probe.
+                lifecycleScope.launch {
+                    val wireSize = compressedSizeOfImages(uriList)
+                    if (wireSize > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {
+                        showToast(getString(R.string.message_size_limit), this@SendImages)
+                        caption.text.clear()
+                        send.isEnabled = true
+                        return@launch
+                    }
+                    dispatch()
+                }
+            } else {
+                dispatch()
             }
-            finish()
         }
     }
 

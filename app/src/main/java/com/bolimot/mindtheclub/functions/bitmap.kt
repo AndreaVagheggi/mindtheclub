@@ -51,6 +51,60 @@ import kotlin.math.roundToInt
  */
 const val SENT_IMAGE_QUALITY = 80
 
+/**
+ * What [uriList] will actually weigh on the wire, i.e. AFTER the same
+ * recompression [mergeImages] applies.
+ *
+ * The group size cap used to be checked against the files as the gallery holds
+ * them. Those are full resolution camera originals, 4 to 5 MB each on a current
+ * phone, while what leaves the device is 2048px at quality 80, well under 1 MB.
+ * So eleven perfectly ordinary photos, about 6 MB once packed, were refused for
+ * exceeding a 50 MB limit they were nowhere near. The video path had already been
+ * moved to measuring after transcoding for exactly this reason; the image path
+ * never was.
+ *
+ * Deliberately not an estimate: it runs the real encoder over the real files, so
+ * the number cannot drift from what mergeImages produces later. It also mirrors
+ * that function's fallback, counting the original bytes whenever compression is
+ * unavailable, because those are the bytes that would then be sent.
+ *
+ * Costs one decode plus one encode per image, on Dispatchers.IO. Call it off the
+ * main thread and only where the answer matters, i.e. on the group path.
+ */
+suspend fun compressedSizeOfImages(uriList: List<Uri>): Long = withContext(Dispatchers.IO) {
+    val context = App.context()
+    val contentResolver = context.contentResolver
+    var total = 0L
+
+    fun originalSizeOf(uri: Uri): Long =
+        try {
+            getFileDetails(contentResolver, uri).size
+        } catch (e: Exception) {
+            debugLine("compressedSizeOfImages", "Cannot size $uri: ${e.message}")
+            0L
+        }
+
+    for ((index, uri) in uriList.withIndex()) {
+        val tempName = "sizeprobe_${System.currentTimeMillis()}_$index.jpg"
+        val tempFile = File(context.filesDir, tempName)
+        try {
+            val compressed = saveBitmapFromUri(uri, tempName, SENT_IMAGE_QUALITY)
+            total += if (compressed != null && tempFile.exists() && tempFile.length() > 0) {
+                tempFile.length()
+            } else {
+                originalSizeOf(uri)
+            }
+        } catch (e: Exception) {
+            debugLine("compressedSizeOfImages", "Probe failed for $uri: ${e.message}")
+            total += originalSizeOf(uri)
+        } finally {
+            try { tempFile.delete() } catch (_: Exception) {}
+        }
+    }
+
+    total
+}
+
 fun mergeImages(uriStringList: String, messageId: String): String? {
     try {
         val separator = "--SEPARATOR--"
