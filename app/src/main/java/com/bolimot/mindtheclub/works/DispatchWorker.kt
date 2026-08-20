@@ -299,6 +299,21 @@ class DispatchWorker(
                         messageDate = messageDate
                     )
 
+                    // NonCancellable, and this is the whole point of it: an incoming
+                    // sendMe re-submits this same unique work and REPLACE kills the
+                    // run mid-flight. On 20 Aug that happened 24 times, always here,
+                    // always logging "Failed to pick next group member: Job was
+                    // cancelled" — so releaseFailedGroupTarget never ran and the
+                    // target stayed flagged as RESERVED in the delivery document
+                    // with nothing anywhere to clear it again. From then on no peer
+                    // would ever relay to that member proactively.
+                    //
+                    // Bounded by withTimeoutOrNull because NonCancellable alone can
+                    // hang: an offline Firestore update() never completes, and
+                    // uninterruptible plus unbounded is how a worker holds the
+                    // process until WorkManager force stops it.
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    kotlinx.coroutines.withTimeoutOrNull(20_000L) {
                     try {
                         val deliveryDocId = computeDeliveryDocId(chatGroupId, originalSenderId, messageDate)
                         val db = com.google.firebase.Firebase.firestore
@@ -330,6 +345,8 @@ class DispatchWorker(
                         }
                     } catch (e: Exception) {
                         debugLine2("doWork", "Failed to pick next group member: ${e.message}")
+                    }
+                    } ?: debugLine2("doWork", "Release and re-pick timed out, target may stay reserved")
                     }
 
                     // Give up on this target: free the line for whoever is waiting.

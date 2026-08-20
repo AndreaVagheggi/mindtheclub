@@ -35,6 +35,9 @@ class InboxRecoveryWorker(
         private const val MIN_ORPHAN_AGE_MS = 5 * 60 * 1000L
         private const val MAX_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000L
 
+        /** Ceiling for pass 2, same window as [MAX_ORPHAN_AGE_MS]. See the use site. */
+        private const val MAX_RECEIVING_AGE_MS = 24 * 60 * 60 * 1000L
+
         private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
 
         fun schedule(context: Context) {
@@ -111,6 +114,33 @@ class InboxRecoveryWorker(
 
                         if (count > 0 && count >= total) {
                             debugLine(TAG, "RECEIVING $msg.messageId is actually complete ($count/$total), skipping")
+                            continue
+                        }
+
+                        // The one recovery track that had no ceiling of any kind.
+                        // Pass 3 below stops at MAX_ORPHAN_AGE_MS and drops the
+                        // chunks; the outgoing tracker prunes at 14 days; the
+                        // incoming one caps at 6 requests. This loop had neither an
+                        // age nor a retry limit: a placeholder whose content no
+                        // longer exists anywhere asked for it every INTERVAL_MINUTES
+                        // for ever, 96 requests a day, until the message was deleted
+                        // by hand. Each one is an FCM plus a signalling room, and on
+                        // 19 and 20 Aug several such requests were still going out
+                        // twelve hours later against holders that answered
+                        // "no message in DB and no batch tables" and said nothing
+                        // back, so the asker never learned to stop.
+                        //
+                        // Capped at the same 24 hours as pass 3, deliberately: past
+                        // that point pass 3 has already deleted every orphan chunk
+                        // set of that age, so a request made later cannot be served
+                        // by anyone whose copy was itself partial. The placeholder is
+                        // left alone, only the soliciting stops.
+                        val age = System.currentTimeMillis() - msg.date
+                        if (age > MAX_RECEIVING_AGE_MS) {
+                            debugLine(
+                                TAG,
+                                "RECEIVING ${msg.messageId} is ${age / 3600000}h old, no longer soliciting"
+                            )
                             continue
                         }
 

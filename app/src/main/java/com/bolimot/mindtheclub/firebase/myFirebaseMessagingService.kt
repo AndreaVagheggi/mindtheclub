@@ -572,10 +572,52 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                         return@launch
                                     }
 
-                                    debugLine(tag, "Re-sending received/group message $msgId to requester $fromUserId")
+                                    // Serve group content under the SAME id the push
+                                    // path uses towards this same peer, not under the
+                                    // original message id.
+                                    //
+                                    // Both routes name their batch tables and their
+                                    // unique work after the messageId, so two different
+                                    // ids meant two independent pipelines to one peer,
+                                    // running at the same time over one uplink. On
+                                    // 20 Aug an album reached a member as
+                                    //   bf63d0ba seq 1 / c89aabef seq 1 / bf63d0ba seq 2 ...
+                                    // interleaved: 137 chunks on the wire for 71 useful
+                                    // ones, 48% thrown away, and each stream at half the
+                                    // bandwidth. The RUNNING-only guard above cannot
+                                    // catch it, by design: between two attempts the work
+                                    // is ENQUEUED, and widening that check is what
+                                    // stranded White on 15 Aug.
+                                    //
+                                    // With one id the two routes share one set of batch
+                                    // tables and one unique name, so WorkManager
+                                    // serialises them instead of racing them, and the
+                                    // sent flags are common: whatever the push already
+                                    // delivered is not sent again.
+                                    // The guard mirrors groupHopId's own preconditions on
+                                    // purpose: given incomplete coordinates it falls back
+                                    // to guid(), and a fresh random id here would rebuild
+                                    // the tables from chunk 1 on every single request.
+                                    val canDeriveHopId = !message.chatGroupId.isNullOrEmpty()
+                                            && !message.originalSenderId.isNullOrEmpty()
+                                            && message.date > 0L
+
+                                    val serveMessageId = if (canDeriveHopId) {
+                                        groupHopId(
+                                            message.chatGroupId,
+                                            message.originalSenderId,
+                                            message.date,
+                                            fromUserId
+                                        )
+                                    } else {
+                                        message.messageId
+                                    }
+
+                                    debugLine(tag, "Re-sending received/group message $msgId to requester $fromUserId as $serveMessageId")
                                     submitSendMessageWorker(
                                         MessageData.fromMessage(message).copy(
                                             toUserId = fromUserId,
+                                            messageId = serveMessageId,
                                             groupId = originalIdOf(message)
                                         ),
                                         applicationContext,
