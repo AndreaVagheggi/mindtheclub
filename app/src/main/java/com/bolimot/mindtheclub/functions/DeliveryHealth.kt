@@ -22,6 +22,22 @@ object DeliveryHealth {
 
     private const val PREF_LATENCIES = "mtc_delivery_latencies"
     private const val PREF_SNOOZE_UNTIL = "mtc_battery_banner_snooze_until"
+    private const val PREF_HEARTBEAT = "mtc_last_heartbeat"
+    private const val PREF_SUPPRESSED = "mtc_was_suppressed"
+
+    /**
+     * A gap in the heartbeat longer than this means the app was not merely
+     * dozing, it was not running at all.
+     *
+     * The periodic workers fire every 15 minutes and every incoming FCM refreshes
+     * the mark too, so three missed rounds in a row is already well outside what
+     * doze does to a phone that is still being reached. On 21 Aug a handset went
+     * dark at 11:49:58 and produced nothing at all until 12:52:25, when it was
+     * opened by hand: four wake-ups had been accepted by Google in between and
+     * none was delivered, which is what being force stopped looks like from the
+     * inside.
+     */
+    private const val SUPPRESSED_GAP_MS = 45L * 60 * 1000
 
     /** How many recent incoming messages the verdict looks at. */
     private const val WINDOW = 5
@@ -68,6 +84,36 @@ object DeliveryHealth {
         return history.count { it > SLOW_MS } >= SLOW_TO_WARN
     }
 
+    /**
+     * Marks that the app is alive and doing background work. Called from the
+     * periodic workers and from every incoming FCM, i.e. from everything that a
+     * phone suppressing the app would prevent.
+     */
+    fun recordHeartbeat(context: Context) {
+        setPreference(PREF_HEARTBEAT, System.currentTimeMillis().toString(), context)
+    }
+
+    /**
+     * Called once at start up: closes the books on the period the app was not
+     * running and records a verdict, because the gap is only measurable at the
+     * moment it ends. Checking it later would always find the app running and
+     * conclude everything is fine.
+     */
+    fun checkForSuppression(context: Context) {
+        val last = getPreference(PREF_HEARTBEAT, context)?.toLongOrNull()
+        recordHeartbeat(context)
+        if (last == null || last <= 0L) return
+
+        val gap = System.currentTimeMillis() - last
+        if (gap in SUPPRESSED_GAP_MS..ABSURD_MS) {
+            debugLine("DeliveryHealth", "App was not running for ${gap / 60000} minutes, likely suppressed")
+            setPreference(PREF_SUPPRESSED, "true", context)
+        }
+    }
+
+    private fun wasSuppressed(context: Context): Boolean =
+        getPreference(PREF_SUPPRESSED, context) == "true"
+
     /** True when the user explicitly restricted the app's background work. */
     private fun backgroundRestricted(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
@@ -80,11 +126,18 @@ object DeliveryHealth {
     fun shouldWarn(context: Context): Boolean {
         val snoozeUntil = getPreference(PREF_SNOOZE_UNTIL, context)?.toLongOrNull() ?: 0L
         if (System.currentTimeMillis() < snoozeUntil) return false
-        return backgroundRestricted(context) || deliveriesAreLate(context)
+        // The third condition is the one that catches the worst devices. The
+        // other two only ever see messages that DID arrive, late; a phone that
+        // kills the app outright delivers nothing, measures nothing, and used to
+        // look perfectly healthy. And on Android 8, which is where this was
+        // first seen, backgroundRestricted does not exist at all, so latency was
+        // the only signal there was.
+        return backgroundRestricted(context) || deliveriesAreLate(context) || wasSuppressed(context)
     }
 
     /** Dismissal: hides the banner for a month. */
     fun snooze(context: Context) {
+        setPreference(PREF_SUPPRESSED, "", context)
         setPreference(
             PREF_SNOOZE_UNTIL,
             (System.currentTimeMillis() + SNOOZE_MS).toString(),
@@ -99,6 +152,7 @@ object DeliveryHealth {
      */
     fun resetHistory(context: Context) {
         setPreference(PREF_LATENCIES, "", context)
+        setPreference(PREF_SUPPRESSED, "", context)
     }
 
     /** Opens the battery optimisation settings, falling back to the app page. */

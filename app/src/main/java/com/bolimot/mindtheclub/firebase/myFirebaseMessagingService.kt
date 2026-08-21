@@ -34,6 +34,7 @@ import com.bolimot.mindtheclub.functions.appIsForeground
 import com.bolimot.mindtheclub.functions.batchContentCoordinates
 import com.bolimot.mindtheclub.functions.batchTablesExists
 import com.bolimot.mindtheclub.functions.contentKeyOf
+import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.deleteBatchTables
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
@@ -155,6 +156,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         debugLine(tag, "FCM received, Type: $type, CallId: $callId")
+
+        // Anything reaching us proves the app is alive and being delivered to,
+        // which is exactly what a phone suppressing it prevents.
+        DeliveryHealth.recordHeartbeat(applicationContext)
 
         appScope.launch {
             try {
@@ -291,9 +296,36 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                 channelId?.let {
                     appScope.launch {
+                        // Clear a DEAD leftover, never a working connection.
+                        //
+                        // This used to fire unconditionally, and shutdownRTC is a
+                        // broadcast that every RTCClient for this peer answers by
+                        // destroying itself. A pending is only an announcement, so
+                        // the connection it tears down is not one it is about to
+                        // replace: the real one is built later, by the DATA_CALL
+                        // path, which already does the considered cleanup through
+                        // claimLatestDataChannel and webRTCCleanUp.
+                        //
+                        // On 21 Aug a one to one text message took two hours and
+                        // three minutes to travel. It was a single chunk and it
+                        // crossed instantly once a channel finally survived: the
+                        // recipient had been told about it at 13:46:05 and got it
+                        // at 15:47:14, having received 141 announcements in
+                        // between, mostly noise from an unrelated group. Eight
+                        // connection attempts were made and demolished, twice
+                        // within the same second as "ICE Connection established".
+                        //
+                        // hasLiveConnection is the existing contract and is strict
+                        // on purpose (peer connection up AND data channel open), so
+                        // a half dead client still reports false and is still
+                        // cleared, which is what this call was for.
                         try {
-                            shutdownRTC(fromUserId)
-                            debugLine(tag, "Previous connection instance cleared")
+                            if (ConnectionManager.instance.hasLiveConnection(fromUserId)) {
+                                debugLine(tag, "Live connection with $fromUserId, leaving it alone")
+                            } else {
+                                shutdownRTC(fromUserId)
+                                debugLine(tag, "Previous connection instance cleared")
+                            }
                         } catch(ex: Exception) {
                             debugLine(tag, "There was no connection manager instance to cancel: ${ex.message}")
                         }
@@ -928,23 +960,42 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             }
                         }
 
+                        // One at a time, oldest first, not the whole backlog at once.
+                        //
+                        // The idea is sound: an allReceived proves this peer is awake,
+                        // so it is the right moment to clear what is owed to it. What
+                        // was wrong was the quantity. Every entry became its own
+                        // dispatch, launched in the same instant, all competing for
+                        // the one link to the same phone; on 20 Aug four went out
+                        // together and all four came back "Job was cancelled", each
+                        // then firing its own pending FCM. Six stale messages meant a
+                        // burst of six announcements, and on 21 Aug the receiver of
+                        // such bursts took two hours to collect a one line text.
+                        //
+                        // Serialising costs nothing, because this very handler is
+                        // what runs next: the one dispatch completes, its allReceived
+                        // comes back here, and the following entry goes out. The
+                        // backlog still drains, in a queue instead of a heap, and a
+                        // link carrying one transfer finishes it sooner than a link
+                        // carrying six. If the chain breaks because a dispatch fails,
+                        // nothing is lost either: PendingRetryWorker keeps its own
+                        // ladder over the same entries.
                         val stalePending = PendingMessageTracker.getPendingForPeer(applicationContext, fromUserId)
-                        if (stalePending.isNotEmpty()) {
-                            debugLine(tag, "Piggyback: ${stalePending.size} stale pending message(s) for $fromUserId")
-                            for (entry in stalePending) {
-                                debugLine(tag, "Piggyback dispatching: ${entry.messageId} → $fromUserId")
-                                submitDispatchWorker(
-                                    messageId = entry.messageId,
-                                    toUserId = fromUserId,
-                                    context = applicationContext,
-                                    // messageKey is stored as "id#chatGroupId" for
-                                    // group content, so the suffix comes off here.
-                                    groupId = entry.messageKey.substringBefore("#"),
-                                    chatGroupId = entry.chatGroupId ?: "",
-                                    originalSenderId = entry.originalSenderId ?: "",
-                                    messageDate = entry.messageDate
-                                )
-                            }
+                        val nextPending = stalePending.minByOrNull { it.createdAt }
+                        if (nextPending != null) {
+                            debugLine(tag, "Piggyback: ${stalePending.size} stale for $fromUserId, dispatching the oldest")
+                            debugLine(tag, "Piggyback dispatching: ${nextPending.messageId} → $fromUserId")
+                            submitDispatchWorker(
+                                messageId = nextPending.messageId,
+                                toUserId = fromUserId,
+                                context = applicationContext,
+                                // messageKey is stored as "id#chatGroupId" for
+                                // group content, so the suffix comes off here.
+                                groupId = nextPending.messageKey.substringBefore("#"),
+                                chatGroupId = nextPending.chatGroupId ?: "",
+                                originalSenderId = nextPending.originalSenderId ?: "",
+                                messageDate = nextPending.messageDate
+                            )
                         }
                     }
                 }

@@ -10,6 +10,7 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.dataModels.RTCClientResult
+import com.bolimot.mindtheclub.functions.AndroidState
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.ContentServeQueue
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
@@ -122,6 +123,12 @@ class DispatchWorker(
         val originalSenderId = inputData.getString("originalSenderId")
 
         val messageDate = inputData.getLong("messageDate", 0L)
+
+        // Stamped on every dispatch so a transfer that goes wrong can be read
+        // against what the system was doing to us at that moment, instead of
+        // guessing between doze, standby bucket and expedited quota after the
+        // fact. See AndroidState.
+        debugLine2("doWork", "Android state: ${AndroidState.describe(applicationContext)} attempt=$runAttemptCount")
 
         // Serving discipline (group content only): claim the content for this
         // target if nobody holds it, refresh the claim if we already do. Claimed
@@ -238,6 +245,14 @@ class DispatchWorker(
 
             is RTCClientResult.Success -> { }
 
+        }
+
+        // CoroutineWorker makes onStopped final, so the reason is read here, right
+        // after the long operation, which is where a stop lands. Without it a
+        // dispatch cut short by an exhausted expedited quota and one killed by a
+        // dead connection leave exactly the same trace.
+        if (isStopped) {
+            debugLine("DispatchWorker", "Stopped by the system: ${AndroidState.stopReasonName(stopReason)}")
         }
 
         debugLine2("doWork", "newState: ${getState(newState)}, chunksSent: ${result.chunksSent}")

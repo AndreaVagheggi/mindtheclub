@@ -16,6 +16,7 @@ import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.dataModels.RTCClientResult
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.start.App
+import com.bolimot.mindtheclub.functions.OutgoingActivity
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.bolimot.mindtheclub.works.DataSyncWorker
 import kotlinx.coroutines.CoroutineScope
@@ -327,9 +328,20 @@ class DataSyncService : Service() {
                 false
             }
 
+            // Read from the dispatch pipeline itself rather than inferred from
+            // WorkManager. The first version of this asked whether a worker was
+            // RUNNING and never once got a yes: a relay submitted at 16:14:31 on
+            // 21 Aug was still ENQUEUED when the service quit five seconds later,
+            // and only started at 16:14:38. See OutgoingActivity.
+            val stillSending = OutgoingActivity.isSending()
+
             if (!channelOpen) {
                 if (assemblyPending) {
                     debugLine(tag, "Channel closed but assembly pending — keeping sync alive (idle ${idleMs / 1000}s).")
+                    continue
+                }
+                if (stillSending) {
+                    debugLine(tag, "Channel closed but still sending (${OutgoingActivity.secondsSinceLast()}s ago) — keeping sync alive.")
                     continue
                 }
                 debugLine(tag, "Data channel closed. Transfer done or connection lost.")
@@ -339,6 +351,10 @@ class DataSyncService : Service() {
             if (idleMs >= IDLE_LIMIT_MS) {
                 if (assemblyPending) {
                     debugLine(tag, "Idle but assembly pending — keeping sync alive (idle ${idleMs / 1000}s).")
+                    continue
+                }
+                if (stillSending) {
+                    debugLine(tag, "Nothing incoming but still sending (${OutgoingActivity.secondsSinceLast()}s ago) — keeping sync alive.")
                     continue
                 }
                 debugLine(tag, "Data channel open but idle for ${idleMs / 1000}s. Stopping.")

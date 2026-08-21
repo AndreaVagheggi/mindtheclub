@@ -165,6 +165,12 @@ class MainActivity : BaseActivity() {
     private fun startApplication() {
         debugLine("StartApplication", "Starting application.")
 
+        // Measured here and nowhere else: the gap between the last sign of life
+        // and now only exists at the moment the app comes back, and asking later
+        // would always find it running and conclude all was well. See
+        // DeliveryHealth.checkForSuppression.
+        com.bolimot.mindtheclub.functions.DeliveryHealth.checkForSuppression(this)
+
         // This installation lost the identity to another phone: stay paused.
         // The moved screen has its own re-check, nothing else may run here.
         if (com.bolimot.mindtheclub.functions.InstallationIdentity.isDeactivated(this)) {

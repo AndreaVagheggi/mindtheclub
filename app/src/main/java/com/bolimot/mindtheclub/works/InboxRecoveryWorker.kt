@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.contentKeyOf
+import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
@@ -55,6 +56,8 @@ class InboxRecoveryWorker(
     }
 
     override suspend fun doWork(): Result {
+        DeliveryHealth.recordHeartbeat(applicationContext)
+
         val inboxDao = getInboxDao(applicationContext)
         val messageDao = getMessageDao(applicationContext)
 

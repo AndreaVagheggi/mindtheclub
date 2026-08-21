@@ -11,6 +11,7 @@ import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.contentKeyOf
+import com.bolimot.mindtheclub.functions.DeliveryHealth
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
@@ -132,6 +133,8 @@ class PendingRetryWorker(
     }
 
     override suspend fun doWork(): Result {
+        DeliveryHealth.recordHeartbeat(applicationContext)
+
         retryOutgoing()
         retryIncoming()
         retryGroupSeen()

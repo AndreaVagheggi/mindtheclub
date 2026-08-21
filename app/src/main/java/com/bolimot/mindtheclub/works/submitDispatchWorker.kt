@@ -1,5 +1,6 @@
 package com.bolimot.mindtheclub.works
 
+import com.bolimot.mindtheclub.functions.OutgoingActivity
 import android.content.Context
 import android.os.Build
 import androidx.work.BackoffPolicy
@@ -60,6 +61,10 @@ fun submitDispatchWorker(messageId: String, toUserId: String, context: Context, 
     }
 
     val dispatchRequest = dispatchRequestBuilder.build()
+
+    // Stamped BEFORE the work is queued: the gap between submitting a dispatch
+    // and its first chunk is exactly where the previous attempt at this failed.
+    OutgoingActivity.touch()
 
     WorkManager.getInstance(context).enqueueUniqueWork(
         messageId,

@@ -23,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import com.bolimot.mindtheclub.BuildConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filter
@@ -752,6 +753,7 @@ class RTCClient private constructor(
                 reconnectingUiJob = null
 
                 startRelayUsageTracking()
+                logIcePath()
 
                 if(!onlyData) {
                     ConnectionManager.instance.mediaCallEstablished.value = true
@@ -1009,6 +1011,60 @@ class RTCClient private constructor(
      * media, or reconnection. Starts once per call; runs across ICE restarts since
      * the same PeerConnection is reused. Cancelled in [cleanup].
      */
+    /**
+     * Writes the ICE path that was ACTUALLY chosen, plus the round trip time
+     * WebRTC measured on it.
+     *
+     * Needed because forcing a path and getting one are different things. Two
+     * phones on one Wi-Fi under NOHOST can only reach each other from outside if
+     * the router does hairpinning, and plenty of home routers do not: ICE then
+     * falls back to relay candidates, which NOHOST still allows, and a run meant
+     * to compare direct against TURN quietly compares TURN against TURN. The
+     * candidate types say which of the two actually happened.
+     *
+     * srflx means the direct path through the NAT, relay means TURN, host means
+     * the LAN (so, a mode of "all"). The RTT comes from WebRTC's own STUN
+     * probes, which avoids comparing the clocks of two different phones.
+     *
+     * Three seconds of delay because currentRoundTripTime is null until a few
+     * probes have gone round. Debug builds only: this is a measurement tool.
+     */
+    private fun logIcePath() {
+        if (!BuildConfig.ENABLE_DEBUG_TOOLS) return
+        clientScope.launch {
+            delay(3000)
+            try {
+                connection?.getStats { report -> describeIcePath(report) }
+            } catch (e: Exception) {
+                debugLine("RTCClient", "ICE path stats unavailable: ${e.message}")
+            }
+        }
+    }
+
+    private fun describeIcePath(report: RTCStatsReport) {
+        try {
+            val pair = report.statsMap.values.firstOrNull {
+                it.type == "candidate-pair" && it.members["state"] == "succeeded"
+            }
+            if (pair == null) {
+                debugLine("RTCClient", "ICE path: no succeeded candidate pair yet")
+                return
+            }
+            val localType = (pair.members["localCandidateId"] as? String)
+                ?.let { report.statsMap[it]?.members?.get("candidateType") } ?: "?"
+            val remoteType = (pair.members["remoteCandidateId"] as? String)
+                ?.let { report.statsMap[it]?.members?.get("candidateType") } ?: "?"
+            val rtt = (pair.members["currentRoundTripTime"] as? Double)
+            val rttText = if (rtt != null) "%.0f".format(rtt * 1000) else "n/a"
+            debugLine(
+                "RTCClient",
+                "ICE path: $localType <-> $remoteType | RTT $rttText ms | mode ${BuildConfig.ICE_MODE}"
+            )
+        } catch (e: Exception) {
+            debugLine("RTCClient", "ICE path parse failed: ${e.message}")
+        }
+    }
+
     private fun startRelayUsageTracking() {
         if (!relayTrackingStarted.compareAndSet(false, true)) return
 
@@ -1073,6 +1129,21 @@ class RTCClient private constructor(
             enableCpuOveruseDetection = true
             audioJitterBufferMaxPackets = 20
             audioJitterBufferFastAccelerate = true
+
+            // Test only, see the iceMode flag in build.gradle.kts. On "all",
+            // which is what every release build without an explicit -PiceMode
+            // gets, the field below is never assigned and this block compiles
+            // away, so production behaviour is untouched.
+            when (BuildConfig.ICE_MODE) {
+                "nohost" -> {
+                    iceTransportsType = PeerConnection.IceTransportsType.NOHOST
+                    debugLine("RTCClient", "ICE mode NOHOST: host candidates dropped")
+                }
+                "relay" -> {
+                    iceTransportsType = PeerConnection.IceTransportsType.RELAY
+                    debugLine("RTCClient", "ICE mode RELAY: forcing everything through TURN")
+                }
+            }
         }
 
         connection = peerConnectionFactory?.createPeerConnection(

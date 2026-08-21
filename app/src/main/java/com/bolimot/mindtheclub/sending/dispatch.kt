@@ -1,5 +1,6 @@
 package com.bolimot.mindtheclub.sending
 
+import com.bolimot.mindtheclub.functions.OutgoingActivity
 import android.content.Context
 import android.database.Cursor
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -169,6 +170,10 @@ private suspend fun dispatchBatch(tableName: String, transport: Transport, conte
                     success = false
                     break
                 } else {
+                    // Direct proof that this phone is transmitting, read by
+                    // DataSyncService so it does not release the wake lock in the
+                    // middle of an upload. See OutgoingActivity.
+                    OutgoingActivity.touch()
                     debugLine("dispatchBatch", "Sent message: ${outbox.sequenceNo}")
                     successfulUids.add(outbox.uid)
                 }

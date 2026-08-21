@@ -31,6 +31,25 @@ val releaseLogging = (project.findProperty("releaseLogging") as String? ?: "fals
 // Options -> About and can never be shipped by accident.
 val noPay = (project.findProperty("noPay") as String? ?: "false").toBoolean()
 
+// Forces the ICE path, for testing only. Three values:
+//   all     production. The field is not touched at all, behaviour as always.
+//   nohost  host candidates dropped, so two phones on the same Wi-Fi are made to
+//           go out and come back through STUN/TURN like two real users would.
+//   relay   everything through TURN. One peer in relay is enough to pull the
+//           whole session onto the relay, which is how the cost of TURN gets
+//           measured against a direct leg in the same run.
+//
+// Debug builds default to nohost, because installing from Android Studio onto a
+// bench of phones on one LAN is exactly the case this exists for. Release
+// defaults to all, so nothing can leak into production by omission; asking for a
+// non-default mode explicitly stamps the version name, the way noPay does.
+val iceModeProperty = project.findProperty("iceMode") as String?
+val iceMode = iceModeProperty ?: "all"
+val iceModeDebug = iceModeProperty ?: "nohost"
+require(iceMode in listOf("all", "nohost", "relay")) {
+    "iceMode must be all, nohost or relay (got \"$iceMode\")"
+}
+
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.bolimot.mindtheclub"
     compileSdk = 36
@@ -45,10 +64,11 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1038
-        versionName = "Release 1.38" +
+        versionCode = 1040
+        versionName = "Release 1.40" +
                 (if (releaseLogging) " (log)" else "") +
-                (if (noPay) " (nopay)" else "")
+                (if (noPay) " (nopay)" else "") +
+                (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -56,6 +76,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         // (io.sentry.auto-init via ${sentryAutoInit}); both driven by the flag above.
         buildConfigField("Boolean", "SENTRY_ENABLED", sentryEnabled.toString())
         buildConfigField("Boolean", "NO_PAY", noPay.toString())
+        buildConfigField("String", "ICE_MODE", "\"$iceMode\"")
         manifestPlaceholders["sentryAutoInit"] = sentryEnabled.toString()
 
         // Soak test: a fake text message sent to the single paired contact every
@@ -98,6 +119,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", "true")
+            buildConfigField("String", "ICE_MODE", "\"$iceModeDebug\"")
             // The only build type where the soak test runs. Installed from Android
             // Studio onto the two dedicated handsets, never packaged into a bundle.
             buildConfigField("Boolean", "SOAK_TEST", "true")
