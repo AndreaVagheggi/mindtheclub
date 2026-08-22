@@ -78,7 +78,6 @@ import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
 import com.bolimot.mindtheclub.voip.CallService
 import com.bolimot.mindtheclub.voip.receiveCallEventFromPeer
-import com.bolimot.mindtheclub.voip.shutdownRTC
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.bolimot.mindtheclub.works.ContactRequestRetryWorker
 import com.bolimot.mindtheclub.works.DispatchWorker
@@ -296,39 +295,38 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                 channelId?.let {
                     appScope.launch {
-                        // Clear a DEAD leftover, never a working connection.
+                        // Nothing is torn down here. A pending is an ANNOUNCEMENT:
+                        // it never builds the connection it used to destroy, so
+                        // every teardown it performed was a pure loss.
                         //
-                        // This used to fire unconditionally, and shutdownRTC is a
-                        // broadcast that every RTCClient for this peer answers by
-                        // destroying itself. A pending is only an announcement, so
-                        // the connection it tears down is not one it is about to
-                        // replace: the real one is built later, by the DATA_CALL
-                        // path, which already does the considered cleanup through
-                        // claimLatestDataChannel and webRTCCleanUp.
+                        // This called shutdownRTC, a broadcast that makes every
+                        // RTCClient for the peer destroy itself. A guard was added
+                        // on 21 Aug to spare a live connection, but it asks
+                        // rtcClientsRepository, and a connection still being built
+                        // is not in that map yet: webRTCConnect only files it after
+                        // it is up ("Repository empty, I need to create a new
+                        // RTCClient" precedes the insertion by seconds). So the
+                        // guard protected the finished case and left the fragile
+                        // one, which is the only one that ever gets hit, because a
+                        // burst of announcements lands precisely while a transfer
+                        // is negotiating.
                         //
-                        // On 21 Aug a one to one text message took two hours and
-                        // three minutes to travel. It was a single chunk and it
-                        // crossed instantly once a channel finally survived: the
-                        // recipient had been told about it at 13:46:05 and got it
-                        // at 15:47:14, having received 141 announcements in
-                        // between, mostly noise from an unrelated group. Eight
-                        // connection attempts were made and demolished, twice
-                        // within the same second as "ICE Connection established".
+                        // Measured on Romy, 21 Aug 16:04:07: a dataCall from Raoul
+                        // started building a channel, a pending for an UNRELATED
+                        // content arrived one second later, the broadcast fired and
+                        // the log reads "Incoming connection failed, Result = :
+                        // Requested RTC shutdown". The photo moved zero chunks. The
+                        // same phone lost 8 connections that way on 21 Aug and 229
+                        // on 12-13 Aug; no other device in any log lost a single
+                        // one, because no other device received announcements while
+                        // negotiating.
                         //
-                        // hasLiveConnection is the existing contract and is strict
-                        // on purpose (peer connection up AND data channel open), so
-                        // a half dead client still reports false and is still
-                        // cleared, which is what this call was for.
-                        try {
-                            if (ConnectionManager.instance.hasLiveConnection(fromUserId)) {
-                                debugLine(tag, "Live connection with $fromUserId, leaving it alone")
-                            } else {
-                                shutdownRTC(fromUserId)
-                                debugLine(tag, "Previous connection instance cleared")
-                            }
-                        } catch(ex: Exception) {
-                            debugLine(tag, "There was no connection manager instance to cancel: ${ex.message}")
-                        }
+                        // A stale client cannot survive this removal: the DATA_CALL
+                        // path runs webRTCCleanUp before it connects (visible as
+                        // "Cleaning up all WebRTC resources for user" one second
+                        // after every wake-up), and webRTCConnect itself deletes a
+                        // client it finds dead. The cleanup already happens where a
+                        // replacement is actually about to be built.
 
                         val parts = channelId.split("#", limit = 2)
                         val msgId = parts[0]
@@ -416,8 +414,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                         // Answer only if the previous answers achieved something.
                         // Measured on chunks actually held, so a slow transfer that
-                        // keeps gaining ground is never interrupted; only a transfer
-                        // standing perfectly still is, and only for a few hours.
+                        // keeps gaining ground is never interrupted, a transfer that
+                        // has produced nothing at all is never braked, and only one
+                        // standing still with part of the content here waits, for
+                        // half an hour.
                         // See RecoveryProgress for why this is not a cap on attempts.
                         val heldChunks = getInboxDao(applicationContext).countChunksByContent(pendingContentKey)
                         if (!RecoveryProgress.shouldAsk(applicationContext, msgId, heldChunks)) {

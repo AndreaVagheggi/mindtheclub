@@ -33,8 +33,16 @@ object RecoveryProgress {
     /** Fruitless rounds allowed before the pause. */
     const val MAX_FRUITLESS_ROUNDS = 5
 
-    /** After this the counter clears itself and asking resumes. */
-    const val REOPEN_AFTER_MS = 6L * 60 * 60 * 1000
+    /**
+     * After this the counter clears itself and asking resumes.
+     *
+     * Was six hours, which turned a brake into an outage: on 21 Aug the pause
+     * opened at 22:42:04 and the content arrived 53 seconds later, so the six
+     * hours had been the whole delay and nothing else. Half an hour still cuts
+     * the answering rate by roughly a factor of ten against a stalled transfer,
+     * and caps what a wrong verdict can cost at thirty minutes.
+     */
+    const val REOPEN_AFTER_MS = 30L * 60 * 1000
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -49,6 +57,25 @@ object RecoveryProgress {
      */
     fun shouldAsk(context: Context, messageId: String, heldChunks: Int): Boolean {
         if (messageId.isEmpty()) return true
+
+        // Nothing of this content has ever arrived, so there is no hole to ask
+        // into. This brake was written for a transfer standing still with part
+        // of the content already here (20 Aug: 41 chunks of 68, the same 27
+        // requested forty five times). At zero chunks the evidence says the
+        // opposite: no transport ever opened, and the announcement in hand is
+        // proof that the sender still holds the content and wants to send it.
+        //
+        // Refusing that proof is what happened to Raoul's photo on Romy's phone
+        // on 21 Aug: nine announcements between 16:04 and 20:35 were all met
+        // with "5 rounds gained nothing, still 0 chunk(s)", and the 59 chunks
+        // crossed in three seconds once the pause expired at 22:42.
+        //
+        // This cannot become a loop: an answer is only ever sent in reply to an
+        // announcement, and the announcement rate is governed by the sender's
+        // own ladder in PendingMessageTracker, which widens to one every four
+        // hours. It restores exactly the behaviour that existed before 20 Aug,
+        // and only for the case this class was never meant to cover.
+        if (heldChunks <= 0) return true
 
         val now = System.currentTimeMillis()
         val raw = prefs(context).getString(key(messageId), null)
