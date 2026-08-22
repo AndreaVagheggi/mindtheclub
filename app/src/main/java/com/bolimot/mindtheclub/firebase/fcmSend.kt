@@ -4,6 +4,7 @@ import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.transport.PeerIdentityResolver
 import org.json.JSONObject
+import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.FCM
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
@@ -166,24 +167,34 @@ object FcmMessageSender {
                 put("wake", wake)
             }
 
-            val appCheckToken = try {
-                var t = FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
-                if (t.isEmpty()) {
-                    t = FirebaseAppCheck.getInstance().getAppCheckToken(true).await().token
+            // This is the gate that decided, on 21 Aug, that a phone had nothing
+            // to say: 448 sends, 448 refusals, every one of them here, before a
+            // single byte went near the network. The three attempts with their
+            // backoff live BELOW this point and were never reached, so a hiccup
+            // in Play Integrity did not slow the app down, it silenced it.
+            val appCheckToken = if (!APP_CHECK_ENABLED) "" else {
+                val fetched = try {
+                    var t = FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
+                    if (t.isEmpty()) {
+                        t = FirebaseAppCheck.getInstance().getAppCheckToken(true).await().token
+                    }
+                    t
+                } catch (e: Exception) {
+                    debugLine("fcmMessageSender", "App Check token fetch failed: ${e.message}")
+                    return@withContext FCM.FAILURE
                 }
-                t
-            } catch (e: Exception) {
-                debugLine("fcmMessageSender", "App Check token fetch failed: ${e.message}")
-                return@withContext FCM.FAILURE
-            }
 
-            if (appCheckToken.isEmpty()) {
-                debugLine("fcmMessageSender", "App Check token empty after refresh, aborting send")
-                return@withContext FCM.FAILURE
+                if (fetched.isEmpty()) {
+                    debugLine("fcmMessageSender", "App Check token empty after refresh, aborting send")
+                    return@withContext FCM.FAILURE
+                }
+                fetched
             }
 
             val requestBody = JSONObject().apply {
-                put("appCheckToken", appCheckToken)
+                // Omitted rather than sent empty: the relay treats the field as
+                // optional and only forwards the header when it is there.
+                if (appCheckToken.isNotEmpty()) put("appCheckToken", appCheckToken)
                 put("payload", inner)
             }.toString()
 

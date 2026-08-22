@@ -12,6 +12,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.pickRecoverySource
+import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Status
@@ -68,8 +69,35 @@ class StalePlaceholderCheckWorker(
                 // Prefer a member with a registered complete copy over the
                 // origin; single lookup, hard timeout, falls back untouched.
                 val target = pickRecoverySource(message.chatGroupId, originalSender, message.date, originalSender)
-                debugLine(TAG, "Message $messageKey stalled at $count/$total chunks, sending sendMe to $target")
-                notifyRemotePeer(target, messageKey, Notify.SEND_ME)
+
+                // Say WHICH chunks are missing. This was the only one of the four
+                // recovery paths that asked blind, and asking blind is not merely
+                // wasteful here, it loses the race against the paths that do say.
+                //
+                // 22 Aug, a 444 chunk video. Dooge lost the channel at 442/444 and
+                // two mechanisms asked Gio for the rest inside three seconds: the
+                // PENDING handler with "#443,444", and this worker with nothing.
+                // The blind one arrived first, so the sender started a full
+                // re-dispatch, found every batch row already flagged sent, and
+                // logged "No messages to dispatch" five times followed by ALL SENT
+                // with chunksSent: 0. The informed request was then refused by the
+                // "dispatch already in flight" guard, which is right to exist and
+                // is deliberately left alone. Eighteen minutes later the same pair
+                // raced again, the informed one won, and the two chunks crossed in
+                // three seconds. Thirty one minutes decided by arrival order.
+                //
+                // The range is min..max of the gaps, so it is a superset of what is
+                // actually missing: it can ask for more than needed, never less.
+                // An empty list means nothing has arrived at all, and then a null
+                // range is correct and is exactly today's behaviour.
+                val missing = missingChunksByContent(inboxDao, contentKey)
+                val missingRange = if (!missing.isNullOrEmpty()) {
+                    "${missing.min()},${missing.max()}"
+                } else {
+                    null
+                }
+                debugLine(TAG, "Message $messageKey stalled at $count/$total chunks, sending sendMe to $target (missing: ${missingRange ?: "all"})")
+                notifyRemotePeer(target, messageKey, Notify.SEND_ME, missingRange)
             } else {
                 debugLine(TAG, "Message $messageKey has no originalSenderId, nothing to do")
             }

@@ -74,9 +74,36 @@ object Notify {
     const val CONNECTION_BUSY = "connectionBusy"
     const val CONTACT_REQUEST = "contactRequest"
     const val CANCEL_TRANSFER = "cancelTransfer"
+
+    // Liveness probe used before choosing who to send a heavy group message to.
+    // Both travel on the instant path, so they carry the 15 second TTL: an answer
+    // that arrives two minutes later is not an answer, the sender has moved on.
+    // See PeerProbe for why the flag in the delivery document is not enough.
+    const val PING = "ping"
+    const val PONG = "pong"
 }
 
 const val NO_PICTURE = "//no-picture"
+
+/**
+ * Whether this build proves its identity to Firebase with App Check.
+ *
+ * Off since 22 Aug. It was protecting an app nobody has installed yet, and the
+ * price was paid on every single outgoing signal: the token is fetched before
+ * the request is even attempted, and a Play Integrity attestation is a network
+ * round trip that fails exactly when the network is already struggling. On
+ * 21 Aug one phone lost 448 outgoing FCMs out of 448 to it and went completely
+ * mute for two hours, unable even to tell anyone it had something pending,
+ * while Firestore answered its reads with PERMISSION_DENIED for the same
+ * reason. The money is guarded by the daily budget brakes in the Cloudflare
+ * workers, which are unaffected by this and are what actually caps an abuse.
+ *
+ * Turning it back on means flipping this AND `enforceAppCheck` in the four
+ * cloud functions, plus the console. One without the other only breaks things:
+ * enforcing without a client token refuses every call, and sending a token
+ * nobody verifies protects nothing.
+ */
+const val APP_CHECK_ENABLED = false
 
 // Size cap for messages sent to a group, checked in the Send* screens and
 // applied AFTER the video transcoding pass (see VideoCompressor), so it judges

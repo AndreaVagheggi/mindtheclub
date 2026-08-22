@@ -9,6 +9,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.SoundManager
 import com.bolimot.mindtheclub.transport.BluetoothPresence
 import com.bolimot.mindtheclub.voip.ManagedTelecom
@@ -40,18 +41,25 @@ class App : Application(), DefaultLifecycleObserver {
 
         FirebaseApp.initializeApp(this)
 
-        val firebaseAppCheck = FirebaseAppCheck.getInstance()
+        // Not installing the provider is what makes the rest of this cheap: the
+        // Firebase SDKs only attach, and only wait for, an App Check token when
+        // a factory has been installed. Leaving it out therefore removes the
+        // attestation from every Firestore read and every callable in one line,
+        // without touching a single call site. See APP_CHECK_ENABLED.
+        if (APP_CHECK_ENABLED) {
+            val firebaseAppCheck = FirebaseAppCheck.getInstance()
 
-        if (BuildConfig.DEBUG) {
-            firebaseAppCheck.installAppCheckProviderFactory(
-                DebugAppCheckProviderFactory.getInstance()
-            )
-        } else {
-            firebaseAppCheck.installAppCheckProviderFactory(
-                PlayIntegrityAppCheckProviderFactory.getInstance()
-            )
+            if (BuildConfig.DEBUG) {
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    DebugAppCheckProviderFactory.getInstance()
+                )
+            } else {
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    PlayIntegrityAppCheckProviderFactory.getInstance()
+                )
+            }
+            warmAppCheckToken()
         }
-        warmAppCheckToken()
 
         ManagedTelecom.init(this)
 

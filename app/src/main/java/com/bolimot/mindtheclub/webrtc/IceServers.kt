@@ -1,5 +1,6 @@
 package com.bolimot.mindtheclub.webrtc
 
+import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.functions.debugLine
 import com.google.firebase.appcheck.FirebaseAppCheck
 import kotlinx.coroutines.Dispatchers
@@ -53,9 +54,13 @@ private val iceClient: OkHttpClient by lazy {
 }
 
 /**
- * TURN credentials are metered money: the worker only serves requests carrying
- * a valid Firebase App Check token, so random callers can't mint credentials
- * on our Cloudflare account.
+ * The comment that used to sit here said the worker only serves requests
+ * carrying a valid App Check token. It does not, and never did: mtc-ice reads
+ * no token at all, it takes the request and calls the Cloudflare TURN API with
+ * its own key. So every WebRTC negotiation was paying for a Play Integrity
+ * attestation, and giving up on it when it failed, to satisfy a check that does
+ * not exist anywhere. What actually guards the TURN spend is DAILY_ICE_BUDGET
+ * in that worker, which is untouched by any of this.
  */
 private suspend fun appCheckToken(): String? {
     return try {
@@ -72,11 +77,15 @@ private suspend fun appCheckToken(): String? {
 
 private suspend fun getCloudflareIceServers(): List<PeerConnection.IceServer>? = withContext(Dispatchers.IO) {
     try {
-        val token = appCheckToken() ?: return@withContext null
+        // Never give up the negotiation over a token nobody reads: with App Check
+        // off there is no fetch at all, and even with it on a missing token is no
+        // longer a reason to return null and leave the transfer without any ICE
+        // servers.
+        val token = if (APP_CHECK_ENABLED) appCheckToken() else null
 
         val request = Request.Builder()
             .url(ICE_WORKER_URL)
-            .header("X-Firebase-AppCheck", token)
+            .apply { if (token != null) header("X-Firebase-AppCheck", token) }
             .post(ByteArray(0).toRequestBody("application/json".toMediaType()))
             .build()
 

@@ -28,6 +28,7 @@ import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.ContentServeQueue
 import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
+import com.bolimot.mindtheclub.functions.PeerProbe
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.RecoveryProgress
 import com.bolimot.mindtheclub.functions.appIsForeground
@@ -830,6 +831,27 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 intent.putExtra("userId", fromUserId)
                 intent.putExtra("chatGroupId", channelId ?: "")
                 LocalBroadcastManager.getInstance(App.context()).sendBroadcast(intent)
+            }
+
+            // Somebody is about to send us something heavy and is asking, before
+            // committing, whether we are actually here. Answering costs one small
+            // FCM and saves the asker the eleven minutes of WebRTC timeouts it
+            // otherwise spends discovering a switched off phone. See PeerProbe.
+            Notify.PING -> {
+                debugLine(tag, "Ping from $fromUserId, answering pong")
+                appScope.launch {
+                    fcmSendInstant(fromUserId, "pong", "NotACall", Notify.PONG, Notify.PONG)
+                }
+            }
+
+            // The answer. Recorded for the probe that is waiting on it, and also
+            // fed to the ordinary liveness bookkeeping: an answer that arrives
+            // after the asker has already moved on still proves this peer awake,
+            // and the next hop can spend one probe fewer.
+            Notify.PONG -> {
+                debugLine(tag, "Pong from $fromUserId")
+                PeerProbe.onPong(fromUserId)
+                DispatchWorker.markPeerAlive(applicationContext, fromUserId)
             }
 
             Notify.ALL_RECEIVED -> {

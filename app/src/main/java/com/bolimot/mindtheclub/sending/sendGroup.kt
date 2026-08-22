@@ -15,6 +15,7 @@ import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.groupMessageStatus.GroupMessageStatus
+import com.bolimot.mindtheclub.functions.PeerProbe
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.groupHopId
@@ -170,7 +171,11 @@ suspend fun tryDispatchNextGroupMember(
             debugLine("groupDispatch", "Excluding just failed $excludeUserId from this draw (${candidates.size} left)")
         }
 
-        val nextTarget = candidates.shuffled().first()
+        // Same probe as the first dispatch, and for the stronger reason: this is
+        // the walk that runs AFTER a target has already failed, so picking
+        // another dead one costs a second full round of timeouts.
+        val drawn = candidates.shuffled()
+        val nextTarget = (if (isHeavyContent(message.type)) PeerProbe.preferLive(drawn) else drawn).first()
         deliveryRef.update(
             mapOf(
                 "members.$nextTarget" to false,
@@ -357,7 +362,16 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
         GROUP_DISPATCH_FANOUT
     }
 
-    val targets = availableMembers.shuffled().take(fanout)
+    // Ask before committing, but only for the heavy types. A wrong pick costs a
+    // text message almost nothing, because the other target of the wide fanout
+    // has it already and relays it; it costs an album or a video everything,
+    // because with fanout=1 that single target IS the delivery. Probing every
+    // chat line would put up to 20 seconds in front of a message that today
+    // leaves in three. See PeerProbe.
+    val drawn = availableMembers.shuffled()
+    val ordered = if (isHeavyContent(message.type)) PeerProbe.preferLive(drawn) else drawn
+
+    val targets = ordered.take(fanout)
 
     for ((index, userId) in targets.withIndex()) {
         if (index > 0) kotlinx.coroutines.delay(2000)

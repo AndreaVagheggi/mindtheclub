@@ -16,6 +16,7 @@ import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.parseInviteReferrer
 import com.bolimot.mindtheclub.functions.printAppSignature
 import com.bolimot.mindtheclub.functions.setPreference
+import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.views.AppTab
 import com.bolimot.mindtheclub.views.MyProfile
@@ -116,9 +117,11 @@ class MainActivity : BaseActivity() {
         val resultCode = apiAvailability.isGooglePlayServicesAvailable(this)
 
         if (resultCode == ConnectionResult.SUCCESS) {
-            debugLine("AppCheck", "Play Services OK — enqueuing App Check worker.")
-            val appCheckRequest = OneTimeWorkRequest.Builder(AppCheckWorker::class.java).build()
-            WorkManager.getInstance(this).enqueue(appCheckRequest)
+            if (APP_CHECK_ENABLED) {
+                debugLine("AppCheck", "Play Services OK — enqueuing App Check worker.")
+                val appCheckRequest = OneTimeWorkRequest.Builder(AppCheckWorker::class.java).build()
+                WorkManager.getInstance(this).enqueue(appCheckRequest)
+            }
         } else {
             // Not ready (e.g. still updating right after install). Don't block:
             // Firebase Messaging retries token retrieval automatically, and App Check

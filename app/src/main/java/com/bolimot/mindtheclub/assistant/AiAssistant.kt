@@ -20,6 +20,7 @@ import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
 import com.bolimot.mindtheclub.receiving.chatScreenIsInForeground
 import com.bolimot.mindtheclub.start.App
+import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.Broadcast
 import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.MySelf
@@ -179,11 +180,19 @@ object AiAssistant {
     private suspend fun requestReply(context: Context): String {
         val myUserId = MySelf.userId() ?: return context.getString(R.string.assistant_error_generic)
 
-        val token = try {
-            FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
-        } catch (e: Exception) {
-            debugLine(TAG, "App Check token failed: ${e.message}")
-            return context.getString(R.string.assistant_error_network)
+        // With App Check off no provider is installed, so asking for a token here
+        // would throw on every request and the assistant would answer "network
+        // error" for ever. Unverified on the server side: unlike mtc-ice and
+        // mtc-signal, whose sources were read and confirmed to ignore the token,
+        // the mtc-ai worker is not on this machine. If that one does check it,
+        // this is the feature that stops working.
+        val token = if (!APP_CHECK_ENABLED) null else {
+            try {
+                FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
+            } catch (e: Exception) {
+                debugLine(TAG, "App Check token failed: ${e.message}")
+                return context.getString(R.string.assistant_error_network)
+            }
         }
 
         val history = getMessageDao(context)
@@ -208,7 +217,7 @@ object AiAssistant {
 
         val request = Request.Builder()
             .url(WORKER_URL)
-            .header("X-Firebase-AppCheck", token)
+            .apply { if (token != null) header("X-Firebase-AppCheck", token) }
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
