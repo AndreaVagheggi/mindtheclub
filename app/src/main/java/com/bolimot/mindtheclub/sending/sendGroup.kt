@@ -536,12 +536,51 @@ fun handleGroupDeliveryConfirmation(
     }
 }
 
+/**
+ * Retry for a group send that could not read its Firestore documents.
+ *
+ * The CONNECTED constraint is the whole point. Without it this worker fired on
+ * its own timer whatever the radio was doing, and since sendGroupMessageSuspend
+ * must read groupDelivery/<group+sender+date>, a document that is new for every
+ * message and therefore never in the local cache, an attempt made with no
+ * network cannot do anything except fail and widen the exponential ladder.
+ *
+ * Measured on White, 22 Aug. Three texts written in flight mode at 08:45:30,
+ * 08:45:48 and 08:45:59 were on the same ladder, which by then had reached
+ * intervals of ten minutes. The radio came back at 09:07:35. Two of them had
+ * spent their attempt at 09:07:33, two seconds early, and went to the next rung
+ * past 09:28; the third fired at 09:07:47 and was delivered in four seconds.
+ * The whole difference between a message that arrives and one the user sees
+ * stuck on "Sending" for 43 minutes was two seconds of timer alignment.
+ *
+ * With the constraint those attempts are not made at all while the radio is
+ * off: hasNetworkAvailable logged "No network" nine times out of nine in that
+ * window, so the constraint is demonstrably unmet there. The ladder stays where
+ * it was, and the work runs the moment a network appears, its delay having long
+ * since elapsed.
+ *
+ * The backoff policy is deliberately left EXPONENTIAL. It is tempting to make
+ * it LINEAR as well, and it would be wrong: with the constraint in place the
+ * defect above is already gone, while a linear ladder on a message that can
+ * never be sent (deleted group, revoked membership) would keep the interval
+ * near ten minutes for ever, in the order of a hundred Firestore reads a day
+ * instead of five. GroupSendWorker never inspects runAttemptCount, so nothing
+ * else would stop it.
+ *
+ * Same shape as [submitGroupPropagateWorker], which has carried this constraint
+ * since 19 Aug.
+ */
 fun submitGroupSendWorker(message: MessageData, context: Context) {
     val messageDataJson = Json.encodeToString(message)
     val inputData = workDataOf("messageDataJson" to messageDataJson)
 
     val workRequest = OneTimeWorkRequestBuilder<GroupSendWorker>()
         .setInputData(inputData)
+        .setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        )
         .setInitialDelay(30, TimeUnit.SECONDS)
         .setBackoffCriteria(
             BackoffPolicy.EXPONENTIAL,
