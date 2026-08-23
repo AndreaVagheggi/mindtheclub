@@ -131,7 +131,12 @@ suspend fun tryDispatchNextGroupMember(
         return
     }
 
-    val targetFanout = if (isHeavyContent(message.type)) 1 else GROUP_DISPATCH_FANOUT
+    // Same width for every type, see the note at the first dispatch. It also
+    // removes a disagreement that had been there since 15 Aug: the caller in
+    // handleGroupDeliveryConfirmation asks for another member whenever the count
+    // is below GROUP_DISPATCH_FANOUT, so with a target of 1 it kept calling in
+    // and this line kept answering "Fanout satisfied (1/1)".
+    val targetFanout = GROUP_DISPATCH_FANOUT
     val count = getDirectAllReceivedCount(context, originalMessageId)
     if (count >= targetFanout) {
         debugLine("groupDispatch", "Fanout satisfied ($count/$targetFanout) for $originalMessageId")
@@ -349,18 +354,27 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
         return
     }
 
-    // Deep before wide: a big transfer must produce ONE complete copy as fast as
-    // the sender's uplink physically allows, because only a complete copy can
-    // relay onward. Splitting a weak uplink across two media recipients produced
-    // two half copies and no relayer (15 Aug: a 1137 chunk album, six partial
-    // copies, zero complete after 4 hours). Chat sized types keep the wide
-    // fanout: they complete within a single session either way.
-    val fanout = if (isHeavyContent(message.type)) {
-        debugLine("sendGroupMessage", "Media content (${message.type}), deep dispatch: fanout=1")
-        1
-    } else {
-        GROUP_DISPATCH_FANOUT
-    }
+    // One width for everything, 22 Aug.
+    //
+    // Between 15 and 22 Aug the heavy types went out to a single member, on the
+    // reasoning that a big transfer must produce ONE complete copy as fast as the
+    // uplink allows, because only a complete copy can relay onward: splitting a
+    // weak uplink across two media recipients had produced two half copies and no
+    // relayer at all (15 Aug: a 1137 chunk album, six partial copies, zero
+    // complete after four hours).
+    //
+    // The cost of that was paid on 22 Aug: a 444 chunk video went to the one
+    // member that happened to be switched off, and with a single target that
+    // choice IS the delivery, so the whole group waited 10m52s for three WebRTC
+    // timeouts before anyone else was even offered it. With two, one dead pick
+    // costs nothing: the other target has the file and relays it.
+    //
+    // The original hazard is not forgotten, it is addressed elsewhere now: the
+    // probe below no longer commits blindly, and the two dispatches are staggered
+    // by two seconds in the loop that follows. If two half copies over a weak
+    // uplink ever come back, this constant is the one place to look.
+    val fanout = GROUP_DISPATCH_FANOUT
+    debugLine("sendGroupMessage", "Dispatch width for ${message.type}: fanout=$fanout")
 
     // Ask before committing, but only for the heavy types. A wrong pick costs a
     // text message almost nothing, because the other target of the wide fanout
