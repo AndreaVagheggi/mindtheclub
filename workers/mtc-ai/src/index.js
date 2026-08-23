@@ -5,7 +5,7 @@
 //
 // Responses:
 //   200 { "reply": "..." }
-//   401 (missing/invalid App Check token)
+//   401 (missing/invalid App Check token, unless REQUIRE_APP_CHECK = "false")
 //   429 { "error": "cap_user" | "cap_global" }
 //
 // Cost control (the whole point — see per-user cap + global circuit breaker):
@@ -50,7 +50,9 @@ export default {
       return new Response("Not found", { status: 404 });
     }
 
-    if (!(await verifyAppCheck(request))) {
+    // Enforced unless REQUIRE_APP_CHECK is exactly "false", so a missing or
+    // misspelled variable keeps the door shut instead of opening it.
+    if (env.REQUIRE_APP_CHECK !== "false" && !(await verifyAppCheck(request))) {
       return new Response("Unauthorized", { status: 401 });
     }
 

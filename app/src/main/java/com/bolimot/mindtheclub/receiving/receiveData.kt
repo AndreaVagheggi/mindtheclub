@@ -228,7 +228,15 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
     val expectedChunksNo = inboxDao.getTotalChunksByContent(contentKey)
 
     if (currentChunkNo == expectedChunksNo) {
-        val type = inboxDao.getMessage(messageId).type
+        // The count above and this read are two separate queries: a set deleted in
+        // between leaves the count stale and this row missing. See allReceivedEvent
+        // for the crash that taught us the DAO must not promise a row here.
+        val firstChunk = inboxDao.getMessage(messageId)
+        if (firstChunk == null) {
+            debugLine("inboxCheckMessageComplete", "Inbox rows for $messageId are gone, nothing to assemble")
+            return
+        }
+        val type = firstChunk.type
         debugLine("inboxCheckMessageComplete","Message is complete, received $currentChunkNo chunks out of $expectedChunksNo, type=$type")
         if (expectedChunksNo > 1) {
             // Multi-chunk (media) assembly takes seconds and must survive doze:

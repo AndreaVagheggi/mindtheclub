@@ -55,6 +55,10 @@ import java.io.File
 suspend fun receiveReaction(messageId: String, emoji: String) {
     val inboxDao = getInboxDao(App.context())
     val inboxMessage = inboxDao.getMessage(messageId)
+    if (inboxMessage == null) {
+        debugLine("receiveReaction", "Inbox rows for $messageId are gone, dropping the reaction")
+        return
+    }
 
     // Reactions carry their target in replyId. Peers on the previous build instead reused the
     // target's own id, which in a group arrives as groupId because the relay re-mints the id per

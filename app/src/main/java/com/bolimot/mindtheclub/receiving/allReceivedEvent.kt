@@ -64,7 +64,20 @@ try {
         claimedContent = raceContentKey
     }
 
-    val fromUserId = inboxDao.getMessage(messageId).fromUserId
+    // Read once, and survive the row not being there. On 23 Aug this threw
+    // IllegalStateException from Room and took the process down: the DAO promised
+    // a NON-NULL row and the chunks had been deleted between the completeness
+    // check that got us here and this read. Everything that deletes a content set
+    // (the purge on chat deletion, the blocked-user branch just below, the orphan
+    // expiry in InboxRecovery) runs on its own coroutine, so the window is real
+    // and cannot be closed from here. The claim taken above is released by the
+    // finally at the end of this function, so returning early is safe.
+    val message = inboxDao.getMessage(messageId)
+    if (message == null) {
+        debugLine("receivedEvent", "Inbox rows for $messageId are gone, nothing to assemble")
+        return false
+    }
+    val fromUserId = message.fromUserId
 
     if (getBlockedUserRepository(App.context()).isBlocked(fromUserId)) {
         debugLine("receivedEvent", "Blocked user $fromUserId, discarding completed message")
@@ -73,7 +86,6 @@ try {
         return false
     }
 
-    val message = inboxDao.getMessage(messageId)
     val type = message.type
     val text = message.text
 

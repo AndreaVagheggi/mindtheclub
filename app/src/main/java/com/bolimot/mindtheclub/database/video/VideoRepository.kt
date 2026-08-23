@@ -9,7 +9,7 @@ class VideoRepository(private val videoDao: VideoDao) {
 
     suspend fun insertImage(image: Video) {
         val filename = image.url.substringAfterLast('/')
-        if (videoDao.countByFilename(filename) == 0) {
+        if (videoDao.countByFilename(filename, image.userId, image.messageId) == 0) {
             videoDao.insert(image)
         }
     }

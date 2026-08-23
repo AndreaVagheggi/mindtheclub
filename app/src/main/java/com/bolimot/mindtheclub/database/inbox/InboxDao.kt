@@ -58,8 +58,20 @@ interface InboxDao{
     @Query("SELECT * FROM Inbox WHERE messageId = :messageId ORDER BY sequenceNo ASC LIMIT :limit OFFSET :offset")
     suspend fun getMessageChunksBatch(messageId: String, limit: Int, offset: Int): List<Inbox>
 
+    /**
+     * The FIRST chunk of a content set, which is the one carrying the fields that
+     * only exist once (text, replyId), hence the ORDER BY. [getFirstMessage] takes
+     * whichever row the engine hands back and is not a substitute.
+     *
+     * Nullable since 23 Aug. It was declared non-null, so Room threw
+     * IllegalStateException when the set had been deleted between the caller's
+     * completeness check and this read, and the crash killed the process
+     * (DefaultDispatcher-worker-4, 10:52:16). Deletion happens on other coroutines
+     * (chat purge, blocked sender, orphan expiry in InboxRecovery), so the window
+     * cannot be closed by the callers: they have to be able to see the absence.
+     */
     @Query("SELECT * FROM Inbox WHERE messageId = :messageId ORDER BY sequenceNo ASC LIMIT 1")
-    suspend fun getMessage(messageId: String): Inbox
+    suspend fun getMessage(messageId: String): Inbox?
 
     @Query("""
     SELECT groupId

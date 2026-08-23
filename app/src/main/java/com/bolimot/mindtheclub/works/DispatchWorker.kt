@@ -288,6 +288,9 @@ class DispatchWorker(
             }
 
             clearInternalState(messageId, toUserId)
+            // The exhaust one shot is the only prefs entry that outlives a cycle,
+            // so it is cleared here, where the transfer finally went through.
+            sharedPreferences.edit { remove("exhaustPendingSent_${messageId}_${toUserId}") }
             Result.success()
         } else {
             if (newState == TIME_OUT || newState == GENERAL_FAILURE || newState == NOT_CONNECTED) {
@@ -301,9 +304,25 @@ class DispatchWorker(
                     debugLine2("doWork", "Max attempts reached for group target $toUserId. Moving to next member.")
 
                     val earlyPendingKey = "earlyPendingSent_${messageId}_${toUserId}"
+                    val exhaustPendingKey = "exhaustPendingSent_${messageId}_${toUserId}"
                     if (!sharedPreferences.getBoolean(earlyPendingKey, false)) {
                         notifyRemotePeer(toUserId, "$messageKey#$chatGroupId", "pending")
                         sharedPreferences.edit { putBoolean(earlyPendingKey, true) }
+                    } else if (!sharedPreferences.getBoolean(exhaustPendingKey, false)) {
+                        // 23 Aug. The early announcement of this cycle has already been
+                        // consumed: the peer asked, we tried three times, we failed. Saying
+                        // nothing here left it waiting for its own 15 minute rung, which is
+                        // how one line of text from Noemi took 20 minutes to reach Gio. One
+                        // more announcement, so it can ask again now.
+                        //
+                        // Once in the life of this message and target, and deliberately NOT
+                        // cleared by clearInternalState: the answer to this is a sendMe,
+                        // which opens a fresh cycle, which would end here again. The group
+                        // branch never increments globalCycleKey, so nothing else would stop
+                        // that. One extra cycle is the fix, a loop every two minutes is not.
+                        debugLine2("doWork", "Attempts exhausted after an early pending for $toUserId, announcing once more")
+                        notifyRemotePeer(toUserId, "$messageKey#$chatGroupId", "pending")
+                        sharedPreferences.edit { putBoolean(exhaustPendingKey, true) }
                     } else {
                         debugLine2("doWork", "Pending FCM already sent earlier for $toUserId, skipping duplicate")
                     }

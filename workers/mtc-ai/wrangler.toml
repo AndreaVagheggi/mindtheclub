@@ -10,3 +10,17 @@ binding = "AI"
 [[kv_namespaces]]
 binding = "AI_KV"
 id = "b60053bb7e7f4c439be9f4f3a3eba686"
+
+[vars]
+# App Check verification. Set to "false" on 22 Aug, when the client stopped
+# installing the App Check provider: with no provider there is no token to send,
+# and this worker was answering 401 to every request, which is what silenced
+# Clubby. Anything other than "false" enforces, so a missing variable fails
+# closed rather than open.
+#
+# What still guards the money is USER_DAILY_CAP and GLOBAL_DAILY_CAP in the
+# worker, not this. Note though that with verification off the userId in the
+# body is unauthenticated, so the per-user cap can be side-stepped by rotating
+# ids and the global cap becomes the only real ceiling: a bad actor could burn
+# the day's allowance and leave Clubby unavailable to everyone until midnight.
+REQUIRE_APP_CHECK = "false"

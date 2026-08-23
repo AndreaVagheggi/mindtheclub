@@ -9,7 +9,7 @@ class ImageRepository(private val imageDao: ImageDao) {
 
     suspend fun insertImage(image: Image) {
         val filename = image.url.substringAfterLast('/')
-        if (imageDao.countByFilename(filename, image.userId) == 0) {
+        if (imageDao.countByFilename(filename, image.userId, image.messageId) == 0) {
             imageDao.insert(image)
         }
     }
