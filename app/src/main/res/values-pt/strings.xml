@@ -358,4 +358,22 @@
     <string name="delete_group_confirm">O grupo será excluído permanentemente para todos os membros. Esta ação não pode ser desfeita.</string>
     <string name="backup_share_question">O ficheiro está protegido pela tua palavra-passe. Queres enviá-lo ou guardá-lo noutro local?</string>
     <string name="backup_share_now">Enviar</string>
+
+    <!-- Group video calls -->
+    <string name="group_call">Chamada em grupo</string>
+    <string name="group_call_ongoing">Chamada em grupo em curso</string>
+    <string name="incoming_group_call">Chamada em grupo recebida</string>
+    <string name="group_call_participants">%1$d na chamada</string>
+    <string name="group_call_full">A chamada está cheia</string>
+    <string name="group_call_no_allowance">O seu limite mensal de vídeo terminou</string>
+    <string name="group_call_audio_only">Vídeo em pausa para poupar o limite, o áudio continua</string>
+    <string name="group_call_allowance_warning">Já usou quase todo o limite de vídeo deste mês</string>
+    <string name="group_call_no_members">Este grupo não tem outros membros para chamar</string>
+    <string name="hang_up">Desligar</string>
+    <string name="muted">Sem som</string>
+    <string name="raise_hand">Levantar a mão</string>
+    <string name="add_members">Adicionar membros</string>
+    <string name="group_call_who_to_call">Quem quer chamar?</string>
+    <string name="select_at_most">Pode selecionar no máximo %1$d pessoas</string>
+    <string name="group_call_who_to_add">Quem quer adicionar?</string>
 </resources>

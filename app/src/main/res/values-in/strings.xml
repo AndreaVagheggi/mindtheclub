@@ -359,4 +359,22 @@
     <string name="delete_group_confirm">Grup akan dihapus secara permanen untuk semua anggota. Tindakan ini tidak dapat dibatalkan.</string>
     <string name="backup_share_question">Berkas dilindungi oleh kata sandimu. Ingin mengirimnya atau menyimpannya di tempat lain?</string>
     <string name="backup_share_now">Kirim</string>
+
+    <!-- Group video calls -->
+    <string name="group_call">Panggilan grup</string>
+    <string name="group_call_ongoing">Panggilan grup sedang berlangsung</string>
+    <string name="incoming_group_call">Panggilan grup masuk</string>
+    <string name="group_call_participants">%1$d dalam panggilan</string>
+    <string name="group_call_full">Panggilan sudah penuh</string>
+    <string name="group_call_no_allowance">Kuota video bulanan Anda sudah habis</string>
+    <string name="group_call_audio_only">Video dijeda untuk menghemat kuota, audio tetap berjalan</string>
+    <string name="group_call_allowance_warning">Anda hampir menghabiskan kuota video bulan ini</string>
+    <string name="group_call_no_members">Grup ini tidak memiliki anggota lain untuk dihubungi</string>
+    <string name="hang_up">Akhiri</string>
+    <string name="muted">Dibisukan</string>
+    <string name="raise_hand">Angkat tangan</string>
+    <string name="add_members">Tambah anggota</string>
+    <string name="group_call_who_to_call">Siapa yang ingin Anda hubungi?</string>
+    <string name="select_at_most">Anda dapat memilih maksimal %1$d orang</string>
+    <string name="group_call_who_to_add">Siapa yang ingin Anda tambahkan?</string>
 </resources>

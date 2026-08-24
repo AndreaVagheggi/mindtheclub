@@ -78,7 +78,10 @@ import com.bolimot.mindtheclub.tools.ProfileType
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
 import com.bolimot.mindtheclub.voip.CallService
+import com.bolimot.mindtheclub.voip.GroupCallService
 import com.bolimot.mindtheclub.voip.receiveCallEventFromPeer
+import com.bolimot.mindtheclub.voip.ringGroupCall
+import com.bolimot.mindtheclub.webrtc.group.GroupCallManager
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.bolimot.mindtheclub.works.ContactRequestRetryWorker
 import com.bolimot.mindtheclub.works.DispatchWorker
@@ -181,7 +184,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 }
 
                 val incomingContentKey = data["contentKey"]
-                type?.let { handleMessage(remoteUserId, content, callId, it, incomingContentKey) } ?: run {
+                type?.let { handleMessage(remoteUserId, content, callId, it, incomingContentKey, data) } ?: run {
                     debugLine(tag, "Uh-oh: Type is NULL, ignoring message")
                 }
             } catch (ex: Exception) {
@@ -210,7 +213,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         if (message.chatGroupId.isNullOrEmpty()) message.groupId
         else message.groupId.ifEmpty { message.messageId }
 
-    private fun handleMessage(fromUserId: String, channelId: String?, callId: String?, type: String, incomingContentKey: String? = null) {
+    /**
+     * @param data the whole decrypted payload. Most types need only the four
+     * fields above, but a group call invitation also carries the call key, and
+     * that key must never be widened into its own parameter and forgotten in a
+     * log line: it stays inside the payload map it arrived in.
+     */
+    private fun handleMessage(
+        fromUserId: String,
+        channelId: String?,
+        callId: String?,
+        type: String,
+        incomingContentKey: String? = null,
+        data: Map<String, String> = emptyMap()
+    ) {
         val myUserId = MySelf.userId()
 
         if(myUserId == null) {
@@ -246,6 +262,40 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     }
                     ContextCompat.startForegroundService(applicationContext, intent)
                 }
+            }
+
+            Notify.GROUP_CALL -> {
+                debugLine(tag, "Received GROUP_CALL invitation, room=$callId")
+
+                val roomId = callId
+                val key = data["gcKey"].orEmpty()
+                val epoch = data["gcEpoch"]?.toIntOrNull() ?: 0
+
+                if (roomId == null || key.isEmpty()) {
+                    debugLine(tag, "Group call invitation without a room or a key, ignoring")
+                } else {
+                    ringGroupCall(roomId, key, epoch, fromUserId)
+                }
+            }
+
+            Notify.GROUP_CALL_REKEY -> {
+                // Somebody left, so the call moved to a new key. Only participants
+                // still in the room are sent one, which is what actually removes
+                // the person who left rather than trusting them to stop watching.
+                val key = data["gcKey"].orEmpty()
+                val epoch = data["gcEpoch"]?.toIntOrNull() ?: 0
+                if (key.isNotEmpty() && callId != null && callId == GroupCallManager.roomId) {
+                    GroupCallManager.adoptKey(key, epoch)
+                }
+            }
+
+            Notify.GROUP_CALL_END -> {
+                debugLine(tag, "Group call invitation withdrawn, room=$callId")
+                callId?.let { GroupCallService.remoteEnd(applicationContext, it) }
+            }
+
+            Notify.GROUP_CALL_DECLINE -> {
+                debugLine(tag, "Group call declined by $fromUserId")
             }
 
             Notify.AUDIO_CALL -> {

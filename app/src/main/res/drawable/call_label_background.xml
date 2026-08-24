@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The name plate on a call tile. Dark and translucent on purpose: it sits over
+    live video, so it has to stay readable whether the frame behind it is a lit
+    face or a dark room. The reaction pill it used to borrow is solid white,
+    which made white text on it invisible.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <corners android:radius="50dp" />
+
+    <solid android:color="#99000000" />
+
+</shape>

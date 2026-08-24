@@ -17,6 +17,7 @@ import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getPeerViewModel
+import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.Contact
 import kotlinx.coroutines.flow.collectLatest
@@ -25,9 +26,27 @@ import kotlinx.coroutines.launch
 
 class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
 
+    companion object {
+        const val EXTRA_INCLUDED = "includedUserIds"
+        const val EXTRA_MAX_SELECTION = "maxSelection"
+        const val EXTRA_TITLE = "screenTitle"
+        const val RESULT_SELECTED = "selectedPeers"
+    }
+
     private lateinit var peersAdapter: PeersAdapter
     private lateinit var fabContainer: FrameLayout
     private var excludedUserIds: List<String> = emptyList()
+
+    /**
+     * When set, only these peers are offered. Adding members to a group works by
+     * subtraction (everyone except who is already in), but calling a few people
+     * inside a large group works by inclusion, and a 150 member group makes the
+     * difference between the two very visible.
+     */
+    private var includedUserIds: List<String> = emptyList()
+
+    /** 0 means no limit. A group call caps the room, so the picker caps too. */
+    private var maxSelection: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,10 +54,13 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
         setContentView(R.layout.forward_to_peer)
 
         setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.title = "Add Members"
+        supportActionBar?.title =
+            intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.add_members)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         excludedUserIds = intent.getStringArrayListExtra("excludedUserIds") ?: emptyList()
+        includedUserIds = intent.getStringArrayListExtra(EXTRA_INCLUDED) ?: emptyList()
+        maxSelection = intent.getIntExtra(EXTRA_MAX_SELECTION, 0)
 
         peersAdapter = PeersAdapter(this@SelectPeersForGroup, this, true, this)
 
@@ -54,7 +76,7 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
         findViewById<ImageButton>(R.id.send).setOnClickListener {
             val resultIntent = Intent()
             val arrayListOfStrings = ArrayList<String>(peersAdapter.getSelectedPeersUserId())
-            resultIntent.putStringArrayListExtra("selectedPeers", arrayListOfStrings)
+            resultIntent.putStringArrayListExtra(RESULT_SELECTED, arrayListOfStrings)
             setResult(RESULT_OK, resultIntent)
             finish()
         }
@@ -64,7 +86,8 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
             peerViewModel.peers
                 .map { pagingData: PagingData<Peer> ->
                     pagingData.filter { peer: Peer ->
-                        peer.userId !in excludedUserIds && !peer.userId.startsWith("group")
+                        val allowed = includedUserIds.isEmpty() || peer.userId in includedUserIds
+                        allowed && peer.userId !in excludedUserIds && !peer.userId.startsWith("group")
                                 && !AiAssistant.isAssistant(peer.userId)
                                 && !NoteToSelf.isNoteToSelf(peer.userId) && peer.status == Contact.ACTIVE
                     }
@@ -97,6 +120,11 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
     }
 
     override fun onItemClick(peer: Peer) {
+        val selected = peersAdapter.getSelectedPeersUserId()
+        if (maxSelection > 0 && peer.userId !in selected && selected.size >= maxSelection) {
+            showToast(getString(R.string.select_at_most, maxSelection), this)
+            return
+        }
         peersAdapter.toggleSelection(peer.userId)
         updateFabVisibility()
     }

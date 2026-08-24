@@ -356,4 +356,22 @@
     <string name="delete_group_confirm">This will permanently delete the group for all members. This action cannot be undone.</string>
     <string name="backup_share_question">The file is protected by your password. Do you want to send it or save it somewhere else?</string>
     <string name="backup_share_now">Send</string>
+
+    <!-- Group video calls -->
+    <string name="group_call">Group call</string>
+    <string name="group_call_ongoing">Group call in progress</string>
+    <string name="incoming_group_call">Incoming group call</string>
+    <string name="group_call_participants">%1$d in call</string>
+    <string name="group_call_full">The call is full</string>
+    <string name="group_call_no_allowance">Your monthly video allowance is used up</string>
+    <string name="group_call_audio_only">Video paused to save your allowance, audio continues</string>
+    <string name="group_call_allowance_warning">You have used most of this month\'s video allowance</string>
+    <string name="group_call_no_members">This group has no other members to call</string>
+    <string name="hang_up">Hang up</string>
+    <string name="muted">Muted</string>
+    <string name="raise_hand">Raise hand</string>
+    <string name="add_members">Add members</string>
+    <string name="group_call_who_to_call">Who do you want to call?</string>
+    <string name="select_at_most">You can select at most %1$d people</string>
+    <string name="group_call_who_to_add">Who do you want to add?</string>
 </resources>

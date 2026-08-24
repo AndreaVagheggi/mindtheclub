@@ -64,8 +64,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1046
-        versionName = "Release 1.46" +
+        versionCode = 1050
+        versionName = "Release 1.50" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")

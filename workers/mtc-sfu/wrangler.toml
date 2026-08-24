@@ -1,0 +1,31 @@
+name = "mtc-sfu"
+main = "worker.ts"
+compatibility_date = "2026-05-01"
+
+# One Durable Object per call, holding the roster the SFU does not provide.
+[[durable_objects.bindings]]
+name = "CALL_ROOM"
+class_name = "CallRoom"
+
+# Shared daily budget counter, defined in the mtc-signal worker: deploy
+# mtc-signal (which owns the BudgetGuard class) BEFORE this one.
+[[durable_objects.bindings]]
+name = "BUDGET_GUARD"
+class_name = "BudgetGuard"
+script_name = "mtc-signal"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CallRoom"]
+
+[vars]
+# Emergency brake: max SFU session creations per UTC day. One per participant
+# per call, so 5,000 is roughly 600 eight-person calls in a day — far above any
+# legitimate load for this app, and a runaway bug produces one slow day instead
+# of a bill.
+DAILY_SFU_BUDGET = "5000"
+
+# Secrets, set with `wrangler secret put` (never in this file, it is committed):
+#   CF_REALTIME_APP_ID
+#   CF_REALTIME_APP_SECRET
+# Both come from the Cloudflare dashboard: Realtime -> your app.

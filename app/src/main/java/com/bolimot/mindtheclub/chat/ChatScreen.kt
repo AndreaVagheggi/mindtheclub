@@ -124,6 +124,10 @@ import com.bolimot.mindtheclub.sharing.shareContent
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.Broadcast
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.views.GroupCall
+import com.bolimot.mindtheclub.voip.GroupCallService
+import com.bolimot.mindtheclub.webrtc.group.GroupCallConfig
+import com.bolimot.mindtheclub.webrtc.group.GroupCallManager
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.SubType
@@ -1340,7 +1344,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
         if (remoteUserId.startsWith("group")) {
             menu?.findItem(R.id.phone_call)?.isVisible = false
-            menu?.findItem(R.id.video_call)?.isVisible = false
+            // The video button stays: in a group it starts a group call rather
+            // than the 1:1 one, which is the only reason it used to be hidden.
+            menu?.findItem(R.id.video_call)?.isVisible = !isToggledMenu
             menu?.findItem(R.id.calendar)?.isVisible = !isToggledMenu
         }
 
@@ -1353,6 +1359,75 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
         return true
     }
+
+    /**
+     * Starts a group call with people chosen from this group.
+     *
+     * The choice is never implicit. A group can hold sixty odd people while the
+     * room seats eight, so ringing everyone would be both impossible and rude:
+     * the picker asks who, exactly as WhatsApp does inside a group. The
+     * membership list comes from Firestore rather than the local peers, because
+     * a member added on another phone must still be callable from this one.
+     */
+    private fun startGroupVideoCall() {
+        if (GroupCallManager.isBusy()) {
+            showToast(getString(R.string.group_call_ongoing), this)
+            return
+        }
+        if (!GroupCallManager.canUseGroupCalls(this)) {
+            showToast(getString(R.string.group_call_no_allowance), this)
+            return
+        }
+
+        lifecycleScope.launch {
+            val members = withContext(Dispatchers.IO) {
+                try {
+                    val snapshot = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("groups").document(remoteUserId)
+                        .get().await()
+                    @Suppress("UNCHECKED_CAST")
+                    (snapshot.get("members") as? Map<String, Any>)?.keys?.toList().orEmpty()
+                } catch (e: Exception) {
+                    debugLine("ChatScreen", "Could not read group members: ${e.message}")
+                    emptyList()
+                }
+            }
+
+            val callable = members.filter { it != MySelf.userId() }
+            if (callable.isEmpty()) {
+                showToast(getString(R.string.group_call_no_members), this@ChatScreen)
+                return@launch
+            }
+
+            val intent = Intent(this@ChatScreen, SelectPeersForGroup::class.java).apply {
+                putStringArrayListExtra(SelectPeersForGroup.EXTRA_INCLUDED, ArrayList(callable))
+                putExtra(
+                    SelectPeersForGroup.EXTRA_MAX_SELECTION,
+                    GroupCallConfig.MAX_PARTICIPANTS - 1
+                )
+                putExtra(
+                    SelectPeersForGroup.EXTRA_TITLE,
+                    getString(R.string.group_call_who_to_call)
+                )
+            }
+            groupCallPickerResult.launch(intent)
+        }
+    }
+
+    private val groupCallPickerResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
+            val chosen = result.data
+                ?.getStringArrayListExtra(SelectPeersForGroup.RESULT_SELECTED)
+                ?: return@registerForActivityResult
+            if (chosen.isEmpty()) return@registerForActivityResult
+
+            GroupCallService.start(this, chosen, true)
+            // From here, not from the service: a service cannot start an
+            // activity in the background, and the call screen must be up before
+            // the camera is opened.
+            startActivity(Intent(this, GroupCall::class.java))
+        }
 
     private fun openSearch(searchContainer: LinearLayout, searchEditText: EditText) {
         searchContainer.visibility = View.VISIBLE
@@ -1452,7 +1527,11 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 debugLine("ChatScreen", "Initiating Video call")
 
                 if (ensureCallPermissions(this, isVideo = true)) {
-                    startCall(this, remoteUserId, true)
+                    if (remoteUserId.startsWith("group")) {
+                        startGroupVideoCall()
+                    } else {
+                        startCall(this, remoteUserId, true)
+                    }
                 }
 
                 true

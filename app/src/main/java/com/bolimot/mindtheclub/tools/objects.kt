@@ -70,6 +70,14 @@ object Notify {
     // stop retrying (see GroupSeenTracker). Older versions ignore unknown FCM
     // types, so this is safe in a mixed fleet.
     const val GROUP_SEEN_ACK = "groupSeenAck"
+    // Group video calls. The invitation carries the call key in its extra data,
+    // which is safe because every instant FCM payload is already sealed to the
+    // recipient's identity key before it leaves the phone.
+    const val GROUP_CALL = "groupCall"
+    const val GROUP_CALL_REKEY = "groupCallRekey"
+    const val GROUP_CALL_DECLINE = "groupCallDecline"
+    const val GROUP_CALL_END = "groupCallEnd"
+
     const val REQUEST_PROFILE = "requestProfile"
     const val CONNECTION_BUSY = "connectionBusy"
     const val CONTACT_REQUEST = "contactRequest"
