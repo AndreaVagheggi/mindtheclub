@@ -1,0 +1,34 @@
+name = "mtc-signal"
+main = "worker.ts"
+compatibility_date = "2026-05-01"
+
+# Bind the Durable Object class used as the per-channel relay room.
+[[durable_objects.bindings]]
+name = "SIGNAL_ROOM"
+class_name = "SignalRoom"
+
+# Daily budget counter shared by all three workers (mtc-fcm and mtc-ice bind
+# it with script_name = "mtc-signal"). Deploy THIS worker first.
+[[durable_objects.bindings]]
+name = "BUDGET_GUARD"
+class_name = "BudgetGuard"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SignalRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["BudgetGuard"]
+
+[vars]
+# Emergency brake: max room openings per UTC day. A normal day is well under
+# 2,000; the 12-16 Aug storm peaked around 5,000. Above this the worker answers
+# 429 and the app's retry ladders degrade gracefully. Tune from the dashboard.
+DAILY_SIGNAL_BUDGET = "10000"
+
+# After `wrangler deploy`, attach the custom hostname so the client URL
+# (wss://signal.mindtheclub.com/c/<channelId>) resolves to this Worker:
+#   - Add `signal.mindtheclub.com` as a Custom Domain on the Worker, or
+#   - Add a route: signal.mindtheclub.com/* -> mtc-signal
+# (DNS for that hostname must be on Cloudflare.)

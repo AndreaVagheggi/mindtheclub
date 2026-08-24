@@ -93,3 +93,6 @@ CLAUDE.local.md
 PLAY_BILLING_SETUP.local.md
 LAUNCH_READINESS.local.md
 TESTING_STEPS.local.md
+
+# Cloudflare Workers: cache e stato locale di wrangler
+.wrangler/

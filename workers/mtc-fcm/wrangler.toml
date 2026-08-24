@@ -1,4 +1,4 @@
-name = "mtc-ice"
+name = "mtc-fcm"
 main = "worker.ts"
 compatibility_date = "2026-05-01"
 
@@ -10,5 +10,6 @@ class_name = "BudgetGuard"
 script_name = "mtc-signal"
 
 [vars]
-# Emergency brake: max ICE credential requests per UTC day.
-DAILY_ICE_BUDGET = "10000"
+# Emergency brake: max relayed FCM sends per UTC day. Normal days sit around
+# 3k, the Aug 2026 storm peaked near 30k. Tune from the dashboard.
+DAILY_FCM_BUDGET = "40000"
