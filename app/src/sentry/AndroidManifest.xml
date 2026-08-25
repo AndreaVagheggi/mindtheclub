@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Sentry's manifest entries, kept out of src/main on purpose.
+
+    app/build.gradle.kts attaches this file to every build type's source set ONLY
+    when the 'sentryEnabled' Gradle property is true. A normal production build
+    therefore never merges it: no DSN, no auto-init flag, nothing referring to
+    Sentry reaches the packaged manifest. Together with autoInstallation being
+    switched off in the same block, the SDK is absent from the artefact rather
+    than merely inert.
+
+    Build a troubleshooting version with:
+        gradlew bundleRelease -PsentryEnabled=true
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <meta-data android:name="io.sentry.dsn" android:value="https://1b2b8a01a573bf0d7116aff9ef8b18c6@o4509660072509440.ingest.de.sentry.io/4509660087648336" />
+        <meta-data android:name="io.sentry.auto-init" android:value="true" />
+        <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />
+        <meta-data android:name="io.sentry.attach-screenshot" android:value="true" />
+        <meta-data android:name="io.sentry.attach-view-hierarchy" android:value="true" />
+        <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
+    </application>
+
+</manifest>
