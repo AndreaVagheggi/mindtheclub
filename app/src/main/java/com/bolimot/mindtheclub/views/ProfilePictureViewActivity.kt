@@ -8,9 +8,7 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import com.bolimot.mindtheclub.functions.applyImmersiveFullScreen
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bumptech.glide.Glide
@@ -34,11 +32,7 @@ class ProfilePictureViewActivity : BaseActivity() {
         setContentView(R.layout.activity_profile_picture_view)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            val insetsController = WindowInsetsControllerCompat(window, window.decorView)
-            insetsController.hide(WindowInsetsCompat.Type.systemBars())
-            insetsController.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            applyImmersiveFullScreen()
         } else {
             @Suppress("DEPRECATION")
             window.setFlags(

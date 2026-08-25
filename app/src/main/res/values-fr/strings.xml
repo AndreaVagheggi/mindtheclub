@@ -375,4 +375,6 @@
     <string name="group_call_who_to_call">Qui voulez-vous appeler ?</string>
     <string name="select_at_most">Vous pouvez sélectionner au maximum %1$d personnes</string>
     <string name="group_call_who_to_add">Qui voulez-vous ajouter ?</string>
+    <string name="calling">Appel en cours…</string>
+    <string name="call_busy">Votre correspondant est déjà en ligne</string>
 </resources>

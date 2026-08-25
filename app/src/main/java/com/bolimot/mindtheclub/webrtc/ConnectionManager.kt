@@ -14,7 +14,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -130,6 +132,24 @@ class ConnectionManager {
 
     var rtcClient: RTCClient? = null
     var activeMediaRtcClient: RTCClient? = null
+
+    /**
+     * The media client of a call being placed, published the moment its pipeline
+     * exists instead of when the other phone answers.
+     *
+     * [rtcClient] and [activeMediaRtcClient] are assigned only once the
+     * connection is open. That is the right moment for everything that needs a
+     * working channel and the wrong one for the local camera: the capturer is
+     * already running seconds earlier, and a caller should see themselves while
+     * the other phone is still ringing rather than stare at a placeholder.
+     */
+    private val _dialingMedia = MutableStateFlow<RTCClient?>(null)
+    val dialingMedia: StateFlow<RTCClient?> = _dialingMedia.asStateFlow()
+
+    /** Called by the wrapper as the pipeline is built, and again when it dies. */
+    fun publishDialingMedia(client: RTCClient?) {
+        _dialingMedia.value = client
+    }
     var isClosing: Boolean = true
     var cleaningUpWebRTC: Boolean = false
     var peerConnection: PeerConnection? = null
@@ -334,6 +354,10 @@ class ConnectionManager {
 
             if (activeMediaRtcClient?.remoteUserId == userId) {
                 activeMediaRtcClient = null
+            }
+
+            if (_dialingMedia.value?.remoteUserId == userId) {
+                _dialingMedia.value = null
             }
 
             rtcClientsRepository.remove(userId)?.let { clientWrapper ->

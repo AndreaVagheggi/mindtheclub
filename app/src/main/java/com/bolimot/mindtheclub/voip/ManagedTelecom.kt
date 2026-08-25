@@ -22,6 +22,7 @@ import com.bolimot.mindtheclub.tools.CallEvent
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Voip
 import com.bolimot.mindtheclub.views.OutgoingCall
+import com.bolimot.mindtheclub.views.VideoCall
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -372,7 +373,23 @@ object ManagedTelecom {
                         )
                     }
 
-                    val intent = OutgoingCall.getIntent(context, remoteUserId, isVideo, callId).apply {
+                    // A video call goes straight to its own screen, with the
+                    // camera live while the other phone rings, instead of a
+                    // dialling screen that hands over once they answer. It is
+                    // how the group call behaves and how every other app does it.
+                    //
+                    // An audio call keeps the dialling screen: there is no
+                    // picture to show early, so the change would be cosmetic, and
+                    // this path is not worth disturbing for that.
+                    val intent = if (isVideo) {
+                        Intent(context, VideoCall::class.java).apply {
+                            putExtra("remoteUserId", remoteUserId)
+                            putExtra("callId", callId)
+                            putExtra("isCaller", true)
+                        }
+                    } else {
+                        OutgoingCall.getIntent(context, remoteUserId, isVideo, callId)
+                    }.apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)

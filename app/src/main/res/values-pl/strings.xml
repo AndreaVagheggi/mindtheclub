@@ -375,4 +375,6 @@
     <string name="group_call_who_to_call">Do kogo zadzwonić?</string>
     <string name="select_at_most">Możesz wybrać najwyżej %1$d osób</string>
     <string name="group_call_who_to_add">Kogo chcesz dodać?</string>
+    <string name="calling">Dzwonię…</string>
+    <string name="call_busy">Ta osoba prowadzi już rozmowę</string>
 </resources>

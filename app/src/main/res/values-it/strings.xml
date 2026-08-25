@@ -373,4 +373,6 @@
     <string name="group_call_who_to_call">Chi vuoi chiamare?</string>
     <string name="select_at_most">Puoi selezionare al massimo %1$d persone</string>
     <string name="group_call_who_to_add">Chi vuoi aggiungere?</string>
+    <string name="calling">Chiamata…</string>
+    <string name="call_busy">L\'altra persona è già in chiamata</string>
 </resources>

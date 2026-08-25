@@ -376,4 +376,6 @@
     <string name="group_call_who_to_call">Siapa yang ingin Anda hubungi?</string>
     <string name="select_at_most">Anda dapat memilih maksimal %1$d orang</string>
     <string name="group_call_who_to_add">Siapa yang ingin Anda tambahkan?</string>
+    <string name="calling">Memanggil…</string>
+    <string name="call_busy">Orang tersebut sedang menelepon</string>
 </resources>

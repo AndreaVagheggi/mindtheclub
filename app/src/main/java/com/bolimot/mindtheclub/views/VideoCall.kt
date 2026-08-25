@@ -15,14 +15,12 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.bolimot.mindtheclub.functions.applyImmersiveFullScreen
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.functions.debugLine
@@ -30,6 +28,7 @@ import com.bolimot.mindtheclub.functions.describePipAvailability
 import com.bolimot.mindtheclub.functions.deviceSupportsPip
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.isLowEndDevice
+import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.functions.wakeUpPhone
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.Broadcast
@@ -51,6 +50,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.webrtc.EglBase
 import org.webrtc.RendererCommon
 import org.webrtc.SurfaceViewRenderer
+import org.webrtc.VideoTrack
 import android.media.AudioManager
 import android.media.ToneGenerator
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -84,6 +84,20 @@ class VideoCall : BaseActivity() {
     private var exitingPipMode = false
     private var remoteUserId: String? = null
     private var callId: String? = null
+
+    // ── dialling state, inherited from the OutgoingCall screen ──
+
+    /** Matches the timeout that screen used to run. */
+    private val dialTimeoutMs = 50_000L
+
+    /** The caller's own camera, shown full screen until the other side answers. */
+    private var dialingPreviewTrack: VideoTrack? = null
+
+    /**
+     * The full screen renderer is initialised once, either by the dialling
+     * preview or by the call itself. Initialising it twice throws.
+     */
+    private var remoteRendererInitialised = false
 
 
     private val peerViewModel = getPeerViewModel()
@@ -124,6 +138,7 @@ class VideoCall : BaseActivity() {
     override fun onDestroy() {
         hideToolbarHandler.removeCallbacksAndMessages(null)
         stopReconnectBeep()
+        releaseDialingPreview()
         super.onDestroy()
     }
 
@@ -192,6 +207,111 @@ class VideoCall : BaseActivity() {
         observeWebRTCConnectionState()
         observeRemoteVideoState()
         observeHoldState()
+
+        if (isCaller) {
+            // This screen now opens the moment the call is placed, so it owns
+            // what the dialling screen used to: the wait, its timeout, and the
+            // caller's own picture while it lasts.
+            connectingText.text = getString(R.string.calling)
+            showDialingPreview()
+            startDialTimeout()
+        }
+    }
+
+    /**
+     * Puts the caller's own camera on screen while the other phone rings.
+     *
+     * The capturer starts within a second of placing the call, long before
+     * anyone answers, but the client carrying it is only published to
+     * ConnectionManager once the connection opens. [ConnectionManager.dialingMedia]
+     * exists for exactly this gap.
+     */
+    private fun showDialingPreview() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ConnectionManager.instance.dialingMedia.collect { client ->
+                    if (client == null || videoCallScreenActive) return@collect
+                    if (dialingPreviewTrack != null) return@collect
+                    attachDialingPreview(client)
+                }
+            }
+        }
+    }
+
+    private suspend fun attachDialingPreview(client: RTCClient) {
+        // Longer than the in-call wait: this runs once and nothing emits again
+        // to give it a second chance, so it can afford to be patient. Losing the
+        // race only costs the preview, never the call.
+        val egl = waitForEglContext(client, timeoutMs = 10_000L) ?: return
+
+        // The track appears a moment after the context, once the capturer has
+        // been built. Neither is worth failing the call over.
+        val track = withTimeoutOrNull(5_000L) {
+            var candidate = client.localVideoTrack
+            while (candidate == null) {
+                delay(100)
+                candidate = client.localVideoTrack
+            }
+            candidate
+        } ?: return
+
+        if (videoCallScreenActive || dialingPreviewTrack != null) return
+
+        if (!initRemoteRenderer(egl)) return
+
+        remoteVideoView.setMirror(true)
+        runCatching { track.addSink(remoteVideoView) }
+        dialingPreviewTrack = track
+
+        remoteVideoView.visibility = View.VISIBLE
+        background.visibility = View.GONE
+
+        // Only the hang-up button, and only that. The four controls beside it
+        // drive the RTC client, which does not exist until the other side picks
+        // up; offering them now would be offering a crash. INVISIBLE rather than
+        // GONE so the hang-up stays where it will be for the rest of the call.
+        findViewById<View>(R.id.controls_toolbar).visibility = View.INVISIBLE
+        bottomControlsContainer.visibility = View.VISIBLE
+
+        debugLine(tag, "Dialling preview attached")
+    }
+
+    /** Detaches the caller's own picture so the remote one can take the renderer. */
+    private fun releaseDialingPreview() {
+        dialingPreviewTrack?.let { runCatching { it.removeSink(remoteVideoView) } }
+        dialingPreviewTrack = null
+    }
+
+    private fun initRemoteRenderer(eglContext: EglBase.Context): Boolean {
+        if (remoteRendererInitialised) return true
+        return try {
+            remoteVideoView.init(eglContext, object : RendererCommon.RendererEvents {
+                override fun onFirstFrameRendered() {}
+                override fun onFrameResolutionChanged(width: Int, height: Int, rotation: Int) {}
+            })
+            remoteRendererInitialised = true
+            true
+        } catch (e: Exception) {
+            debugLine(tag, "Remote renderer init failed: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * The dialling timeout the OutgoingCall screen used to run. It only bites
+     * while the call is still ringing: once connected the check passes and
+     * nothing happens.
+     */
+    private fun startDialTimeout() {
+        lifecycleScope.launch {
+            delay(dialTimeoutMs)
+            if (ManagedTelecom.currentCall.value?.isConnected == false) {
+                debugLine(tag, "Call timed out while ringing")
+                callId?.let {
+                    ManagedTelecom.disconnectCall(it, DisconnectCause(DisconnectCause.LOCAL))
+                }
+            }
+        }
     }
 
     private fun observeRemoteVideoState() {
@@ -233,6 +353,13 @@ class VideoCall : BaseActivity() {
                     // Disconnect Event
                     if (callSession == null || callSession.disconnectCause != null) {
                         debugLine(tag, "State update: Call Disconnected or Failed: callSession = $callSession")
+
+                        // Said out loud, because a call that just ends looks like
+                        // a failure. The dialling screen used to carry this.
+                        if (callSession?.disconnectCause?.code == DisconnectCause.BUSY) {
+                            showToast(getString(R.string.call_busy), this@VideoCall)
+                        }
+
                         finishVideoCall()
                         return@collectLatest
                     }
@@ -377,6 +504,8 @@ class VideoCall : BaseActivity() {
         localVideoCard.visibility = View.VISIBLE
         cameraSwitch.visibility = View.VISIBLE
         bottomControlsContainer.visibility = View.VISIBLE
+        // The controls the call needs are usable from here on.
+        findViewById<View>(R.id.controls_toolbar).visibility = View.VISIBLE
 
         connectingText.visibility = View.GONE
         profilePic.visibility = View.GONE
@@ -390,10 +519,12 @@ class VideoCall : BaseActivity() {
 
         remoteVideoView.setScalingType(scalingMode)
 
-        remoteVideoView.init(eglContext, object : RendererCommon.RendererEvents {
-            override fun onFirstFrameRendered() {}
-            override fun onFrameResolutionChanged(width: Int, height: Int, rotation: Int) {}
-        })
+        // The caller's own camera was filling this renderer while the phone
+        // rang. It comes off before the remote picture goes on: one renderer,
+        // one sink, rather than two pictures fighting over one surface.
+        releaseDialingPreview()
+
+        initRemoteRenderer(eglContext)
 
         remoteVideoView.setMirror(false)
 
@@ -435,10 +566,7 @@ class VideoCall : BaseActivity() {
     }
 
     private fun setFullScreen(){
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = WindowInsetsControllerCompat(window, window.decorView)
-        insetsController.hide(WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        applyImmersiveFullScreen()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

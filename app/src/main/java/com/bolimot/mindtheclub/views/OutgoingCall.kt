@@ -7,10 +7,8 @@ import android.telecom.DisconnectCause
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import com.bolimot.mindtheclub.functions.applyImmersiveFullScreen
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerRepository
@@ -154,9 +152,13 @@ class OutgoingCall : AppCompatActivity() {
     }
 
     private fun setFullScreen() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.systemBars())
+        applyImmersiveFullScreen()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // The system drops the immersive flags whenever the window loses focus,
+        // and a dialling screen loses it to every notification that lands.
+        if (hasFocus) setFullScreen()
     }
 }

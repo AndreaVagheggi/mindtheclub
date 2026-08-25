@@ -70,6 +70,11 @@ class RTCClientWrapper : Transport {
 
         rtcClient = RTCClient.create(channelId, callId, remoteUserId, initiator, video, context, dataOnly)
 
+        // Published here rather than on success: the call below waits for the
+        // peer to answer, and by then the camera has been running for seconds.
+        // The dialling screen needs it in between.
+        if (!dataOnly) ConnectionManager.instance.publishDialingMedia(rtcClient)
+
         val result: CallControlEvent? = withTimeoutOrNull(Voip.WEBRTC_CONNECTION_TIMEOUT) {
             CallEventBus.callControlFlow
                 .filterNotNull()
@@ -90,6 +95,7 @@ class RTCClientWrapper : Transport {
             null -> {
                 debugLine4(tag, "Incoming connection timed out, returning general failure")
 
+                if (!dataOnly) ConnectionManager.instance.publishDialingMedia(null)
                 rtcClient.cleanup(true)
 
                 var safetyWait = 0
@@ -103,6 +109,8 @@ class RTCClientWrapper : Transport {
             }
             else -> {
                 debugLine4(tag, "Incoming connection failed, Result = : ${result.reason}")
+
+                if (!dataOnly) ConnectionManager.instance.publishDialingMedia(null)
                 rtcClient.cleanup(true)
 
                 var safetyWait = 0

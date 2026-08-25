@@ -18,13 +18,11 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.bolimot.mindtheclub.functions.applyImmersiveFullScreen
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.functions.debugLine
@@ -525,10 +523,7 @@ class AudioCall : BaseActivity() {
     }
 
     private fun setFullScreen(){
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = WindowInsetsControllerCompat(window, window.decorView)
-        insetsController.hide(WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        applyImmersiveFullScreen()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

@@ -85,9 +85,11 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowCompat.setDecorFitsSystemWindows(window, false)
 
-            val insetsController = WindowInsetsControllerCompat(window, window.decorView)
+            // Behaviour before hide, which is the order the controller expects.
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            insetsController.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             insetsController.hide(WindowInsetsCompat.Type.systemBars())
-            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
             @Suppress("DEPRECATION")
             window.setFlags(

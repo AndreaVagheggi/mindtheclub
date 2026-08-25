@@ -8,14 +8,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bolimot.mindtheclub.functions.applyImmersiveFullScreen
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.GroupCallAdapter
 import com.bolimot.mindtheclub.chat.SelectPeersForGroup
@@ -344,11 +342,7 @@ class GroupCall : BaseActivity() {
     }
 
     private fun setFullScreen() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.systemBars())
-        controller.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        applyImmersiveFullScreen()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

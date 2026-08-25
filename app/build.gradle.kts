@@ -9,10 +9,25 @@ plugins {
 
 // Master switch for Sentry (crash/performance reporting).
 // Flip it in gradle.properties (sentryEnabled=true/false) or per build with
-// -PsentryEnabled=false. When false:
-//   - the SDK never auto-initializes at runtime (io.sentry.auto-init in the manifest), and
-//   - no build-time symbol/source upload happens, so no Sentry auth token is needed.
-val sentryEnabled = (project.findProperty("sentryEnabled") as String? ?: "true").toBoolean()
+// -PsentryEnabled=true. When false Sentry is not merely inert, it is absent from
+// the artefact altogether:
+//   - the SDK is never added to the classpath (see autoInstallation below), so
+//     none of its integrations ship and neither do libsentry.so /
+//     libsentry-android.so, ~2.6 MB that would otherwise reach every device
+//     because abi.enableSplit is off,
+//   - the SentryInitProvider / SentryPerformanceProvider ContentProviders are not
+//     merged into the manifest, because they come from the library,
+//   - no bytecode is instrumented and no Sentry assets are generated,
+//   - the manifest carries no DSN, because those entries live in the overlay
+//     below, which is attached only when the switch is on, and
+//   - no build-time symbol/source upload happens, so no Sentry auth token is
+//     needed and the build stays fast.
+val sentryEnabled = (project.findProperty("sentryEnabled") as String? ?: "false").toBoolean()
+
+// Sentry's manifest entries. Attached to each build type's source set further
+// down, only when sentryEnabled is true; a build type manifest is an overlay
+// merged on top of src/main, which is what keeps src/main free of Sentry.
+val sentryManifest = file("src/sentry/AndroidManifest.xml")
 
 // Verbose file logging (debugLine), the log-export menu and the stealth leak
 // check in RELEASE builds. Off by default so production never writes message
@@ -64,20 +79,20 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1051
-        versionName = "Release 1.51" +
+        versionCode = 1052
+        versionName = "Release 1.52" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Exposed to code (BuildConfig.SENTRY_ENABLED) and to the manifest
-        // (io.sentry.auto-init via ${sentryAutoInit}); both driven by the flag above.
+        // Exposed to code (BuildConfig.SENTRY_ENABLED), driven by the flag above.
+        // There is no manifest placeholder any more: io.sentry.auto-init now lives
+        // in src/sentry/AndroidManifest.xml, merged only when Sentry is enabled.
         buildConfigField("Boolean", "SENTRY_ENABLED", sentryEnabled.toString())
         buildConfigField("Boolean", "NO_PAY", noPay.toString())
         buildConfigField("String", "ICE_MODE", "\"$iceMode\"")
-        manifestPlaceholders["sentryAutoInit"] = sentryEnabled.toString()
 
         // Soak test: a fake text message sent to the single paired contact every
         // 30 minutes, to measure delivery latency without waiting for a real
@@ -161,6 +176,17 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", "true")
             buildConfigField("Boolean", "SOAK_TEST", "false")
         }
+    }
+
+    // Must come after buildTypes: the debugMinified and staging source sets only
+    // exist once their build types have been created. Every build type gets the
+    // same overlay, so -PsentryEnabled=true works for a bundle and for an install
+    // from Android Studio alike, while omitting the flag leaves all of them clean.
+    if (sentryEnabled) {
+        sourceSets.getByName("debug").manifest.srcFile(sentryManifest)
+        sourceSets.getByName("release").manifest.srcFile(sentryManifest)
+        sourceSets.getByName("debugMinified").manifest.srcFile(sentryManifest)
+        sourceSets.getByName("staging").manifest.srcFile(sentryManifest)
     }
 
     compileOptions {
@@ -296,6 +322,30 @@ dependencies {
 sentry {
     org.set("private-0l5")
     projectName.set("mindtheclub")
+
+    // Every contribution the plugin can make to the artefact is tied to the same
+    // master switch, so a build without -PsentryEnabled=true carries no trace of
+    // Sentry at all.
+
+    // The big one. Auto installation is what silently adds io.sentry:sentry-android
+    // and its integrations (fragment, sqlite, okhttp, compose, navigation, replay
+    // and ndk) to the runtime classpath. The ndk integration alone packages
+    // libsentry.so plus libsentry-android.so for all four ABIs.
+    autoInstallation { enabled.set(sentryEnabled) }
+
+    // Bytecode weaving into Room, OkHttp and file I/O. Dead weight without the SDK.
+    tracingInstrumentation { enabled.set(sentryEnabled) }
+
+    // Writes sentry-debug-meta.properties into the assets and injects the
+    // io.sentry.proguard-uuid meta-data into the merged manifest.
+    includeProguardMapping.set(sentryEnabled)
+
+    // Writes sentry-external-modules.txt into the assets.
+    includeDependenciesReport.set(sentryEnabled)
+
+    // The plugin's own build-time telemetry, which reports to Sentry while Gradle
+    // runs. It concerns the build rather than the app, but off means off.
+    telemetry.set(sentryEnabled)
 
     // Upload source context and the ProGuard/R8 mapping (for de-obfuscated release
     // stack traces) only when Sentry is enabled. When disabled these are skipped,
