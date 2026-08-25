@@ -63,7 +63,6 @@ class GroupCallAdapter(
         val avatarContainer: View = view.findViewById(R.id.tile_avatar_container)
         val avatar: ShapeableImageView = view.findViewById(R.id.tile_avatar)
         val speaking: View = view.findViewById(R.id.tile_speaking)
-        val hand: ImageView = view.findViewById(R.id.tile_hand)
         val micOff: ImageView = view.findViewById(R.id.tile_mic_off)
         val label: View = view.findViewById(R.id.tile_label)
         val name: TextView = view.findViewById(R.id.tile_name)
@@ -97,7 +96,6 @@ class GroupCallAdapter(
         // something: a name, a muted microphone, or both.
         holder.label.visibility =
             if (label.isEmpty() && member.mic) View.GONE else View.VISIBLE
-        holder.hand.visibility = if (member.hand) View.VISIBLE else View.GONE
         holder.speaking.visibility = if (member.speaking) View.VISIBLE else View.GONE
 
         Glide.with(context)

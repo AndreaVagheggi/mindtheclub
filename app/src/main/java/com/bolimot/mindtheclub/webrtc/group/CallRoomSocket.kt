@@ -29,8 +29,7 @@ data class RoomParticipant(
     val videoTrack: String,
     val label: String,
     val mic: Boolean = true,
-    val cam: Boolean = true,
-    val hand: Boolean = false
+    val cam: Boolean = true
 )
 
 /**
@@ -55,7 +54,7 @@ class CallRoomSocket(
         fun onRoster(participants: List<RoomParticipant>)
         fun onJoined(participant: RoomParticipant)
         fun onLeft(pid: String)
-        fun onState(pid: String, mic: Boolean, cam: Boolean, hand: Boolean, videoTrack: String)
+        fun onState(pid: String, mic: Boolean, cam: Boolean, videoTrack: String)
         fun onReaction(pid: String, emoji: String)
         fun onFull()
         fun onDisconnected()
@@ -173,7 +172,6 @@ class CallRoomSocket(
                 msg.optString("p"),
                 msg.optBoolean("mic", true),
                 msg.optBoolean("cam", true),
-                msg.optBoolean("hand", false),
                 msg.optString("v", "")
             )
 
@@ -193,18 +191,16 @@ class CallRoomSocket(
         videoTrack = o.optString("video"),
         label = o.optString("label"),
         mic = o.optBoolean("mic", true),
-        cam = o.optBoolean("cam", true),
-        hand = o.optBoolean("hand", false)
+        cam = o.optBoolean("cam", true)
     )
 
-    /** Publishes a change of mic, camera or raised hand to the others. */
-    fun sendState(mic: Boolean, cam: Boolean, hand: Boolean, videoTrack: String) {
-        me = me?.copy(mic = mic, cam = cam, hand = hand, videoTrack = videoTrack)
+    /** Publishes a change of microphone or camera to the others. */
+    fun sendState(mic: Boolean, cam: Boolean, videoTrack: String) {
+        me = me?.copy(mic = mic, cam = cam, videoTrack = videoTrack)
         val payload = JSONObject().apply {
             put("t", "state")
             put("mic", mic)
             put("cam", cam)
-            put("hand", hand)
             put("v", videoTrack)
         }
         try { ws?.send(payload.toString()) } catch (e: Exception) {

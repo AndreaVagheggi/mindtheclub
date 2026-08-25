@@ -55,7 +55,6 @@ class GroupCall : BaseActivity() {
     private lateinit var micButton: ImageButton
     private lateinit var cameraButton: ImageButton
     private lateinit var switchCameraButton: ImageButton
-    private lateinit var handButton: ImageButton
     private lateinit var reactionButton: ImageButton
     private lateinit var hangUpButton: ImageButton
     private lateinit var addParticipantButton: ImageButton
@@ -86,7 +85,6 @@ class GroupCall : BaseActivity() {
         micButton = findViewById(R.id.btn_mic)
         cameraButton = findViewById(R.id.btn_camera)
         switchCameraButton = findViewById(R.id.btn_switch_camera)
-        handButton = findViewById(R.id.btn_hand)
         reactionButton = findViewById(R.id.btn_reaction)
         hangUpButton = findViewById(R.id.btn_hang_up)
         addParticipantButton = findViewById(R.id.btn_add_participant)
@@ -109,7 +107,6 @@ class GroupCall : BaseActivity() {
         micButton.setOnClickListener { GroupCallManager.toggleMic() }
         cameraButton.setOnClickListener { GroupCallManager.toggleCamera() }
         switchCameraButton.setOnClickListener { GroupCallManager.switchCamera() }
-        handButton.setOnClickListener { GroupCallManager.toggleHand() }
 
         reactionButton.setOnClickListener {
             reactionsBar.visibility =
@@ -213,12 +210,6 @@ class GroupCall : BaseActivity() {
                         cameraButton.setImageResource(
                             if (it) R.drawable.video else R.drawable.video_off
                         )
-                    }
-                }
-
-                launch {
-                    GroupCallManager.handRaised.collect {
-                        handButton.alpha = if (it) 1f else 0.5f
                     }
                 }
 

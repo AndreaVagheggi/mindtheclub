@@ -369,7 +369,6 @@
     <string name="group_call_no_members">This group has no other members to call</string>
     <string name="hang_up">Hang up</string>
     <string name="muted">Muted</string>
-    <string name="raise_hand">Raise hand</string>
     <string name="add_members">Add members</string>
     <string name="group_call_who_to_call">Who do you want to call?</string>
     <string name="select_at_most">You can select at most %1$d people</string>

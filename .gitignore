@@ -1,4 +1,4 @@
-﻿# Android / Gradle
+# Android / Gradle
 *.iml
 .gradle/
 /build/
@@ -96,3 +96,8 @@ TESTING_STEPS.local.md
 
 # Cloudflare Workers: cache e stato locale di wrangler
 .wrangler/
+
+# Cloudflare Realtime app credentials, kept next to the worker they belong to.
+# The App ID and API Token in there mint SFU sessions on the account: this repo
+# is public, so the file must never become tracked.
+Ids.txt

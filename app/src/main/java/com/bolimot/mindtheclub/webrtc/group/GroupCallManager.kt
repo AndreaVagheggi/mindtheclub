@@ -67,7 +67,6 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         val picture: String?,
         val mic: Boolean = true,
         val cam: Boolean = true,
-        val hand: Boolean = false,
         val videoTrack: VideoTrack? = null,
         val isSelf: Boolean = false,
         val speaking: Boolean = false
@@ -86,9 +85,6 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
 
     private val _cameraEnabled = MutableStateFlow(true)
     val cameraEnabled: StateFlow<Boolean> = _cameraEnabled.asStateFlow()
-
-    private val _handRaised = MutableStateFlow(false)
-    val handRaised: StateFlow<Boolean> = _handRaised.asStateFlow()
 
     /** Set when the picture was dropped because the allowance ran low. */
     private val _audioOnly = MutableStateFlow(false)
@@ -284,7 +280,6 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         pendingBytes = 0L
         _audioOnly.value = VideoUsageTracker.isAudioOnly()
         _pinned.value = null
-        _handRaised.value = false
         _micEnabled.value = true
         _cameraEnabled.value = withVideo && !_audioOnly.value
 
@@ -427,13 +422,6 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
 
     fun switchCamera() = client?.switchCamera()
 
-    fun toggleHand() {
-        val raised = !_handRaised.value
-        _handRaised.value = raised
-        updateSelf { it.copy(hand = raised) }
-        pushState()
-    }
-
     fun sendReaction(emoji: String) {
         room?.sendReaction(emoji)
         _reactions.value = myPid to emoji
@@ -455,7 +443,6 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         room?.sendState(
             mic = _micEnabled.value,
             cam = _cameraEnabled.value,
-            hand = _handRaised.value,
             videoTrack = client?.videoTrackName.orEmpty()
         )
     }
@@ -492,8 +479,7 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
             name = peer?.name ?: "",
             picture = peer?.picture,
             mic = participant.mic,
-            cam = participant.cam,
-            hand = participant.hand
+            cam = participant.cam
         )
 
         _members.value = _members.value.filter { it.pid != participant.pid } + member
@@ -523,9 +509,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         }
     }
 
-    override fun onState(pid: String, mic: Boolean, cam: Boolean, hand: Boolean, videoTrack: String) {
+    override fun onState(pid: String, mic: Boolean, cam: Boolean, videoTrack: String) {
         _members.value = _members.value.map {
-            if (it.pid == pid) it.copy(mic = mic, cam = cam, hand = hand) else it
+            if (it.pid == pid) it.copy(mic = mic, cam = cam) else it
         }
     }
 

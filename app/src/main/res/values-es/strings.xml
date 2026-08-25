@@ -372,7 +372,6 @@
     <string name="group_call_no_members">Este grupo no tiene otros miembros a los que llamar</string>
     <string name="hang_up">Colgar</string>
     <string name="muted">Silenciado</string>
-    <string name="raise_hand">Levantar la mano</string>
     <string name="add_members">Añadir miembros</string>
     <string name="group_call_who_to_call">¿A quién quieres llamar?</string>
     <string name="select_at_most">Puedes seleccionar como máximo %1$d personas</string>

@@ -182,7 +182,6 @@ interface Participant {
   label: string; // sealed with the call key
   mic: boolean;
   cam: boolean;
-  hand: boolean;
 }
 
 export class CallRoom {
@@ -264,7 +263,6 @@ export class CallRoom {
       label: String(msg.n || ""),
       mic: msg.mic !== false,
       cam: msg.cam !== false,
-      hand: false,
     };
 
     ws.serializeAttachment(me);
@@ -284,15 +282,11 @@ export class CallRoom {
 
     if (typeof msg.mic === "boolean") me.mic = msg.mic;
     if (typeof msg.cam === "boolean") me.cam = msg.cam;
-    if (typeof msg.hand === "boolean") me.hand = msg.hand;
     // A camera turned on mid-call publishes a track that did not exist at join.
     if (typeof msg.v === "string") me.video = msg.v;
 
     ws.serializeAttachment(me);
-    this.broadcast(
-      { t: "state", p: me.pid, mic: me.mic, cam: me.cam, hand: me.hand, v: me.video },
-      ws
-    );
+    this.broadcast({ t: "state", p: me.pid, mic: me.mic, cam: me.cam, v: me.video }, ws);
   }
 
   private onReaction(ws: WebSocket, msg: any): void {

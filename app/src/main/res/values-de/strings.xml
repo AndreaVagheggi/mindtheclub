@@ -372,7 +372,6 @@
     <string name="group_call_no_members">Diese Gruppe hat keine weiteren Mitglieder zum Anrufen</string>
     <string name="hang_up">Auflegen</string>
     <string name="muted">Stummgeschaltet</string>
-    <string name="raise_hand">Hand heben</string>
     <string name="add_members">Mitglieder hinzufügen</string>
     <string name="group_call_who_to_call">Wen möchtest du anrufen?</string>
     <string name="select_at_most">Du kannst höchstens %1$d Personen auswählen</string>

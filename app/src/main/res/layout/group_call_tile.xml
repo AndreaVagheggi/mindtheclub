@@ -52,16 +52,6 @@
             android:background="@drawable/tile_speaking_border"
             android:visibility="gone" />
 
-        <ImageView
-            android:id="@+id/tile_hand"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="top|end"
-            android:layout_margin="6dp"
-            android:contentDescription="@string/raise_hand"
-            android:src="@drawable/person_raised_hand"
-            android:visibility="gone" />
-
         <LinearLayout
             android:id="@+id/tile_label"
             android:layout_width="wrap_content"

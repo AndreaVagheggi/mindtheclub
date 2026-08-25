@@ -180,16 +180,6 @@
                     app:tint="@color/white" />
 
                 <ImageButton
-                    android:id="@+id/btn_hand"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/raise_hand"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/person_raised_hand" />
-
-                <ImageButton
                     android:id="@+id/btn_reaction"
                     android:layout_width="0dp"
                     android:layout_height="48dp"

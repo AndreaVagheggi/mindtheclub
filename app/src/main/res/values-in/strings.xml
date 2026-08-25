@@ -372,7 +372,6 @@
     <string name="group_call_no_members">Grup ini tidak memiliki anggota lain untuk dihubungi</string>
     <string name="hang_up">Akhiri</string>
     <string name="muted">Dibisukan</string>
-    <string name="raise_hand">Angkat tangan</string>
     <string name="add_members">Tambah anggota</string>
     <string name="group_call_who_to_call">Siapa yang ingin Anda hubungi?</string>
     <string name="select_at_most">Anda dapat memilih maksimal %1$d orang</string>
