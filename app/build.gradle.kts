@@ -65,6 +65,44 @@ require(iceMode in listOf("all", "nohost", "relay")) {
     "iceMode must be all, nohost or relay (got \"$iceMode\")"
 }
 
+// True for any build carrying a test flag, i.e. exactly the ones that also get a
+// suffix stamped on the version name below. Derived from the same three
+// conditions so the two can never drift apart.
+val isTestBuild = releaseLogging || noPay ||
+        (iceModeProperty != null && iceMode != "all")
+
+// One project, two destinations, no second working copy.
+//
+// Play refuses two uploads sharing a version code ANYWHERE in the app, not just
+// within one track, and serves each user the highest code they are entitled to
+// across the tracks they belong to. A troubleshooting build therefore cannot
+// reuse the production code, and has to sit ABOVE it, or the testers keep being
+// served the production bundle instead of the one built for them.
+//
+// So a plain build takes the base code and a flagged build takes base + 1:
+//
+//   gradlew bundleRelease                                    -> 1052  Production
+//   gradlew bundleRelease -PreleaseLogging=true -PnoPay=true  -> 1053  Internal testing
+//
+// Bump baseVersionCode by TWO each cycle, keeping it even, so the odd number
+// stays reserved for that cycle's tester build.
+val baseVersionCode = 1060
+val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
+
+// Both commands build the SAME build type, so without this they would both write
+// app/build/outputs/bundle/release/app-release.aab and the second would silently
+// overwrite the first. Uploading the (nopay) bundle to production by mistake
+// would hand the app to the whole world for free, so the two artefacts are given
+// names that cannot be confused:
+//
+//   mtc-1052-release.aab        plain build, goes to Production
+//   mtc-1053-test-release.aab   flagged build, goes to Internal testing
+base {
+    archivesName.set(
+        if (isTestBuild) "mtc-$appVersionCode-test" else "mtc-$appVersionCode"
+    )
+}
+
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.bolimot.mindtheclub"
     compileSdk = 36
@@ -79,8 +117,8 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         applicationId = "com.bolimot.mindtheclub"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1052
-        versionName = "Release 1.52" +
+        versionCode = appVersionCode
+        versionName = "Release 1.60" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")

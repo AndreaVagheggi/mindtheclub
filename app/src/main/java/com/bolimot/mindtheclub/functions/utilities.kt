@@ -43,7 +43,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.chat.FileDetails
 import com.bolimot.mindtheclub.database.message.Message
@@ -145,26 +144,16 @@ fun formatTime(time: Long): String {
 }
 
 /**
- * Bubble timestamp. Release builds always show the clock time. Debug builds
- * show the transfer latency ("+1.2s" = received 1.2s after it was sent) for
- * incoming messages, so delivery performance can be evaluated while testing.
- * A negative value means the sender's clock is ahead of this device's.
+ * Bubble timestamp: always the time the message was sent, in every build type.
+ *
+ * This used to branch on BuildConfig.ENABLE_DEBUG_TOOLS and render the transfer
+ * latency instead ("+1.2s" = received 1.2s after it was sent) for incoming
+ * messages, to judge delivery performance while testing. That is gone for good:
+ * the bubble is user-facing and must read as a clock everywhere. Latency is
+ * still measured, from the receivedAt stamped in MessageRepository.saveMessage(),
+ * and consumed by DeliveryHealth; it simply never reaches the bubble.
  */
-fun formatMessageTime(message: Message): String {
-    if (BuildConfig.ENABLE_DEBUG_TOOLS) {
-        message.receivedAt?.let { receivedAt ->
-            val elapsedMs = receivedAt - message.date
-            val sign = if (elapsedMs < 0) "-" else "+"
-            val absMs = abs(elapsedMs)
-            return if (absMs < 60_000) {
-                String.format(Locale.US, "%s%.1fs", sign, absMs / 1000.0)
-            } else {
-                "$sign${absMs / 60_000}m${(absMs % 60_000) / 1000}s"
-            }
-        }
-    }
-    return formatTime(message.date)
-}
+fun formatMessageTime(message: Message): String = formatTime(message.date)
 
 fun formatDate(time: Long): String {
     val date = Date(time)

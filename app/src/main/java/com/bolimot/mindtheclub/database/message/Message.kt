@@ -29,6 +29,6 @@ data class Message(
     val chatGroupId: String? = null,
     val originalSenderId: String? = null,
     // Local reception time, stamped in saveMessage() for incoming messages.
-    // Debug builds show (receivedAt - date) instead of the clock time.
+    // Feeds DeliveryHealth's latency statistics only; it is never displayed.
     val receivedAt: Long? = null,
 )
