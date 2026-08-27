@@ -52,11 +52,13 @@ fun sendMessage(message: MessageData) {
         NoteToSelf.handleOutgoing(message)
         return
     }
-    // First real peer message starts the 30-day trial clock (activation-based
-    // trial: downloads that never engage cost nothing and are never gated).
-    // Contact acquisition and profile broadcasts also travel through here as
-    // Type.PROFILE messages: that housekeeping must not start the clock.
-    if (TrialManager.startsTrial(message.type)) {
+    // The first message the user authored to a real person starts the 30-day
+    // trial clock (activation-based trial: downloads that never engage cost
+    // nothing and are never gated). Everything else is excluded: Clubby and
+    // Note to self return above and are refused again inside startsTrial,
+    // contact acquisition and profile broadcasts travel through here as
+    // Type.PROFILE, and a received message never reaches this function.
+    if (TrialManager.startsTrial(message.toUserId, message.type)) {
         TrialManager.markActivated(App.context())
     }
     if(message.toUserId.startsWith("group")){

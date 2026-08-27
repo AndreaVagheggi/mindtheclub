@@ -1,6 +1,8 @@
 package com.bolimot.mindtheclub.billing
 
 import android.content.Context
+import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
@@ -11,8 +13,10 @@ import java.util.concurrent.TimeUnit
  * Activation-based 30-day free trial.
  *
  * The clock does NOT start at install: it starts the first time the user sends
- * a real peer message (see sendMessage in sending/send.kt). Someone who
- * downloads the app and never engages costs nothing and is never nagged.
+ * a message of their own to a real person (see sendMessage in sending/send.kt).
+ * Someone who downloads the app and never engages costs nothing and is never
+ * nagged, and neither chatting with Clubby nor merely adding a contact counts
+ * as engaging: see [startsTrial].
  */
 object TrialManager {
 
@@ -45,9 +49,22 @@ object TrialManager {
         Type.CONTACT
     )
 
-    /** True when sending this message type counts as the user engaging with the app. */
-    fun startsTrial(messageType: String?): Boolean =
-        messageType != null && ACTIVATING_TYPES.contains(messageType)
+    /**
+     * True when sending this message counts as the user engaging with the app.
+     *
+     * Two conditions, both required: the message has to be one the user actually
+     * authored, and it has to be addressed to a REAL person. Clubby (the AI
+     * assistant) and Note to self are not people: a new user who tries the
+     * assistant out, or writes a note to themselves, would rightly feel cheated
+     * to find their 30 days already running. sendMessage() diverts both before
+     * this is ever reached; the check is repeated here so the rule survives any
+     * future reordering of that function.
+     */
+    fun startsTrial(toUserId: String?, messageType: String?): Boolean {
+        if (AiAssistant.isAssistant(toUserId)) return false
+        if (NoteToSelf.isNoteToSelf(toUserId)) return false
+        return messageType != null && ACTIVATING_TYPES.contains(messageType)
+    }
 
     /** Epoch millis when the clock started, or null when never activated. */
     fun startedAt(context: Context): Long? =
