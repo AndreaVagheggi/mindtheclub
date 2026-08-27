@@ -99,7 +99,13 @@ class SoakTestWorker(
          * firing unlikely, not impossible.
          */
         suspend fun schedule(context: Context) {
-            if (!BuildConfig.SOAK_TEST) return
+            if (!BuildConfig.SOAK_TEST) {
+                // Flag off everywhere now. Clear the periodic work left enqueued by an
+                // earlier build with it on: WorkManager keeps unique periodic work
+                // across app updates, so it would keep waking up for nothing.
+                WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+                return
+            }
 
             val myUserId = MySelf.userId()
             if (myUserId.isNullOrEmpty()) {

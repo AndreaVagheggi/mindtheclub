@@ -31,6 +31,9 @@ import com.bolimot.mindtheclub.functions.showToast
 import kotlinx.coroutines.launch
 
 class SendVideo : BaseActivity() {
+    // The transcode path below goes through VideoCompressor, which carries media3
+    // @UnstableApi. Same opt-in as MainActivity.startApplication().
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

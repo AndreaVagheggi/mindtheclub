@@ -165,6 +165,10 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    // VideoCompressor wraps media3 Transformer and carries @UnstableApi, so every
+    // call into it has to opt in. Lint reports it as an error; the Kotlin compiler
+    // does not, which is why the build passes with the red marks still there.
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun startApplication() {
         debugLine("StartApplication", "Starting application.")
 
@@ -196,7 +200,8 @@ class MainActivity : BaseActivity() {
         // produced them; a send abandoned halfway leaves one behind.
         VideoCompressor.purgeStaleOutputs()
 
-        // No-op unless BuildConfig.SOAK_TEST, i.e. anywhere but a debug build.
+        // SOAK_TEST is false in every build type: this now only clears the periodic
+        // work left over on handsets that ran an older debug build.
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
             SoakTestWorker.schedule(applicationContext)
         }

@@ -134,10 +134,10 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 
         // Soak test: a fake text message sent to the single paired contact every
         // 30 minutes, to measure delivery latency without waiting for a real
-        // tester to write. Default false here and set to true ONLY in the debug
-        // build type, so it can never reach a bundle. Deliberately NOT tied to
-        // ENABLE_DEBUG_TOOLS, which is also true in a release built with
-        // -PreleaseLogging=true, i.e. exactly the build that goes to testers.
+        // tester to write. Now false in EVERY build type, debug included: the
+        // automatic traffic is no longer wanted. The worker and its call sites
+        // are untouched: putting the line in the debug block back to true is all
+        // it takes to soak the two dedicated handsets again.
         buildConfigField("Boolean", "SOAK_TEST", "false")
     }
 
@@ -173,9 +173,9 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("Boolean", "ENABLE_DEBUG_TOOLS", "true")
             buildConfigField("String", "ICE_MODE", "\"$iceModeDebug\"")
-            // The only build type where the soak test runs. Installed from Android
-            // Studio onto the two dedicated handsets, never packaged into a bundle.
-            buildConfigField("Boolean", "SOAK_TEST", "true")
+            // Soak disabled in every build type. The worker is untouched: flipping
+            // this single line back to true re-enables it on the two test handsets.
+            buildConfigField("Boolean", "SOAK_TEST", "false")
         }
 
         getByName("release") {
@@ -199,9 +199,9 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
             )
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("debug")
-            // initWith copies buildConfigField from debug, including SOAK_TEST=true.
-            // Put it back to false explicitly: this type is for checking R8 output,
-            // not for soaking.
+            // initWith copies buildConfigField from debug, where SOAK_TEST is false.
+            // Restated here so this type stays soak-free even if the debug block is
+            // flipped back on for a test run.
             buildConfigField("Boolean", "SOAK_TEST", "false")
         }
 
