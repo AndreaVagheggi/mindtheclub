@@ -315,7 +315,7 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
                     val myProfileString = Json.encodeToString(peerObject)
                     val messageId = guid()
                     val fileName = "myProfilePicToSend.jpg"
-                    val myProfilePicUri = saveBitmapFromUri(MySelf.pictureUri()?.toUri(), fileName, 100)
+                    val myProfilePicUri = saveBitmapFromUri(MySelf.pictureUri()?.toUri(), fileName, 85, 1024)
                     val myProfilePicString = myProfilePicUri?.toString() ?: NO_PICTURE
 
                     myProfileString.let {

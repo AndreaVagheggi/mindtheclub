@@ -131,15 +131,20 @@ suspend fun receiveProfile(text: String, content: String, message: Inbox) {
             debugLine("receiveProfile", "Getting My profileStat LOCALLY/My Profile status: $myProfileStat")
 
 
-            when(myProfileStat) {
-                AcquisitionStatus.SENT -> {
-                    debugLine("receiveProfile", "Already sent my profile, set ACTIVE")
-                    getPeerViewModel().setStatusToActive(message.fromUserId)
-                }
-                else -> {
-                    debugLine("receiveProfile", "Need to send my profile to remote peer")
-                    getPeerViewModel().sendMyProfileToRemotePeer(message.fromUserId)
-                }
+            // Il profilo del peer e' arrivato: e' la prova che ha accettato la
+            // richiesta e che ha verificato la mia chiave, perche' e' l'unica cosa
+            // che glielo fa spedire. Il contatto e' buono adesso. L'ack del MIO
+            // profilo continua ad arrivare e ad aggiornare la spunta, ma non e'
+            // piu' un cancello: aspettarlo teneva il contatto su Pending finche'
+            // non atterrava un FCM a priorita' bassa (allReceived non e' in
+            // WAKE_TYPES, di proposito), 102 secondi misurati il 28 ago.
+            getPeerViewModel().setStatusToActive(message.fromUserId)
+
+            if (myProfileStat == AcquisitionStatus.SENT) {
+                debugLine("receiveProfile", "My profile already delivered, contact complete")
+            } else {
+                debugLine("receiveProfile", "Sending my profile to remote peer")
+                getPeerViewModel().sendMyProfileToRemotePeer(message.fromUserId)
             }
         } else {
             debugLine("receiveProfile", "Cannot save new received profile as contact")
