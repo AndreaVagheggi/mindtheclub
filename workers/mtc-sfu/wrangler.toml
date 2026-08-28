@@ -18,6 +18,19 @@ script_name = "mtc-signal"
 tag = "v1"
 new_sqlite_classes = ["CallRoom"]
 
+
+# Automatic brake, native Cloudflare rate limiting: no Durable Object,
+# no shared state, counters live in the location serving the request.
+# per sessionId
+# Needs Wrangler 4.36.0 or later. Two bindings sharing a namespace_id
+# share counters, so each worker has its own.
+[[ratelimits]]
+name = "SFU_LIMITER"
+namespace_id = "1004"
+# 300/60s per session: track setup and renegotiation are bursty and this path
+# has never run in production, so the limit is deliberately loose.
+simple = { limit = 300, period = 60 }
+
 [vars]
 # Emergency brake: max SFU session creations per UTC day. One per participant
 # per call, so 5,000 is roughly 600 eight-person calls in a day — far above any

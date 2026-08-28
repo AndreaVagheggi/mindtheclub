@@ -21,11 +21,37 @@ new_sqlite_classes = ["SignalRoom"]
 tag = "v2"
 new_sqlite_classes = ["BudgetGuard"]
 
+
+# Automatic brake, native Cloudflare rate limiting: no Durable Object,
+# no shared state, counters live in the location serving the request.
+# constant key, so per Cloudflare location, not per user
+# Needs Wrangler 4.36.0 or later. Two bindings sharing a namespace_id
+# share counters, so each worker has its own.
+[[ratelimits]]
+name = "SIGNAL_LIMITER"
+namespace_id = "1003"
+simple = { limit = 20000, period = 60 }
+
 [vars]
 # Emergency brake: max room openings per UTC day. A normal day is well under
 # 2,000; the 12-16 Aug storm peaked around 5,000. Above this the worker answers
 # 429 and the app's retry ladders degrade gracefully. Tune from the dashboard.
-DAILY_SIGNAL_BUDGET = "10000"
+# Sized by worst case SPEND, not by a user forecast, 28 Aug 2026.
+#
+# The previous values were measured on a four handset test bench and would have
+# returned 429 to EVERY user in the world, for the rest of the UTC day, somewhere
+# between 120 and 400 real users. A brake that becomes a total outage is worse
+# than a bill: a certain failure beats a possible cost.
+#
+# Measured per user per day on the heaviest handset: 332 FCM, 66 signalling
+# rooms, 66 ICE. A guarded request costs about $1.45 per million all in
+# (Workers request + Durable Object request + one storage row read and written).
+# These ceilings therefore cost at most about $50/month if saturated every single
+# day for a month, and they cover roughly 3.000 users.
+#
+# Raising them is a two minute `npx wrangler deploy`. The budget alerts on the
+# Cloudflare account are what warn you before it is needed.
+DAILY_SIGNAL_BUDGET = "200000"
 
 # After `wrangler deploy`, attach the custom hostname so the client URL
 # (wss://signal.mindtheclub.com/c/<channelId>) resolves to this Worker:

@@ -22,14 +22,21 @@
 //   2. ROOM TTL. A call is closed after ROOM_TTL_MS whatever the clients do.
 //      Four hours is beyond any real call and is the abuse backstop agreed for
 //      call duration.
-//   3. DAILY BUDGET, shared with the other workers through the BudgetGuard
-//      object in mtc-signal. Counts session creations, which is what maps to
-//      Cloudflare egress. Fails OPEN: the brake guards the wallet, it must
-//      never become the outage.
+//   3. KILL SWITCH. DAILY_SFU_BUDGET = 0 refuses every session creation.
+//      Until 28 Aug 2026 this was a per request counter in a shared BudgetGuard
+//      Durable Object; that object was the one component of the system that
+//      could not scale, and it is off the request path now. See docs/costs.md.
 //
 // Secrets (wrangler secret put):
 //   CF_REALTIME_APP_ID
 //   CF_REALTIME_APP_SECRET
+
+
+/** Cloudflare's native rate limiting binding. No Durable Object, no shared
+ *  state: counters live in the Cloudflare location that serves the request. */
+interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
 
 export interface Env {
   CF_REALTIME_APP_ID: string;
@@ -37,6 +44,7 @@ export interface Env {
   CALL_ROOM: DurableObjectNamespace;
   // BudgetGuard lives in the mtc-signal worker (script_name binding).
   BUDGET_GUARD: DurableObjectNamespace;
+  SFU_LIMITER: RateLimiter;
   DAILY_SFU_BUDGET?: string;
 }
 
@@ -69,6 +77,19 @@ export default {
 
     // ── session broker: /s/... ──
     if (parts[0] !== "s") return new Response("Not found", { status: 404 });
+
+    // Automatic brake. The key is parts[1], which means:
+    //   /s/<sessionId>/<action>  -> per session, scale free like mtc-fcm
+    //   /s/new                   -> the literal "new", so a per location
+    //                               ceiling on session CREATION, which is the
+    //                               expensive operation and the right thing to
+    //                               bound coarsely.
+    // 300 a minute is deliberately loose: this path has never run in
+    // production, and track setup and renegotiation are bursty.
+    if (parts[1]) {
+      const { success } = await env.SFU_LIMITER.limit({ key: parts[1] });
+      if (!success) return json({ error: "rate" }, 429);
+    }
 
     if (!env.CF_REALTIME_APP_ID || !env.CF_REALTIME_APP_SECRET) {
       return json({ error: "credentials-not-set" }, 500);
@@ -108,15 +129,12 @@ export default {
 };
 
 async function budgetExceeded(env: Env): Promise<boolean> {
-  const budget = parseInt(env.DAILY_SFU_BUDGET ?? "5000", 10);
-  try {
-    const guard = env.BUDGET_GUARD.get(env.BUDGET_GUARD.idFromName("global"));
-    const res = await guard.fetch("https://budget/incr?scope=sfu");
-    const { count } = (await res.json()) as { count: number };
-    return count > budget;
-  } catch {
-    return false; // fail open
-  }
+  // Kill switch only, see the long note in mtc-fcm/worker.ts: the shared
+  // BudgetGuard Durable Object was the single component of the system that did
+  // not scale, and it has been taken off the request path. Set the budget to 0
+  // (or copy wrangler.toml.stop over wrangler.toml) and deploy to refuse
+  // everything. See docs/costs.md.
+  return parseInt(env.DAILY_SFU_BUDGET ?? "5000", 10) === 0;
 }
 
 /**
