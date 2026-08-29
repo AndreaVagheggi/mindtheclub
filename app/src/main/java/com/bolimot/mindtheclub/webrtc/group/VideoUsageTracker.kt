@@ -13,10 +13,13 @@ import java.util.Calendar
  * Monthly group-video allowance, metered on this device for this device.
  *
  * Every byte counted here is also added to [RelayUsageTracker], deliberately:
- * video draws from the same 10 GB relay meter that TURN already draws from, so
+ * video draws from the same 15 GB relay meter that TURN already draws from, so
  * the absolute worst case per user stays exactly what it is today instead of
- * being stacked on top of it. The allowance below is the tighter of the two
- * limits and is the one the user actually meets.
+ * being stacked on top of it.
+ *
+ * On the trial the 500 MB allowance below is the tighter of the two and is the
+ * one the user actually meets. With a subscription there is no video allowance
+ * at all, and the relay meter is the only limit left.
  *
  * There is no server behind this, consistent with the rest of the app's
  * convenience model: the counter lives in preferences, and what really bounds
@@ -33,7 +36,7 @@ object VideoUsageTracker {
         return "%04d-%02d".format(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1)
     }
 
-    /** 5 GB with a subscription, 500 MB on the trial. */
+    /** Unlimited with a subscription, 500 MB on the trial. */
     fun allowanceBytes(context: Context = App.context()): Long =
         if (BillingManager.hasSubscription(context)) GroupCallConfig.ALLOWANCE_SUBSCRIBED_BYTES
         else GroupCallConfig.ALLOWANCE_TRIAL_BYTES
@@ -93,9 +96,11 @@ object VideoUsageTracker {
         // must see everything that leaves through a relay, TURN or SFU alike.
         RelayUsageTracker.addRelayBytes(bytes)
 
+        val cap = allowanceBytes(ctx)
+        val capLabel = if (cap == Long.MAX_VALUE) "unlimited" else cap.toString()
         debugLine(
             "VideoUsageTracker",
-            "Video +$bytes B -> $updated B this month (allowance ${allowanceBytes(ctx)})"
+            "Video +$bytes B -> $updated B this month (allowance $capLabel)"
         )
     }
 }

@@ -366,9 +366,9 @@
     <string name="incoming_group_call">Eingehender Gruppenanruf</string>
     <string name="group_call_participants">%1$d im Anruf</string>
     <string name="group_call_full">Der Anruf ist voll</string>
-    <string name="group_call_no_allowance">Dein monatliches Videokontingent ist aufgebraucht</string>
-    <string name="group_call_audio_only">Video pausiert, um Kontingent zu sparen, der Ton läuft weiter</string>
-    <string name="group_call_allowance_warning">Du hast fast das gesamte Videokontingent dieses Monats verbraucht</string>
+    <string name="group_call_no_allowance">Dein Video-Kontingent der Testphase ist aufgebraucht. Mit einem Abo ist Gruppenvideo unbegrenzt.</string>
+    <string name="group_call_audio_only">Video-Kontingent der Testphase fast aufgebraucht: Video pausiert, der Ton läuft weiter. Ein Abo hebt das Limit auf.</string>
+    <string name="group_call_allowance_warning">Dein Video-Kontingent der Testphase ist fast aufgebraucht. Mit einem Abo ist Gruppenvideo unbegrenzt.</string>
     <string name="group_call_no_members">Diese Gruppe hat keine weiteren Mitglieder zum Anrufen</string>
     <string name="hang_up">Auflegen</string>
     <string name="muted">Stummgeschaltet</string>

@@ -365,9 +365,9 @@
     <string name="incoming_group_call">Chamada em grupo recebida</string>
     <string name="group_call_participants">%1$d na chamada</string>
     <string name="group_call_full">A chamada está cheia</string>
-    <string name="group_call_no_allowance">O seu limite mensal de vídeo terminou</string>
-    <string name="group_call_audio_only">Vídeo em pausa para poupar o limite, o áudio continua</string>
-    <string name="group_call_allowance_warning">Já usou quase todo o limite de vídeo deste mês</string>
+    <string name="group_call_no_allowance">O limite de vídeo da versão de teste terminou. Subscreva para vídeo de grupo sem limites.</string>
+    <string name="group_call_audio_only">Limite de vídeo da versão de teste quase esgotado: vídeo em pausa, o áudio continua. Subscreva para remover o limite.</string>
+    <string name="group_call_allowance_warning">Já usou quase todo o limite de vídeo da versão de teste. Subscreva para vídeo de grupo sem limites.</string>
     <string name="group_call_no_members">Este grupo não tem outros membros para chamar</string>
     <string name="hang_up">Desligar</string>
     <string name="muted">Sem som</string>

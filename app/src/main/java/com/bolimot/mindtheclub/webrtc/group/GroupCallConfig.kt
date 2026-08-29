@@ -14,8 +14,15 @@ object GroupCallConfig {
     /** Participant cap. A cost decision, not a technical limit; the worker enforces it too. */
     const val MAX_PARTICIPANTS = 8
 
-    /** Monthly video allowance for an active subscription (mtc_standard). */
-    const val ALLOWANCE_SUBSCRIBED_BYTES = 5L * 1_000_000_000L
+    /**
+     * Monthly video allowance for an active subscription (mtc_standard): none.
+     *
+     * Somebody who is paying for the app is never told to stop talking. What
+     * still bounds the spend for them is RELAY_CAP_BYTES in RelayUsageTracker,
+     * which every video byte is also counted against, and DAILY_SFU_BUDGET in
+     * the mtc-sfu worker.
+     */
+    const val ALLOWANCE_SUBSCRIBED_BYTES = Long.MAX_VALUE
 
     /** Monthly video allowance during the free trial. Enough to actually try the feature. */
     const val ALLOWANCE_TRIAL_BYTES = 500L * 1_000_000L

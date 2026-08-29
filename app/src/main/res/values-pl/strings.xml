@@ -365,9 +365,9 @@
     <string name="incoming_group_call">Przychodzące połączenie grupowe</string>
     <string name="group_call_participants">%1$d w rozmowie</string>
     <string name="group_call_full">Rozmowa jest pełna</string>
-    <string name="group_call_no_allowance">Miesięczny limit wideo został wyczerpany</string>
-    <string name="group_call_audio_only">Wideo wstrzymane, aby oszczędzić limit, dźwięk działa dalej</string>
-    <string name="group_call_allowance_warning">Zużyto prawie cały limit wideo w tym miesiącu</string>
+    <string name="group_call_no_allowance">Limit wideo w okresie próbnym został wyczerpany. Wykup subskrypcję, aby korzystać bez ograniczeń.</string>
+    <string name="group_call_audio_only">Limit wideo w okresie próbnym prawie wyczerpany: wideo wstrzymane, dźwięk działa dalej. Wykup subskrypcję, aby usunąć limit.</string>
+    <string name="group_call_allowance_warning">Limit wideo w okresie próbnym prawie się skończył. Wykup subskrypcję, aby korzystać bez ograniczeń.</string>
     <string name="group_call_no_members">Ta grupa nie ma innych członków do połączenia</string>
     <string name="hang_up">Zakończ</string>
     <string name="muted">Wyciszony</string>

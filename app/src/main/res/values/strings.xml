@@ -363,9 +363,9 @@
     <string name="incoming_group_call">Incoming group call</string>
     <string name="group_call_participants">%1$d in call</string>
     <string name="group_call_full">The call is full</string>
-    <string name="group_call_no_allowance">Your monthly video allowance is used up</string>
-    <string name="group_call_audio_only">Video paused to save your allowance, audio continues</string>
-    <string name="group_call_allowance_warning">You have used most of this month\'s video allowance</string>
+    <string name="group_call_no_allowance">Your trial video allowance is used up. Subscribe for unlimited group video.</string>
+    <string name="group_call_audio_only">Trial video allowance nearly gone: video paused, audio continues. Subscribe to remove the limit.</string>
+    <string name="group_call_allowance_warning">You have used most of your trial video allowance. Subscribe for unlimited group video.</string>
     <string name="group_call_no_members">This group has no other members to call</string>
     <string name="hang_up">Hang up</string>
     <string name="muted">Muted</string>

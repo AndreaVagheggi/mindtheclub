@@ -366,9 +366,9 @@
     <string name="incoming_group_call">Llamada de grupo entrante</string>
     <string name="group_call_participants">%1$d en la llamada</string>
     <string name="group_call_full">La llamada está completa</string>
-    <string name="group_call_no_allowance">Has agotado tu cuota mensual de vídeo</string>
-    <string name="group_call_audio_only">Vídeo en pausa para ahorrar cuota, el audio continúa</string>
-    <string name="group_call_allowance_warning">Has usado casi toda la cuota de vídeo de este mes</string>
+    <string name="group_call_no_allowance">Has agotado tu cuota de vídeo de prueba. Suscríbete para vídeo en grupo sin límites.</string>
+    <string name="group_call_audio_only">La cuota de vídeo de prueba está casi agotada: vídeo en pausa, el audio continúa. Suscríbete para quitar el límite.</string>
+    <string name="group_call_allowance_warning">Has usado casi toda la cuota de vídeo de prueba. Suscríbete para vídeo en grupo sin límites.</string>
     <string name="group_call_no_members">Este grupo no tiene otros miembros a los que llamar</string>
     <string name="hang_up">Colgar</string>
     <string name="muted">Silenciado</string>

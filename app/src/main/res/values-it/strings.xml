@@ -363,9 +363,9 @@
     <string name="incoming_group_call">Chiamata di gruppo in arrivo</string>
     <string name="group_call_participants">%1$d in chiamata</string>
     <string name="group_call_full">La chiamata è al completo</string>
-    <string name="group_call_no_allowance">Il credito video mensile è esaurito</string>
-    <string name="group_call_audio_only">Video sospeso per risparmiare il credito, l\'audio continua</string>
-    <string name="group_call_allowance_warning">Hai quasi esaurito il credito video di questo mese</string>
+    <string name="group_call_no_allowance">Il credito video di prova è esaurito. Abbonati per il video di gruppo senza limiti.</string>
+    <string name="group_call_audio_only">Credito video di prova quasi finito: video sospeso, l\'audio continua. Abbonati per togliere il limite.</string>
+    <string name="group_call_allowance_warning">Hai quasi esaurito il credito video di prova. Abbonati per il video di gruppo senza limiti.</string>
     <string name="group_call_no_members">Questo gruppo non ha altri membri da chiamare</string>
     <string name="hang_up">Riaggancia</string>
     <string name="muted">Microfono spento</string>
