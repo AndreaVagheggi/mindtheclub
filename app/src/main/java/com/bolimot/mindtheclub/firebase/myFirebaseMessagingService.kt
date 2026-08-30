@@ -296,6 +296,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             Notify.GROUP_CALL_DECLINE -> {
                 debugLine(tag, "Group call declined by $fromUserId")
+                if (callId != null && fromUserId.isNotEmpty()) {
+                    GroupCallManager.onDeclined(callId, fromUserId)
+                }
             }
 
             Notify.AUDIO_CALL -> {

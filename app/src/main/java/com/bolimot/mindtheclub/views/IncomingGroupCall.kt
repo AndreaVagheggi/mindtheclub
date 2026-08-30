@@ -13,6 +13,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import com.bolimot.mindtheclub.functions.applyImmersiveFullScreen
 import com.bolimot.mindtheclub.R
@@ -20,8 +21,10 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.wakeUpPhone
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.voip.GroupCallService
+import com.bolimot.mindtheclub.webrtc.group.VideoUsageTracker
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.imageview.ShapeableImageView
 import kotlin.math.abs
@@ -66,6 +69,8 @@ class IncomingGroupCall : BaseActivity() {
     private var epoch: Int = 0
     private var host: String = ""
     private var answered = false
+
+    private var noAllowanceDialog: AlertDialog? = null
 
     private var acceptAnimator: ObjectAnimator? = null
     private var initialY = 0f
@@ -216,6 +221,22 @@ class IncomingGroupCall : BaseActivity() {
 
     private fun answer() {
         if (answered) return
+
+        // The allowance is checked HERE, on a screen that is already on top,
+        // and not inside the call screen.
+        //
+        // GroupCallManager.joinCall refuses by setting NO_ALLOWANCE, and the
+        // service's watchCall resets the manager to IDLE in the same breath.
+        // status is a conflated StateFlow, so the call screen can start
+        // collecting after both writes and see only IDLE, which it treats as
+        // "call over" and closes without a word. That is what happened on
+        // 30 Aug 2026: the tester answered and the app simply vanished.
+        if (VideoUsageTracker.isExhausted()) {
+            debugLine(tag, "No video allowance, cannot answer $roomId")
+            showNoAllowance()
+            return
+        }
+
         answered = true
 
         val intent = Intent(applicationContext, GroupCallService::class.java).apply {
@@ -235,6 +256,21 @@ class IncomingGroupCall : BaseActivity() {
         finish()
     }
 
+    /**
+     * Says why the call cannot be answered, and hangs up only when the user has
+     * read it. Being unable to enter is a refusal like any other, so [decline]
+     * is what closes this: the host is told at once instead of ringing an empty
+     * room until its own timeout.
+     */
+    private fun showNoAllowance() {
+        if (isFinishing || noAllowanceDialog != null) return
+        noAllowanceDialog = MaterialAlertDialogBuilder(this)
+            .setMessage(R.string.group_call_no_allowance)
+            .setCancelable(false)
+            .setPositiveButton(R.string.close) { _, _ -> decline() }
+            .show()
+    }
+
     private fun decline() {
         val intent = Intent(applicationContext, GroupCallService::class.java).apply {
             action = GroupCallService.ACTION_DECLINE
@@ -247,6 +283,8 @@ class IncomingGroupCall : BaseActivity() {
 
     override fun onDestroy() {
         acceptAnimator?.cancel()
+        noAllowanceDialog?.dismiss()
+        noAllowanceDialog = null
         if (current === this) current = null
         super.onDestroy()
     }

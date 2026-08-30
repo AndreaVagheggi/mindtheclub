@@ -23,6 +23,7 @@ import org.webrtc.AudioTrack
 import org.webrtc.EglBase
 import org.webrtc.PeerConnection
 import org.webrtc.VideoTrack
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The one live group call, from the invitation to the last person hanging up.
@@ -125,8 +126,29 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /** Who was invited, so the host can re-key them when the roster changes. */
     private val invited = mutableSetOf<String>()
 
+    /**
+     * Who answered the invitation with a refusal, including the phones that
+     * could not enter at all. Only the host fills [invited], so only the host
+     * ever acts on this.
+     *
+     * Concurrent on purpose: declines arrive on the FCM thread and are handled
+     * on Dispatchers.Default, so two refusals landing together would otherwise
+     * write into the same LinkedHashSet from two threads.
+     */
+    private val declined: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     private var statsJob: Job? = null
     private var durationJob: Job? = null
+
+    /**
+     * Ends a call that nobody ever entered.
+     *
+     * The rule in [onLeft] cannot cover this: it needs [hadCompany], which only
+     * becomes true when somebody is admitted. A host whose invitees all refuse,
+     * or whose phones never answer at all, would otherwise sit alone with the
+     * camera on until MAX_CALL_DURATION_MS, which is four hours.
+     */
+    private var lonelyJob: Job? = null
     private var startedAt = 0L
 
     private var pendingBytes = 0L
@@ -189,6 +211,49 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
                         "gcHost" to (MySelf.userId() ?: "")
                     )
                 )
+            }
+
+            startLonelyGuard()
+        }
+    }
+
+    /**
+     * A peer said no, or could not come. Ignored unless it belongs to the call
+     * this phone is actually hosting.
+     */
+    fun onDeclined(room: String, userId: String) {
+        if (room != roomId || userId.isEmpty()) return
+        scope.launch {
+            declined.add(userId)
+            endIfNobodyIsComing("everyone invited refused")
+        }
+    }
+
+    /**
+     * Closes a call that is still empty and has nothing left to wait for.
+     *
+     * Deliberately silent once anybody has been admitted: from that moment the
+     * call is real and [onLeft] owns its ending.
+     */
+    private fun endIfNobodyIsComing(reason: String) {
+        if (hadCompany) return
+        if (_members.value.any { !it.isSelf }) return
+        if (invited.isEmpty() || !declined.containsAll(invited)) return
+        debugLine(TAG, "Nobody is coming ($reason), ending the call")
+        leave()
+    }
+
+    /**
+     * Started once the invitations are out. Ten seconds past the ring timeout,
+     * so a phone that is merely slow to answer is never cut off by this.
+     */
+    private fun startLonelyGuard() {
+        lonelyJob?.cancel()
+        lonelyJob = scope.launch {
+            delay(RING_TIMEOUT_MS + 10_000L)
+            if (!hadCompany && _members.value.none { !it.isSelf }) {
+                debugLine(TAG, "Nobody answered the invitation, ending the call")
+                leave()
             }
         }
     }
@@ -384,6 +449,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         room?.close(); room = null
         client?.release(); client = null
 
+        lonelyJob?.cancel(); lonelyJob = null
+
         _members.value = emptyList()
         _reactions.value = null
         _pinned.value = null
@@ -392,6 +459,7 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         isHost = false
         hadCompany = false
         invited.clear()
+        declined.clear()
     }
 
     /** Returns the manager to a state where a new call can start. */
