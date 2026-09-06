@@ -14,16 +14,15 @@ import kotlinx.serialization.json.Json
 /**
  * Second chance for a relay that could not read its delivery document.
  *
- * Twin of [GroupSendWorker], same shape on purpose. It exists because the relay
- * used to be a single shot: on 19 Aug a member took an 11 photo album in 21
- * seconds and then lost Firestore for a few seconds while its link collapsed,
- * and the two remaining members of the group never got the album at all. The
- * origin had stopped, its fanout satisfied, and nobody had told them there was
+ * Twin of [GroupSendWorker], same shape apposta. It exists because the relay used to be a single
+ * shot: on 19 Aug a member took an 11 photo album in 21 seconds and then lost Firestore for a few
+ * seconds while its link collapsed, and the two remaining members of the group never got the album
+ * at all. The origin had stopped with its fanout satisfied, and nobody had told them there was
  * anything to ask for.
  *
- * Scheduled with a CONNECTED constraint, so it waits for a working network
- * rather than burning its attempts against a radio that is still down, and it
- * survives the process being killed, which a coroutine retry does not.
+ * Scheduled with a CONNECTED constraint, so it waits for a working network rather than burning its
+ * attempts against a radio that is still down, and it survives the process being killed, which a
+ * coroutine retry does not.
  */
 class GroupPropagateWorker(
     context: Context,

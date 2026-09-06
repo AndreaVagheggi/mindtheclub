@@ -6,13 +6,13 @@ import com.bolimot.mindtheclub.tools.MySelf
 import org.json.JSONObject
 
 /**
- * Tracks messages that entered "pending" state (sender's dispatch worker exhausted
- * WebRTC attempts, sent a `pending` FCM to receiver, and exited).
+ * Tracks messages that entered "pending" state (the sender's dispatch worker exhausted its WebRTC
+ * attempts, sent a `pending` FCM to the receiver and exited).
  *
  * Used by:
- * - DispatchWorker: records entries when sending `pending` FCM
- * - PendingRetryWorker: periodically re-sends `pending` FCM with backoff
- * - MyFirebaseMessagingService (ALL_RECEIVED): clears confirmed entries + piggybacks stale ones
+ * - DispatchWorker: records entries when sending the `pending` FCM
+ * - PendingRetryWorker: re-sends it periodically with backoff
+ * - MyFirebaseMessagingService (ALL_RECEIVED): clears confirmed entries, piggybacks stale ones
  */
 object PendingMessageTracker {
 
@@ -133,20 +133,18 @@ object PendingMessageTracker {
     }
 
     /**
-     * Returns the minimum delay (ms) before the next retry based on retry count.
-     * Backoff schedule: 10min → 20min → 45min → 1.5h → 3h → 4h (capped).
+     * Minimum delay (ms) before the next retry, by retry count.
+     * Backoff: 10min, 20min, 45min, 1.5h, 3h, 4h (capped).
      *
-     * The first steps MUST be short: a message can be lost at the very last hop
-     * (receiver's process frozen/killed right as the WebRTC payload arrived, so
-     * nothing was persisted) and this schedule is the sender-side safety net that
-     * redelivers it. With the previous 6h first step, a lost message looked
-     * "never sent" for a whole working day.
+     * The first steps MUST be short: a message can be lost at the very last hop (the receiver's
+     * process frozen or killed right as the WebRTC payload arrived, so nothing was persisted) and
+     * this schedule is the sender side net that redelivers it. With the previous 6h first step a
+     * lost message looked "never sent" for a whole working day.
      *
-     * The tail was tightened after 6 Aug, where the old 6h cap meant a peer that
-     * was merely asleep got asked again only the next morning. The change is kept
-     * modest on purpose: every retry costs a Cloudflare signalling room, and the
-     * receiver now retries too (see IncomingPendingTracker), so the two ladders
-     * add up.
+     * The tail was tightened after 6 Aug, where the old 6h cap meant a peer that was merely
+     * asleep got asked again only the next morning. Modesto apposta: every retry costs a
+     * Cloudflare signalling room, and the receiver now retries too (see IncomingPendingTracker),
+     * so the two ladders add up.
      */
     fun getBackoffDelay(retryCount: Int): Long = when {
         retryCount <= 0 -> 10 * 60 * 1000L         // 10 min (next worker pass)

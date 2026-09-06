@@ -15,7 +15,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 
 class ClubViewHolder(itemView: View, private val listener: ClubsAdapter.OnItemClickListener) : RecyclerView.ViewHolder(itemView) {
 
-    // 1. Initialize Views and Animator ONCE (Performance Best Practice)
+    // 1. Views e animator inizializzati una volta sola
     private val imageView: ImageView = itemView.findViewById(R.id.clubImage)
     private val nameView: TextView = itemView.findViewById(R.id.name)
     private val descView: TextView = itemView.findViewById(R.id.description)
@@ -29,12 +29,12 @@ class ClubViewHolder(itemView: View, private val listener: ClubsAdapter.OnItemCl
     fun bind(clubItem: ClubItem?) {
         if (clubItem == null) return
 
-        // 2. ALWAYS Reset State first (Fixes the "All blinking" bug)
+        // 2. Reset state first (fixes the "all blinking" bug)
         flashAnimator.cancel()
         imageView.alpha = 1f
         imageView.clearAnimation()
 
-        // Reset Text Style (Fixes Italic leaking into other rows)
+        // Reset the text style, or italic leaks into the other rows
         nameView.setTypeface(null, Typeface.BOLD)
         descView.setTypeface(null, Typeface.NORMAL)
 
@@ -62,9 +62,8 @@ class ClubViewHolder(itemView: View, private val listener: ClubsAdapter.OnItemCl
             nameView.text = clubItem.name
             descView.text = clubItem.description
 
-            // Note: We DO NOT blink for normal loading anymore.
-            // This prevents the "Disco Effect" when scrolling fast.
-            // Glide handles the placeholder/transition gracefully.
+            // Niente blink for normal loading anymore: it made a disco effect when scrolling
+            // fast. Glide handles the placeholder transition on its own.
 
             if (!clubItem.picture.isNullOrEmpty()) {
                 Glide.with(itemView.context)

@@ -22,14 +22,6 @@ import java.util.concurrent.TimeUnit
 
 private const val FCM_WORKER_URL = "https://mtc-fcm.long-sun-7368.workers.dev"
 
-/**
- * Types that must punch through doze: the recipient is (possibly) idle and has
- * to be woken to receive content or act. Everything else is a status update
- * that is only meaningful while the recipient's device is awake anyway — those
- * go out at normal FCM priority, preserving the per-device high-priority budget
- * (Android demotes an app's high-priority messages when they are overused
- * without user-visible work — which is what silently deferred our wake-ups).
- */
 private val WAKE_TYPES = setOf(
     Notify.PENDING,
     Notify.SEND_ME,
@@ -37,14 +29,6 @@ private val WAKE_TYPES = setOf(
     Notify.CANCEL_TRANSFER,
     Notify.GROUP,
     Notify.GROUP_REMOVED,
-    // Failure-only recovery signals, added 8 Aug. They fire exclusively when a
-    // transfer arrived broken (missing chunks), so their volume is near zero in
-    // normal operation and they cannot strain the high-priority budget the way
-    // the per-message chatter (completed/allReceived/Seen) did before 9 Jul.
-    // They belong here by this set's own criterion: someMissing does the same
-    // job as sendMe, which has always been in the set — at normal priority a
-    // dozing sender saw them 5 to 25 minutes late and re-sent into a dead
-    // channel each time (Romy, 7 Aug: 46 minutes for 5 chunks).
     Notify.SOME_MISSING,
     Notify.ALL_MISSING,
 )
@@ -162,16 +146,15 @@ object FcmMessageSender {
                 put("collapseKey", collapseKey)
                 put("instant", instant)
                 put("isOffer", isOffer)
-                // Routing metadata (outside the sealed payload): lets the cloud
-                // function pick FCM priority without seeing the encrypted type.
+                // Routing metadata, outside the sealed payload: it lets the cloud function pick
+                // FCM priority without seeing the encrypted type.
                 put("wake", wake)
             }
 
-            // This is the gate that decided, on 21 Aug, that a phone had nothing
-            // to say: 448 sends, 448 refusals, every one of them here, before a
-            // single byte went near the network. The three attempts with their
-            // backoff live BELOW this point and were never reached, so a hiccup
-            // in Play Integrity did not slow the app down, it silenced it.
+            // This is the gate that decided, on 21 Aug, that a phone had nothing to say: 448
+            // sends, 448 refusals, every one of them here, before a single byte went near the
+            // network. The three attempts with their backoff live BELOW this point and were never
+            // reached, so a hiccup in Play Integrity did not slow the app down, l'ha zittita.
             val appCheckToken = if (!APP_CHECK_ENABLED) "" else {
                 val fetched = try {
                     var t = FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
@@ -192,8 +175,8 @@ object FcmMessageSender {
             }
 
             val requestBody = JSONObject().apply {
-                // Omitted rather than sent empty: the relay treats the field as
-                // optional and only forwards the header when it is there.
+                // Omitted rather than sent empty: the relay treats the field as optional and
+                // only forwards the header when it is there.
                 if (appCheckToken.isNotEmpty()) put("appCheckToken", appCheckToken)
                 put("payload", inner)
             }.toString()

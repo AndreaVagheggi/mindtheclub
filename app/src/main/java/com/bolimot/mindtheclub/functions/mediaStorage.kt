@@ -15,9 +15,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Public folders where received media are stored, see saveMediaToPublicStorage
- * and saveFileToPublicDownloads. Used to find a file again by name after a
- * restore on another phone.
+ * Public folders where received media are stored, see saveMediaToPublicStorage and
+ * saveFileToPublicDownloads. Used to find a file again by name after a restore on another phone.
  */
 private val PUBLIC_MEDIA_FOLDERS = listOf(
     Environment.DIRECTORY_PICTURES to false,
@@ -26,13 +25,11 @@ private val PUBLIC_MEDIA_FOLDERS = listOf(
 )
 
 /**
- * The DISPLAY_NAME behind [uriString], or null when it is not a resolvable
- * media uri.
+ * The DISPLAY_NAME behind [uriString], or null when it is not a resolvable media uri.
  *
- * Received media live in the public MediaStore, so their uri is a
- * content://media/... row id that is meaningless on any other device. The file
- * NAME however survives the phone migration together with the file itself, and
- * is what lets [findPublicMediaByName] re-attach the row after a restore.
+ * Received media live in the public MediaStore, so their uri is a content://media/... row id
+ * that means nothing on another device. The file NAME survives the phone migration together with
+ * the file itself, and is what lets [findPublicMediaByName] re-attach the row after a restore.
  */
 fun displayNameOfMediaUri(context: Context, uriString: String?): String? {
     if (uriString.isNullOrEmpty()) return null
@@ -52,12 +49,12 @@ fun displayNameOfMediaUri(context: Context, uriString: String?): String? {
 }
 
 /**
- * Looks for [fileName] inside the app's public media folders and returns its
- * uri on THIS device, or null when the file did not travel with the user.
+ * Looks for [fileName] inside the app's public media folders and returns its uri on THIS device,
+ * or null when the file did not travel with the user.
  *
- * This is the restore-side half of the media re-attachment: the standard
- * Android phone migration copies the public folders, so the bytes are already
- * there under the same name, only the MediaStore row id changed.
+ * The restore side half of the media re-attachment: the standard Android phone migration copies
+ * the public folders, so the bytes are already there under the same name, only the MediaStore
+ * row id changed.
  */
 fun findPublicMediaByName(context: Context, fileName: String): Uri? {
     if (fileName.isEmpty()) return null
@@ -184,7 +181,7 @@ suspend fun saveFileToPublicDownloads(
             debugLine("saveFileToPublicDownloads", "Saved to Downloads: $uri")
             uri
         } else {
-            // Legacy storage – FileOutputStream overwrites automatically
+            // Legacy storage, FileOutputStream overwrites by itself
             val downloadsDir = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                 "MindTheClub"

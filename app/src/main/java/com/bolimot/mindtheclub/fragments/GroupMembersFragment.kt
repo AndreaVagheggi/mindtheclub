@@ -59,9 +59,9 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
     private var currentPictureUrl: String? = null
 
     /**
-     * Whoever created the group. Untouchable by design: any admin can promote
-     * others, but nobody can remove the founder, which keeps a family group one
-     * mis-tap away from an accidental coup with no way back.
+     * Whoever created the group. Untouchable by design: any admin can promote others, but nobody
+     * can remove the founder, which keeps a family group one mis-tap away from an accidental coup
+     * with no way back.
      */
     private var founderUserId: String? = null
 
@@ -378,10 +378,10 @@ class GroupMembersFragment(private val groupId: String) : Fragment(), MembersAda
     /**
      * Grants admin rights to the selected members.
      *
-     * The role map on the group document already carries one value per member
-     * ("admin" / "member"), so this is the same single-field write addMembers
-     * does, with a different value: no schema change, and several admins were
-     * always representable, there simply was no way to create them.
+     * The role map on the group document already carries one value per member ("admin" /
+     * "member"), so this is the same single field write addMembers does with a different value:
+     * no schema change, and several admins were always representable, semplicemente non c'era
+     * modo di crearli.
      *
      * A promoted member becomes a full admin, able to promote others in turn.
      */

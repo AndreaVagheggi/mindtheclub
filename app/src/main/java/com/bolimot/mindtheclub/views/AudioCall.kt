@@ -81,8 +81,8 @@ class AudioCall : BaseActivity() {
     private var peerName: String = ""
     private var upgradeDialog: AlertDialog? = null
     private var upgradeTimeoutJob: Job? = null
-    // Set between asking the peer and hearing back, so a stray answer cannot move a
-    // screen that never asked for anything, and a second tap cannot ask twice.
+    // Set between asking the peer and hearing back, so a stray answer cannot move a screen that
+    // never asked for anything, and a second tap cannot ask twice.
     private var awaitingUpgradeAnswer = false
     private var upgradeInProgress = false
 
@@ -92,8 +92,8 @@ class AudioCall : BaseActivity() {
     private val toolbarHideDelay = 5000L
     private val tag = "AudioCall"
 
-    // The peer has to see the request, read it and tap. Long enough not to cut off
-    // someone who is deciding, short enough to release the button if they never saw it.
+    // The peer has to see the request, read it and tap. Long enough not to cut off someone who
+    // is deciding, short enough to release the button if they never saw it.
     private val upgradeAnswerTimeout = 45000L
     private var reconnectToneGenerator: ToneGenerator? = null
     private var reconnectBeepHandler = Handler(Looper.getMainLooper())
@@ -233,7 +233,7 @@ class AudioCall : BaseActivity() {
 
                     // Connect Event
                     if (isLive && !audioCallScreenActive) {
-                        // WebRTC is connected, Telecom framework is connected, I can show the VideoCall rendering screen
+                        // WebRTC up, Telecom up, posso mostrare la VideoCall
                         val rtcClient = ConnectionManager.instance.rtcClient
 
                         if(rtcClient != null) {
@@ -306,9 +306,9 @@ class AudioCall : BaseActivity() {
     //**********************************************************************************//
 
     /**
-     * Both ends have to agree before either camera comes on, so the switch is a short
-     * handshake rather than a local toggle: we ask, the peer accepts or declines, and
-     * only on acceptance does each side add its camera track and renegotiate.
+     * Both ends have to agree before either camera comes on, so the switch is a short handshake
+     * and not a local toggle: we ask, the peer accepts or declines, and only on acceptance does
+     * each side add its camera track and renegotiate.
      */
     private fun askToSwitchToVideo() {
         if (!audioCallScreenActive || upgradeInProgress) return
@@ -328,8 +328,8 @@ class AudioCall : BaseActivity() {
     }
 
     private fun requestVideoUpgrade() {
-        // Asking before the camera permission is settled would put the peer in front of
-        // a request we might not be able to honour.
+        // Asking before the camera permission is settled would put the peer in front of a
+        // request we might not be able to honour.
         if (!ensureCallPermissions(this, isVideo = true)) {
             debugLine(tag, "Camera permission missing, upgrade request not sent")
             return
@@ -379,8 +379,8 @@ class AudioCall : BaseActivity() {
     private fun onUpgradeRequested() {
         if (!audioCallScreenActive || upgradeInProgress) return
 
-        // Both sides tapped at the same time: the request we already sent stands, and
-        // accepting our own peer's request as well would produce two offers.
+        // Both sides tapped at the same time: the request we already sent stands, and accepting
+        // theirs as well would produce two offers.
         if (awaitingUpgradeAnswer) {
             debugLine(tag, "Upgrade request crossed with ours, ignoring the incoming one")
             return
@@ -404,8 +404,8 @@ class AudioCall : BaseActivity() {
     }
 
     /**
-     * Accepting side. The camera track goes on before the answer is sent, so that by the
-     * time the peer re-offers this end can answer with video in the same exchange.
+     * Accepting side. The camera track goes on before the answer is sent, so that by the time
+     * the peer re-offers this end can answer with video in the same exchange.
      */
     private fun acceptVideoUpgrade() {
         if (!ensureCallPermissions(this, isVideo = true)) {
@@ -477,8 +477,8 @@ class AudioCall : BaseActivity() {
     }
 
     /**
-     * Hands the live call over to the video screen. The call itself is untouched: the
-     * Telecom session and the PeerConnection both outlive this activity.
+     * Hands the live call over to the video screen. The call itself is untouched: the Telecom
+     * session and the PeerConnection both outlive this activity.
      */
     private fun goToVideoCall() {
         debugLine(tag, "Switching the call screen from audio to video")
@@ -487,8 +487,8 @@ class AudioCall : BaseActivity() {
         upgradeDialog = null
 
         val intent = Intent(this, VideoCall::class.java).apply {
-            // Without this the framework treats the handover as the user walking away and
-            // fires onUserLeaveHint, which would send this screen into PiP on its way out.
+            // Without this the framework reads the handover as the user walking away and fires
+            // onUserLeaveHint, which would send this screen into PiP on its way out.
             addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
             putExtra("remoteUserId", remoteUserId)
             putExtra("callId", callId)
@@ -537,8 +537,8 @@ class AudioCall : BaseActivity() {
     }
 
     private fun enterPipMode() {
-        // onUserLeaveHint calls this on every Home press, so without the guard a device
-        // with no PiP support would log a refusal each time the user leaves the call.
+        // onUserLeaveHint calls this on every Home press, so without the guard a device with no
+        // PiP support would log a refusal each time the user leaves the call.
         if (!deviceSupportsPip(this)) return
 
         try {
@@ -550,8 +550,8 @@ class AudioCall : BaseActivity() {
             debugLine(tag, "Attempting to enter Picture-in-Picture mode.")
             connectionManager.isClosing = false
 
-            // The system reports a refusal by returning false, not by throwing. Ignoring
-            // it left a button that looked dead and said nothing in the log.
+            // The system reports a refusal by returning false, not by throwing. Ignoring it
+            // left a button that looked dead and said nothing in the log.
             val entered = enterPictureInPictureMode(pipParams)
             if (!entered) {
                 debugLine(tag, "System refused PiP: ${describePipAvailability(this)}")
@@ -673,13 +673,12 @@ class AudioCall : BaseActivity() {
     }
 
     private fun observeHoldState() {
-        // Assuming you have a View (like a FrameLayout with a TextView) to act as an overlay
+        // Overlay view, a FrameLayout with a TextView
         val onHoldOverlay: View = findViewById(R.id.your_on_hold_overlay_id)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // This combines the local hold state and remote hold state.
-                // If either is true, the "On Hold" UI will be shown.
+                // Local hold plus remote hold: if either is true the "On Hold" UI shows.
                 ManagedTelecom.currentCall.combine(ManagedTelecom.isRemotelyHeld) { session, isRemoteHeld ->
                     session?.isHeld == true || isRemoteHeld
                 }.collect { isOnHold ->

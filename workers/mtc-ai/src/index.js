@@ -8,8 +8,8 @@
 //   401 (missing/invalid App Check token, unless REQUIRE_APP_CHECK = "false")
 //   429 { "error": "cap_user" | "cap_global" }
 //
-// Cost control (the whole point — see per-user cap + global circuit breaker):
-//   - per-user daily cap: USER_DAILY_CAP messages/day, keyed on userId
+// Cost control, che poi e' tutto il punto (per user cap plus global circuit breaker):
+//   - per user daily cap: USER_DAILY_CAP messages/day, keyed on userId
 //   - global daily cap:   GLOBAL_DAILY_CAP messages/day across all users;
 //     one constant = the hard monthly budget ceiling, no billing surprises.
 
@@ -102,8 +102,8 @@ export default {
       });
       return json({ reply: result.response || "" });
     } catch (e) {
-      // Workers AI free allocation exhausted also lands here: fail like the
-      // global cap so the app shows "try again tomorrow" instead of an error.
+      // Workers AI free allocation exhausted lands here too: fail like the global cap so
+      // the app says "try again tomorrow" instead of showing an error.
       const msg = String(e && e.message);
       if (msg.includes("Capacity") || msg.includes("limit") || msg.includes("quota")) {
         return json({ error: "cap_global" }, 429);

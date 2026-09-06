@@ -8,21 +8,19 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 /**
- * Tracks contacts whose identity key changed, and carries the one explicit
- * user decision that resolves it.
+ * Tracks contacts whose identity key changed, and carries the one explicit user decision that
+ * resolves it.
  *
- * A key change is what a peer looks like after reinstalling the app or moving
- * to a new phone without restoring a backup: their Firestore document serves a
- * key whose fingerprint no longer matches the one verified at pairing. Until
- * now the app refused the new key silently (Fingerprint MISMATCH, not storing)
- * and the contact died with no error shown to either side, retrying for ever
- * in the background (the Sofia case).
+ * A key change is what a peer looks like after reinstalling the app or moving to a new phone
+ * without restoring a backup: their Firestore document serves a key whose fingerprint no longer
+ * matches the one verified at pairing. Until now the app refused the new key silently
+ * (Fingerprint MISMATCH, not storing) and the contact died with no error shown to either side,
+ * retrying for ever in the background (il caso Sofia).
  *
- * Policy, deliberately stricter than WhatsApp's silent auto accept: with no
- * server to trust, the only defence against someone rotating a key on a
- * compromised Firestore document is the user's eyes. A recorded change
- * therefore NEVER updates the stored key by itself: the chat surfaces a
- * dialog, and only the user's explicit accept calls [acceptNewIdentity].
+ * Policy, deliberately stricter than WhatsApp's silent auto accept: with no server to trust, the
+ * only defence against someone rotating a key on a compromised Firestore document is the user's
+ * eyes. A recorded change NEVER updates the stored key by itself: the chat surfaces a dialog, and
+ * only the user's explicit accept calls [acceptNewIdentity].
  */
 object PeerIdentityChange {
 
@@ -53,10 +51,10 @@ object PeerIdentityChange {
     }
 
     /**
-     * The user accepted: fetch the peer's current key from Firestore, make sure
-     * it is still the one that was shown to the user (same fingerprint that was
-     * recorded), and only then store it. If the key rotated AGAIN in between,
-     * the recorded fingerprint is refreshed and the user must confirm once more.
+     * The user accepted: fetch the peer's current key from Firestore, make sure it is still the
+     * one that was shown (the same recorded fingerprint), and only then store it. If the key
+     * rotated AGAIN in between, the recorded fingerprint is refreshed and the user confirms once
+     * more.
      */
     suspend fun acceptNewIdentity(context: Context, peerId: String): Boolean {
         val expected = pending(context, peerId) ?: return false

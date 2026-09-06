@@ -23,17 +23,15 @@ import com.bolimot.mindtheclub.tools.Type
 import java.util.concurrent.TimeUnit
 
 /**
- * Sends a fake text message to the single paired contact every 30 minutes, so
- * delivery latency can be measured over days without waiting for a real tester
- * to write something.
+ * Sends a fake text to the single paired contact every 30 minutes, so delivery latency can be
+ * measured over days without waiting for a real tester to write something.
  *
- * Runs only when BuildConfig.SOAK_TEST is true, which is set exclusively in the
- * debug build type. It is deliberately NOT tied to ENABLE_DEBUG_TOOLS, because
- * that one is also true in a release built with -PreleaseLogging=true, which is
- * precisely the build that goes to real testers.
+ * Only when BuildConfig.SOAK_TEST is true, set exclusively in the debug build type. NOT tied to
+ * ENABLE_DEBUG_TOOLS apposta, because that one is also true in a release built with
+ * -PreleaseLogging=true, which is exactly the build real testers get.
  *
- * The message travels through the ordinary sendMessage path, with no shortcuts:
- * a fake message that behaved differently from a real one would measure nothing.
+ * It travels the ordinary sendMessage path, senza scorciatoie: a fake message that behaved
+ * differently from a real one would measure nothing.
  */
 class SoakTestWorker(
     context: Context,
@@ -51,14 +49,13 @@ class SoakTestWorker(
         const val PREFIX = "SOAK #"
 
         /**
-         * The single remote contact to soak, or null when the handset is not set up
-         * for the test.
+         * The single remote contact to soak, or null when the handset is not set up for the
+         * test.
          *
-         * The AI assistant and note-to-self live in the Peer table as ordinary
-         * active non-group rows, so a phone with one real contact reports three.
-         * They are local pseudo-peers with no FCM token: sending to them would
-         * measure nothing. The rest of the app filters them the same way, see
-         * PeersFragment.
+         * The AI assistant and note-to-self live in the Peer table as ordinary active non group
+         * rows, so a phone with one real contact reports three. They are local pseudo peers
+         * with no FCM token: sending to them would measure nothing. The rest of the app filters
+         * them the same way, see PeersFragment.
          */
         private suspend fun soakTarget(context: Context): String? {
             val peers = try {
@@ -87,22 +84,20 @@ class SoakTestWorker(
         /**
          * Schedules the periodic send.
          *
-         * The two handsets run the same build, so without an offset they would try
-         * to reach each other at the same instant and collide as competing ICE
-         * initiators, producing failures that have nothing to do with what is being
-         * measured. The offset is derived from comparing the two user ids: the
-         * lower one starts immediately, the higher one half a period later. No
-         * configuration, and the two devices always disagree.
+         * The two handsets run the same build, so without an offset they would reach for each
+         * other at the same instant and collide as competing ICE initiators, producing failures
+         * that have nothing to do with what is being measured. The offset comes from comparing
+         * the two user ids: the lower one starts immediately, the higher one half a period
+         * later. Nessuna configurazione, and the two devices always disagree.
          *
-         * The alignment is approximate, since WorkManager counts from enqueue time
-         * and Doze makes periods drift anyway. It only has to make simultaneous
-         * firing unlikely, not impossible.
+         * Approximate, since WorkManager counts from enqueue time and doze makes periods drift
+         * anyway. It only has to make simultaneous firing unlikely, not impossible.
          */
         suspend fun schedule(context: Context) {
             if (!BuildConfig.SOAK_TEST) {
-                // Flag off everywhere now. Clear the periodic work left enqueued by an
-                // earlier build with it on: WorkManager keeps unique periodic work
-                // across app updates, so it would keep waking up for nothing.
+                // Flag off everywhere now. Clear the periodic work left enqueued by an earlier
+                // build with it on: WorkManager keeps unique periodic work across app updates,
+                // so it would keep waking up for nothing.
                 WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
                 return
             }
@@ -143,16 +138,15 @@ class SoakTestWorker(
             return Result.success()
         }
 
-        // Guard rather than guess: this only makes sense on the two dedicated test
-        // handsets, which hold exactly one real contact each.
+        // Guard rather than guess: this only makes sense on the two dedicated test handsets,
+        // which hold exactly one real contact each.
         val target = soakTarget(applicationContext) ?: return Result.success()
 
         val sequence = nextSequence()
         val now = System.currentTimeMillis()
 
-        // The timestamp is in the text as well as in Message.date. date alone would
-        // do, but repeating it keeps each log line self contained, so the analysis
-        // is a grep and two columns.
+        // The timestamp is in the text as well as in Message.date. date alone would do, but
+        // repeating it keeps each log line self contained, so the analysis is a grep.
         val message = Message(
             uid = 0,
             fromUserId = myUserId,
@@ -199,11 +193,11 @@ class SoakTestWorker(
 }
 
 /**
- * Receiver side of the soak test: turns an arriving SOAK message into one
- * greppable line carrying the sequence number and the end to end latency.
+ * Receiver side of the soak test: turns an arriving SOAK message into one greppable line with
+ * the sequence number and the end to end latency.
  *
- * Called from the raw arrival point rather than after assembly, so the number is
- * the true wire latency and is not inflated by local processing.
+ * Called from the raw arrival point rather than after assembly, so the number is the true wire
+ * latency and is not inflated by local processing.
  */
 fun logSoakArrival(text: String?, sentAt: Long) {
     if (!BuildConfig.SOAK_TEST) return

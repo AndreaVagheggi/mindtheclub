@@ -146,17 +146,15 @@ class MessageRepository(private val messageDao: MessageDao) {
      * Rebuilds the denormalised reaction caption of a message just written.
      *
      * Message.reaction is a cached rendering of the Reaction rows, and a freshly
-     * inserted row always carries an empty one. It has to be recomputed here for
-     * two situations that both leave reactions on disk with no caption to show
-     * them:
-     *  - a reaction that arrived BEFORE its target, which happens to anyone who
-     *    joined a group mid-conversation and is now kept instead of dropped;
-     *  - the placeholder replacement above, a delete followed by an insert, which
-     *    silently discarded the caption of any reaction that landed while the
-     *    media was still being received.
+     * inserted row always carries an empty one. Two cases leave reactions on disk with
+     * no caption to show them:
+     *  - a reaction that arrived BEFORE its target, normale for anyone who joined a
+     *    group mid conversation, now kept instead of dropped;
+     *  - the placeholder replacement above, a delete then an insert, which discarded the
+     *    caption of any reaction that landed while the media was still coming in.
      *
-     * A message with no reactions is left untouched, so the normal path pays one
-     * indexed lookup and nothing else.
+     * A message with no reactions is left alone, so the normal path pays one indexed
+     * lookup and nothing else.
      */
     private suspend fun restoreReactionCaption(messageId: String) {
         try {
@@ -174,12 +172,12 @@ class MessageRepository(private val messageDao: MessageDao) {
         return withContext(Dispatchers.IO) {
             mutex.withLock {
                 try {
-                    // Incoming messages get their local reception time stamped here,
-                    // the single choke point every receive path goes through.
+                    // Incoming messages get their local reception time here, the single
+                    // choke point every receive path goes through.
                     val toStore = if (messageIn && message.receivedAt == null) {
                         val now = System.currentTimeMillis()
-                        // How long the wake-up actually took: the signal that
-                        // reveals a device throttling our background work.
+                        // How long the wake up actually took: the signal that reveals a
+                        // device throttling our background work.
                         DeliveryHealth.recordIncoming(message.date, now, App.context())
                         message.copy(receivedAt = now)
                     } else {
@@ -266,40 +264,36 @@ class MessageRepository(private val messageDao: MessageDao) {
     }
 
     /**
-     * Deleting a chat deletes EVERYTHING about that chat. The Message rows and
-     * the files are gone by the time this runs; this is the rest of it, and
-     * without it "delete" only ever meant "hide".
+     * Deleting a chat deletes EVERYTHING about that chat. The Message rows and the files
+     * are already gone when this runs; this is the rest of it, and without it "delete"
+     * only ever meant "hide".
      *
-     * On 19 Aug a group was deleted at 09:34:32 and two minutes later the phone
-     * was pulling a 923 chunk video of that same group, from two peers at once,
-     * into a chat that no longer existed. It ran for hours. The deletion did not
-     * merely fail to stop it, it STARTED it: InboxRecoveryWorker's orphan pass
-     * skips any chunk set that still has a Message row, so removing that row
-     * turned the leftovers into orphans and the worker solicited them. The first
-     * chunk back then recreated the placeholder, and the placeholder workers took
-     * over and kept asking.
+     * On 19 Aug a group was deleted at 09:34:32 and two minutes later the phone was
+     * pulling a 923 chunk video of that same group, from two peers at once, into a chat
+     * that no longer existed. It ran for hours. The deletion did not merely fail to stop
+     * it, it STARTED it: InboxRecoveryWorker's orphan pass skips any chunk set that
+     * still has a Message row, so removing that row turned the leftovers into orphans
+     * and the worker solicited them. The first chunk back recreated the placeholder, and
+     * the placeholder workers took over.
      *
-     * So the cure is not a guard on each of those workers, it is to leave them
-     * nothing to work on and to shut the door:
+     * So the cure is not a guard on each of those workers, it is to leave them nothing
+     * to work on and shut the door:
      *
-     *  - the content is marked REFUSED by contentKey, which receiveData checks on
-     *    every incoming chunk. That is the door: a relay mints a new messageId at
-     *    every hop, and only the contentKey recognises the same file coming back
-     *    under a different name. Nothing gets in, so no placeholder is ever
-     *    recreated and the loop cannot restart;
-     *  - each messageId is marked cancelled and put through stopSendPipeline,
-     *    which cancels the build and dispatch workers and drops the batch tables,
-     *    so this device also stops SENDING that content onward. On 19 Aug it was
-     *    still relaying a group it had been removed from;
+     *  - the content is marked REFUSED by contentKey, which receiveData checks on every
+     *    incoming chunk. Quella e' la porta: a relay mints a new messageId at every hop
+     *    and only the contentKey recognises the same file under a different name;
+     *  - each messageId is marked cancelled and put through stopSendPipeline, which
+     *    cancels the build and dispatch workers and drops the batch tables, so this
+     *    device also stops SENDING that content onward. On 19 Aug it was still relaying
+     *    a group it had been removed from;
      *  - both pending trackers are cleared, and only then the chunks.
      *
-     * Order matters. The trackers must go BEFORE the chunks: an entry left with
-     * no chunks to compare against computes "nothing received" and asks for the
-     * WHOLE message with no missing range (see PendingRetryWorker), which is
-     * worse than doing nothing.
+     * Order matters. The trackers must go BEFORE the chunks: an entry left with no
+     * chunks to compare against computes "nothing received" and asks for the WHOLE
+     * message with no missing range (see PendingRetryWorker), peggio che non far niente.
      *
-     * The one thing this cannot do is empty another phone's queue. That is why
-     * the same code has to reach every member: each device vaporises its own side.
+     * The one thing this cannot do is empty another phone's queue. That is why the same
+     * code has to reach every member: each device vaporises its own side.
      */
     private suspend fun purgeChatLeftovers(chatId: String, deleted: List<Message>) {
         if (chatId.isEmpty()) return
@@ -364,26 +358,24 @@ class MessageRepository(private val messageDao: MessageDao) {
     }
 
     /**
-     * Tells whoever could still be pushing this group content that we do not
-     * want it, so they stop NOW instead of burning their whole retry ladder
-     * against a phone that refuses every chunk at the door.
+     * Tells whoever could still be pushing this group content that we do not want it, so
+     * they stop NOW instead of burning their whole retry ladder against a phone that
+     * refuses every chunk at the door.
      *
-     * Closes the gap left by "leave group", which only removes the leaver from
-     * the Firestore member map and tells nobody: the other members keep a live
-     * queue aimed at a chat that no longer exists. Deleting a group does notify
-     * everyone (GROUP_REMOVED), and there this is simply a faster stop.
+     * Closes the gap left by "leave group", which only removes the leaver from the
+     * Firestore member map and tells nobody: the others keep a live queue aimed at a
+     * chat that no longer exists. Deleting a group does notify everyone (GROUP_REMOVED),
+     * and there this is simply a faster stop.
      *
-     * The signal is the same one [refuseIncomingGroupTransfer] already uses, an
-     * allReceived carrying a "refused:" marker, chosen because every build in the
-     * fleet already understands it: senders drop their batch tables for us and
-     * the delivery document drops us from its member map, so nobody picks us as
-     * a relay target for this content again. Nothing new to deploy on their side.
+     * The signal is the one [refuseIncomingGroupTransfer] already uses, an allReceived
+     * carrying a "refused:" marker, scelto perche' every build in the fleet already
+     * understands it: senders drop their batch tables for us and the delivery document
+     * drops us from its member map, so nobody picks us as a relay target again. Nothing
+     * new to deploy on their side.
      *
-     * Group content only. A one to one chat has its own CANCEL_TRANSFER path, and
-     * an allReceived there would tell a sender we received something we did not;
-     * a blocked peer must not be messaged at all. The per row check on chatGroupId
-     * is what enforces it: the chat predicate behind [contentKeys] only ever
-     * returns rows with an empty chatGroupId when the deleted chat is a person.
+     * Group content only. A one to one chat has its own CANCEL_TRANSFER path, and an
+     * allReceived there would tell a sender we received something we did not; a blocked
+     * peer must not be messaged at all. The per row check on chatGroupId enforces it.
      */
     private suspend fun refuseGroupContentToSenders(
         contentKeys: Set<String>,
@@ -420,19 +412,16 @@ class MessageRepository(private val messageDao: MessageDao) {
     private suspend fun deleteLinkedFiles(message: Message): Boolean {
         var result = true
 
-        // A profile message points at "<peerId>.jpg", the file the contact's
-        // avatar is still using: it belongs to the peer, not to the message.
-        // Deleting the message must not take the avatar with it.
+        // A profile message points at "<peerId>.jpg", the file the contact's avatar is
+        // still using: it belongs to the peer, not to the message.
         if (message.type == Type.PROFILE) return true
 
-        // Same aliasing, different carrier: a shared contact card (type=contact,
-        // sender side) puts the live "<peerId>.jpg" avatar in its uri, not a
-        // copy. The per-type guard above missed it, and on 8 Aug deleting a chat
-        // deleted a card message and took ANOTHER contact's avatar with it. This
-        // check is generic on purpose: no file that is the avatar of a peer that
-        // still exists is ever deleted together with a message, whatever type
-        // carries it. Receiver-side copies (guid or "full<id>.dat" names) never
-        // match a peer id, so normal cleanup is untouched.
+        // Same aliasing, different carrier: a shared contact card (type=contact, sender
+        // side) puts the live "<peerId>.jpg" avatar in its uri, not a copy. The per type
+        // guard above missed it, and on 8 Aug deleting a chat deleted a card message and
+        // took ANOTHER contact's avatar with it. Generic apposta: no file that is the
+        // avatar of a peer that still exists is ever deleted with a message, whatever
+        // type carries it. Receiver side copies (guid or "full<id>.dat") never match.
         if (isLivePeerAvatar(message.uri)) {
             debugLine("deleteLinkedFiles", "Uri is the live avatar of an existing peer, not deleting: ${message.uri}")
             return true
@@ -561,12 +550,11 @@ class MessageRepository(private val messageDao: MessageDao) {
         for (msg in messages) {
             if (msg.originalSenderId != myUserId) {
                 debugLine("sendGroupSeenNotifications", "GROUP_SEEN for ${msg.messageId} to ${msg.originalSenderId}")
-                // The local SEEN below removes this message from the unseen set
-                // forever, so this single FCM used to be the one and only chance:
-                // lost in transit meant the sender stayed at Delivered for good
-                // (16 Aug, Raoul's seens drowned in the 13 Aug flood). Record it
-                // as unacked; PendingRetryWorker re-sends until the sender's
-                // GROUP_SEEN_ACK clears the entry.
+                // The local SEEN below removes this message from the unseen set for
+                // ever, so this single FCM used to be the one and only chance: lost in
+                // transit meant the sender stayed at Delivered for good (16 Aug, Raoul's
+                // seens drowned in the 13 Aug flood). Recorded as unacked;
+                // PendingRetryWorker re-sends until the sender's GROUP_SEEN_ACK clears.
                 GroupSeenTracker.record(App.context(), msg.messageId, msg.originalSenderId)
                 notifyRemotePeer(msg.originalSenderId, msg.messageId, Notify.GROUP_SEEN)
             }

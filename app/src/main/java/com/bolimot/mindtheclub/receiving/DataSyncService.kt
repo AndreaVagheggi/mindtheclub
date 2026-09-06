@@ -32,19 +32,17 @@ class DataSyncService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val tag = "DataSyncService"
 
-    // Several dataCall wake-ups can land while one sync is still running, each one
-    // arriving as its own onStartCommand. stopSelf() from whichever finishes first
-    // used to tear the service down under the others: on 3 Aug the service was
-    // destroyed one second after a second attempt had started, leaving it to run
-    // with no foreground protection at all.
+    // Several dataCall wake-ups can land while one sync is still running, each as its own
+    // onStartCommand. stopSelf() from whichever finished first tore the service down under
+    // the others: on 3 Aug it was destroyed one second after a second attempt had started,
+    // leaving it running senza foreground protection.
     private val activeJobs = AtomicInteger(0)
 
     /**
-     * Peers whose transfer already has a watcher. Without this, every dataCall
-     * that finds a live connection would start its own awaitTransferComplete
-     * loop on the same peer: a burst of ten dataCalls during one photo transfer
-     * would leave ten coroutines polling the same data channel for up to
-     * MAX_SYNC_MS each, all of them keeping the service and the wake lock alive.
+     * Peers whose transfer already has a watcher. Without this every dataCall that finds a
+     * live connection would start its own awaitTransferComplete on the same peer: ten
+     * dataCalls during one photo transfer meant ten coroutines polling the same channel for
+     * up to MAX_SYNC_MS each, all keeping the service and the wake lock alive.
      */
     private val watchedPeers = ConcurrentHashMap.newKeySet<String>()
 
@@ -56,31 +54,26 @@ class DataSyncService : Service() {
         const val EXTRA_REMOTE_USER_ID = "EXTRA_REMOTE_USER_ID"
         const val NOTIFICATION_ID = 9999
         private const val POLL_INTERVAL_MS = 5_000L
-        // How long an open data channel may stay quiet before the sync gives up.
-        // Was 15s, which a sender pausing on a throttled uplink reaches routinely:
-        // on 14 Aug White abandoned a transfer sitting at 128 chunks out of 131,
-        // with the channel still open, and the three missing ones only landed 38
-        // minutes later. Worse than the lost transfer, tearing the service down
-        // also removes the foreground notification that shields the process, and
-        // that phone was killed 23 seconds after it went away. The absolute
-        // MAX_SYNC_MS ceiling and the immediate exit on a genuinely closed channel
-        // both still apply, so the only cost is half a minute of extra patience on
-        // a connection that really has died.
+        // How long an open data channel may stay quiet before the sync gives up. Was 15s,
+        // which a sender pausing on a throttled uplink hits routinely: on 14 Aug White
+        // abandoned a transfer at 128 chunks out of 131, channel still open, and the last
+        // three landed 38 minutes later. Worse than the lost transfer, the teardown also
+        // removes the notification that shields the process, and that phone was killed 23
+        // seconds later. MAX_SYNC_MS and the immediate exit on a genuinely closed channel
+        // both still apply, so the cost is half a minute of pazienza on a dead link.
         private const val IDLE_LIMIT_MS = 45_000L
-        // Extra time the service stays alive after the chunk flow stops, while a
-        // completed message is still being assembled (chunks -> file -> Message).
-        // Bounded so a stale unprocessable inbox row can never pin the service.
+        // Extra time the service stays alive after the chunk flow stops, while a completed
+        // message is still being assembled (chunks -> file -> Message). Bounded so a stale
+        // unprocessable inbox row can never pin the service.
         private const val ASSEMBLY_GRACE_MS = 120_000L
         private const val MAX_SYNC_MS = 10 * 60 * 1000L
-        // A foreground service does NOT keep the CPU awake. Without this lock the
-        // device suspends between FCM wake-ups and every coroutine timer in the
-        // connection path stops advancing, because delay() runs on a monotonic
-        // clock that does not count suspend time. Measured on 3 Aug: a 20s ICE
-        // budget took 216s and a 45s peer timeout took 331s, so this device joined
-        // the signalling room minutes after the sender had abandoned it. The
-        // timeout is only a leak guard, the lock is released as soon as the last
-        // job ends; it must outlive MAX_SYNC_MS or a long transfer would lose the
-        // CPU halfway through.
+        // A foreground service does NOT keep the CPU awake. Without this lock the device
+        // suspends between FCM wake-ups and every coroutine timer in the connection path
+        // stops advancing, because delay() runs on a monotonic clock that ignores suspend
+        // time. 3 Aug: a 20s ICE budget took 216s and a 45s peer timeout took 331s, so this
+        // device joined the signalling room minutes after the sender had given up. The
+        // timeout is only a leak guard, the lock is released as soon as the last job ends;
+        // it must outlive MAX_SYNC_MS or a long transfer loses the CPU halfway.
         private const val WAKE_LOCK_TIMEOUT_MS = MAX_SYNC_MS + 60_000L
     }
 
@@ -92,22 +85,19 @@ class DataSyncService : Service() {
             val remoteUserId = intent.getStringExtra(EXTRA_REMOTE_USER_ID)
 
             if (channelId != null && remoteUserId != null) {
-                // The lock comes FIRST, before any notification or Binder work.
-                // The CPU is only guaranteed for the ~10s FCM grace period: on
-                // 13 Aug the device suspended in the gap between startForeground
-                // and the acquire that used to sit after it, freezing
-                // onStartCommand mid-flight for 36s. The system flagged the
-                // service as ANR and the signalling room expired before the
-                // connection was ever attempted.
+                // The lock comes FIRST, before any notification or Binder work. The CPU is
+                // only guaranteed for the ~10s FCM grace: on 13 Aug the device suspended in
+                // the gap between startForeground and the acquire that used to sit after
+                // it, freezing onStartCommand for 36s. The system flagged an ANR and the
+                // signalling room expired before the connection was ever attempted.
                 acquireWakeLock()
-                // When the foreground promotion is refused the work has already been
-                // handed to WorkManager, so starting it here too would run the same
-                // sync twice against the same peer.
+                // When the foreground promotion is refused the work has already gone to
+                // WorkManager, so starting it here too would run the same sync twice.
                 if (startForegroundSync(channelId, remoteUserId)) {
                     startWebRTC(channelId, remoteUserId)
                 } else if (activeJobs.get() == 0) {
-                    // Fallback path: WorkManager owns the sync now and takes its
-                    // own foreground protection, this lock must not linger.
+                    // Fallback: WorkManager owns the sync now and takes its own foreground
+                    // protection, questo lock non deve restare.
                     releaseWakeLock()
                 }
             } else {
@@ -118,7 +108,7 @@ class DataSyncService : Service() {
         return START_NOT_STICKY
     }
 
-    /** Returns false when the service could not be promoted and the work was handed to WorkManager. */
+    /** false when the service could not be promoted and the work went to WorkManager. */
     private fun startForegroundSync(rtcChannelId: String, remoteUserId: String): Boolean {
         val channelId = "sync_channel"
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -131,9 +121,9 @@ class DataSyncService : Service() {
             manager.createNotificationChannel(channel)
         }
 
-        // The PENDING handler may already have posted the "checking" notice for this
-        // peer. It now carries its own per-peer id, so drop it explicitly — otherwise
-        // it would sit next to this one showing the same text twice.
+        // The PENDING handler may already have posted the "checking" notice for this peer.
+        // It carries its own per peer id now, so drop it explicitly, altrimenti it sits
+        // next to this one showing the same text twice.
         manager.cancel("sync_$remoteUserId".hashCode())
 
         val pendingIntent = PendingIntent.getActivity(
@@ -173,17 +163,16 @@ class DataSyncService : Service() {
     }
 
     private fun startWebRTC(channelId: String, remoteUserId: String) {
-        // Counted before the launch, so a second onStartCommand arriving right now
-        // can never observe an empty queue and stop the service from under us.
+        // Counted before the launch, so a second onStartCommand arriving right now can
+        // never observe an empty queue and stop the service from under us.
         activeJobs.incrementAndGet()
         serviceScope.launch {
             try {
                 // Claim first, destroy later. Both guards below MUST run before
-                // webRTCCleanUp: that call tears down the live connection, and
-                // doing it before discovering the request is stale (or that a
-                // perfectly good connection already exists) is what made two
-                // concurrent transfers from the same peer kill each other, one
-                // reconnect at a time.
+                // webRTCCleanUp: that call tears down the live connection, and doing it
+                // before discovering the request is stale (or that a perfectly good
+                // connection already exists) is what made two concurrent transfers from the
+                // same peer kill each other, one reconnect at a time.
                 ConnectionManager.instance.claimLatestDataChannel(remoteUserId, channelId)
 
                 if (ConnectionManager.instance.hasLiveConnection(remoteUserId)) {
@@ -269,9 +258,9 @@ class DataSyncService : Service() {
     }
 
     /**
-     * Runs [awaitTransferComplete] only when nobody else is already watching
-     * this peer. A job that finds a watcher in place returns at once: the
-     * transfer is being supervised, a second observer would add nothing.
+     * Runs [awaitTransferComplete] only when nobody else is already watching this peer. A
+     * job that finds a watcher returns at once: the transfer is supervised, a second
+     * observer adds niente.
      */
     private suspend fun awaitTransferCompleteOnce(remoteUserId: String) {
         if (!watchedPeers.add(remoteUserId)) {
@@ -295,15 +284,15 @@ class DataSyncService : Service() {
         while (System.currentTimeMillis() - startTime < MAX_SYNC_MS) {
             delay(POLL_INTERVAL_MS)
 
-            // Check if data channel is still alive
+            // Il canale e' ancora vivo?
             val client = ConnectionManager.instance.getExistingClient(remoteUserId)
             val channelOpen = client != null
                     && client.rtcClient.isConnected()
                     && client.rtcClient.isDataChannelOpen()
 
-            // Check if new chunks are arriving (across all messages). Assembly
-            // deletes the chunks when it finishes, so that also counts as
-            // activity and correctly extends the window for a following message.
+            // New chunks arriving, across all messages. Assembly deletes the chunks when
+            // it finishes, so that counts as activity too and correctly extends the window
+            // for a following message.
             val currentCount = inboxDao.countRecords()
 
             if (currentCount != lastChunkCount) {
@@ -313,10 +302,10 @@ class DataSyncService : Service() {
 
             val idleMs = System.currentTimeMillis() - lastActivityTime
 
-            // A fully received message may still be assembling (chunks are only
-            // deleted afterwards). Losing the foreground protection now would let
-            // doze freeze the assembly mid-write — the exact failure that made a
-            // video sit invisible for 91 minutes. Stay alive, within the grace.
+            // A fully received message may still be assembling (the chunks go afterwards).
+            // Losing the foreground protection now would let doze freeze the assembly mid
+            // write, the exact failure that made a video sit invisible for 91 minutes. Stay
+            // alive, within the grace.
             val assemblyPending = if (idleMs < ASSEMBLY_GRACE_MS) {
                 try {
                     inboxDao.getCompleteMessageIds().isNotEmpty()
@@ -328,11 +317,10 @@ class DataSyncService : Service() {
                 false
             }
 
-            // Read from the dispatch pipeline itself rather than inferred from
-            // WorkManager. The first version of this asked whether a worker was
-            // RUNNING and never once got a yes: a relay submitted at 16:14:31 on
-            // 21 Aug was still ENQUEUED when the service quit five seconds later,
-            // and only started at 16:14:38. See OutgoingActivity.
+            // Read from the dispatch pipeline itself, not inferred from WorkManager. The
+            // first version asked whether a worker was RUNNING and never once got a yes: a
+            // relay submitted at 16:14:31 on 21 Aug was still ENQUEUED when the service quit
+            // five seconds later, and only started at 16:14:38. See OutgoingActivity.
             val stillSending = OutgoingActivity.isSending()
 
             if (!channelOpen) {
@@ -369,8 +357,8 @@ class DataSyncService : Service() {
     override fun onDestroy() {
         debugLine(tag, "NOTIF_CLEARED id=$NOTIFICATION_ID source=DataSyncService")
         debugLine(tag, "Service destroyed")
-        // Belt and braces: the normal release happens when the last job ends, this
-        // covers a destroy coming from the system instead.
+        // Belt and braces: the normal release happens when the last job ends, questo copre
+        // a destroy coming from the system instead.
         releaseWakeLock()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             stopForeground(STOP_FOREGROUND_REMOVE)

@@ -11,17 +11,15 @@ import com.bolimot.mindtheclub.start.BaseActivity
 /**
  * Onboarding step: how MindTheClub is paid for.
  *
- * Deliberately placed immediately before the invite screen: setup is done and
- * the user is about to send their first message — which is exactly when the
- * 30-day trial clock starts. Saying so here also makes the following "invite
- * your friends" step land better ("you have 30 days to bring them over").
+ * Placed right before the invite screen apposta: setup is done and the user is about to send their
+ * first message, which is exactly when the 30 day trial clock starts. Saying so here also makes
+ * the "invite your friends" step land better ("you have 30 days to bring them over").
  *
- * The price is never hard-coded: it comes from Google Play already localized to
- * the user's country and currency. If ProductDetails have not loaded yet (no
- * network on first launch), a price-less wording is shown rather than a blank
- * or a wrong number.
+ * The price is never hard coded: it comes from Google Play already localized to the user's country
+ * and currency. If ProductDetails have not loaded yet (no network on first launch), a price-less
+ * wording is shown rather than a blank or a wrong number.
  *
- * Flow: battery screen -> this screen -> invite screen.
+ * Flow: battery -> this -> invite.
  */
 class OnboardingPlanActivity : BaseActivity() {
 

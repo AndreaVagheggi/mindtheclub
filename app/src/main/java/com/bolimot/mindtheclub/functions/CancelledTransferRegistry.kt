@@ -4,17 +4,16 @@ import android.content.Context
 import androidx.core.content.edit
 
 /**
- * Persistent registry of 1:1 transfers cancelled by either side (sender withdrew
- * the message, or receiver refused the incoming transfer).
+ * Persistent registry of 1:1 transfers cancelled by either side (the sender withdrew the message,
+ * or the receiver refused the incoming transfer).
  *
- * The send/receive pipeline has several recovery paths that could silently
- * resurrect a cancelled transfer (pending→sendMe, completed→allMissing,
- * InboxRecoveryWorker, deferred network callbacks, a batch build already in
- * flight when WorkManager cancellation lands). Every one of those chokepoints
- * consults this registry:
+ * The send and receive pipeline has several recovery paths that could silently resurrect a
+ * cancelled transfer (pending to sendMe, completed to allMissing, InboxRecoveryWorker, deferred
+ * network callbacks, a batch build already in flight when the WorkManager cancellation lands).
+ * Every one of those chokepoints consults this registry:
  * - receiveData: drops chunks still arriving after a cancel
- * - sendMessageWork / DispatchWorker: aborts builds/dispatches queued before the cancel
- * - reSendMessage + SEND_ME / PENDING / COMPLETED FCM handlers: ignores recovery nudges
+ * - sendMessageWork / DispatchWorker: aborts builds and dispatches queued before the cancel
+ * - reSendMessage plus the SEND_ME / PENDING / COMPLETED handlers: ignore recovery nudges
  *
  * Entries expire after [TTL_MS] and are pruned lazily.
  */
@@ -36,11 +35,10 @@ object CancelledTransferRegistry {
     }
 
     /**
-     * Marks a whole CONTENT as refused, which is the only identity that survives
-     * a group relay: gossip mints a fresh messageId at every hop, so a cancel
-     * recorded against one messageId lets the very same file back in a minute
-     * later under another name. The contentKey (group, original sender, date) is
-     * stable across all of them.
+     * Marks a whole CONTENT as refused, the only identity that survives a group relay: gossip
+     * mints a fresh messageId at every hop, so a cancel recorded against one messageId lets the
+     * very same file back in a minute later under another name. The contentKey (group, original
+     * sender, date) is stable across all of them.
      */
     fun markContentCancelled(context: Context, contentKey: String) {
         if (contentKey.isEmpty()) return

@@ -41,11 +41,10 @@ class App : Application(), DefaultLifecycleObserver {
 
         FirebaseApp.initializeApp(this)
 
-        // Not installing the provider is what makes the rest of this cheap: the
-        // Firebase SDKs only attach, and only wait for, an App Check token when
-        // a factory has been installed. Leaving it out therefore removes the
-        // attestation from every Firestore read and every callable in one line,
-        // without touching a single call site. See APP_CHECK_ENABLED.
+        // Not installing the provider is what makes the rest of this cheap: the Firebase SDKs
+        // only attach, and only wait for, an App Check token when a factory has been installed.
+        // Leaving it out removes the attestation from every Firestore read and every callable in
+        // one line, senza toccare un solo call site. See APP_CHECK_ENABLED.
         if (APP_CHECK_ENABLED) {
             val firebaseAppCheck = FirebaseAppCheck.getInstance()
 
@@ -67,10 +66,9 @@ class App : Application(), DefaultLifecycleObserver {
         // entitlement (also re-acknowledges any purchase missed at buy time).
         BillingManager.init(this)
 
-        // The build stamp goes in every log an exporter ever produces. Without it
-        // a tester's log says nothing about WHICH version produced it, so reading
-        // a problem means guessing whether a given fix was already in place on
-        // that phone.
+        // The build stamp goes in every log an exporter ever produces. Without it a tester's log
+        // says nothing about WHICH version produced it, so reading a problem means guessing
+        // whether a given fix was already in place on that phone.
         debugLine(
             "App",
             "Application starting, version ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})"
@@ -88,15 +86,13 @@ class App : Application(), DefaultLifecycleObserver {
     }
 
     /**
-     * Starts fetching an App Check token as soon as the process comes up, in
-     * the background and without blocking startup.
+     * Starts fetching an App Check token as soon as the process comes up, in the background and
+     * without blocking startup.
      *
-     * Tokens last about an hour, so a phone woken by FCM after a long idle
-     * period almost always needs a fresh one, and minting it means a Play
-     * Integrity attestation that can take several seconds. Paying that cost
-     * here, in parallel with the rest of the wake-up, means it is no longer
-     * paid inside the ICE fetch, where it used to make the TURN credentials
-     * arrive too late to be used.
+     * Tokens last about an hour, so a phone woken by FCM after a long idle almost always needs a
+     * fresh one, and minting it means a Play Integrity attestation that can take several seconds.
+     * Paying that cost here, in parallel with the rest of the wake-up, means it is no longer paid
+     * inside the ICE fetch, where it used to make the TURN credentials arrive too late to use.
      */
     private fun warmAppCheckToken() {
         applicationScope.launch {

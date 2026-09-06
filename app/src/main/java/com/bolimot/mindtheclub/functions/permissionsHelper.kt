@@ -21,12 +21,12 @@ import com.bolimot.mindtheclub.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
- * Recovery helpers for runtime permissions denied during (or after) onboarding.
+ * Recovery helpers for runtime permissions denied during or after onboarding.
  *
- * Android forbids re-showing the permission dialog once the user has permanently
- * denied a permission, so every "fix" path here has two branches:
+ * Android forbids re-showing the dialog once a permission is permanently denied, so every
+ * "fix" path here has two branches:
  *   - the dialog can still be shown  -> request in-app, or
- *   - permanently denied            -> deep-link to the app's system settings.
+ *   - permanently denied             -> deep link to the app's system settings.
  */
 
 /** Snooze marker for the notifications-off banner on the main screen. */
@@ -61,22 +61,21 @@ fun openNotificationSettings(context: Context) {
 /**
  * Whether this handset can do Picture in Picture at all.
  *
- * PiP is an optional platform feature, not a guarantee: budget ROMs ship without it, and
- * some of those still show the per-app PiP toggle in settings with nothing behind it. A
- * device that answers false here can never enter PiP, so the control is hidden rather
- * than left to fail on every tap.
+ * PiP is an optional platform feature, not a guarantee: budget ROMs ship without it, and some
+ * of those still show the per app PiP toggle in settings with nothing behind it. A device that
+ * answers false can never enter PiP, so the control is hidden rather than left to fail.
  */
 fun deviceSupportsPip(context: Context): Boolean =
     context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
 
 /**
- * Everything the system weighs when it decides whether to grant Picture in Picture,
- * sampled at the moment it refused.
+ * Everything the system weighs when it decides whether to grant Picture in Picture, sampled at
+ * the moment it refused.
  *
- * enterPictureInPictureMode() reports refusal by returning false rather than throwing, so
- * a refusal otherwise leaves no trace at all and the button simply looks dead. Each field
- * below maps to one of the conditions in the platform's own check, plus the device
- * identity, because a refusal on one handset and not another is the whole question.
+ * enterPictureInPictureMode() reports refusal by returning false rather than throwing, so a
+ * refusal otherwise leaves no trace at all and the button simply looks dead. Each field maps to
+ * one of the conditions in the platform's own check, plus the device identity, perche' un
+ * rifiuto su un telefono e non su un altro is the whole question.
  */
 fun describePipAvailability(activity: ComponentActivity): String {
     val device = "${Build.MANUFACTURER} ${Build.MODEL} api${Build.VERSION.SDK_INT}"
@@ -142,9 +141,9 @@ private fun readPipAppOp(appOps: AppOpsManager, packageName: String): Int =
  * Opens the system Picture in Picture special access page for this app.
  *
  * The action is spelled out rather than taken from [Settings]: the platform keeps
- * ACTION_PICTURE_IN_PICTURE_SETTINGS hidden from the public SDK, so the constant will not
- * compile even though the action itself resolves on any device that ships the screen.
- * Devices that do not are covered by the fallback to the app details page.
+ * ACTION_PICTURE_IN_PICTURE_SETTINGS out of the public SDK, so the constant will not compile
+ * even though the action itself resolves on any device that ships the screen. Devices that do
+ * not are covered by the fallback to the app details page.
  */
 private const val ACTION_PICTURE_IN_PICTURE_SETTINGS = "android.settings.PICTURE_IN_PICTURE_SETTINGS"
 
@@ -173,10 +172,9 @@ fun openAppSettings(context: Context) {
 }
 
 /**
- * Call-flow guard: returns true when all permissions needed for the call are
- * granted. Otherwise it starts the recovery (in-app request or settings dialog)
- * and returns false — the caller must NOT start the call; the user re-taps the
- * call button after granting.
+ * Call flow guard: true when every permission the call needs is granted. Otherwise it starts
+ * the recovery (in-app request or settings dialog) and returns false, and the caller must NOT
+ * start the call; the user re-taps after granting.
  */
 fun ensureCallPermissions(activity: Activity, isVideo: Boolean): Boolean {
     val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)

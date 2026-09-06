@@ -10,18 +10,17 @@ import java.util.Calendar
 object RelayUsageTracker {
 
     /**
-     * Monthly relay budget for this handset, counting sent PLUS received.
+     * Monthly relay budget for this handset, sent PLUS received.
      *
-     * Raised from 10 GB on 29 Aug 2026. Cloudflare Realtime bills $0.05 per GB
-     * of egress only, so a byte this device sends into the relay is free and
-     * only a byte it receives is charged: roughly half of what this counter
-     * holds for 1:1 TURN, and (N-1)/N of it for a group call of N. At 15 GB a
-     * subscriber who saturates it every month still costs less than the
-     * subscription nets after VAT and the Play commission. See docs/costs.md.
+     * Raised from 10 GB on 29 Aug 2026. Cloudflare Realtime bills $0.05 per GB of egress only, so
+     * a byte this device sends into the relay is free and only a byte it receives is charged:
+     * roughly half of what this counter holds for 1:1 TURN, and (N-1)/N of it for a group call of
+     * N. At 15 GB a subscriber who saturates it every month still costs less than the subscription
+     * nets after VAT and the Play commission. See docs/costs.md.
      *
-     * The ceiling is per handset and Cloudflare bills the account, so the real
-     * exposure is N x this number and nothing anywhere adds that sum up. The
-     * brake for a runaway is DAILY_ICE_BUDGET in mtc-ice, not this constant.
+     * The ceiling is per handset and Cloudflare bills the account, so the real exposure is N times
+     * this number and nothing anywhere adds that sum up. The brake for a runaway is
+     * DAILY_ICE_BUDGET in mtc-ice, not this constant.
      */
     private const val RELAY_CAP_BYTES = 15L * 1_000_000_000L
 

@@ -7,20 +7,18 @@ import org.json.JSONObject
 /**
  * Tracks GROUP_SEEN notifications that have not been acknowledged yet.
  *
- * A group seen used to be a single fire and forget FCM, sent once when the chat
- * opened, with the message marked seen LOCALLY in the same breath, so it left
- * the unseen set forever. If that one notification died in transit, the sender
- * stayed at "Delivered" for that member with no second chance ever (16 Aug: two
- * of Gio's messages stuck at Delivered because Raoul's seen FCMs were lost in
+ * A group seen used to be a single fire and forget FCM, sent once when the chat opened, with the
+ * message marked seen LOCALLY in the same breath, so it left the unseen set for ever. If that one
+ * notification died in transit, the sender stayed at "Delivered" for that member with no second
+ * chance (16 Aug: two of Gio's messages stuck at Delivered because Raoul's seen FCMs were lost in
  * the 13 Aug notification flood, while every later message showed Seen fine).
  *
- * Entries are recorded when the GROUP_SEEN is sent, removed when the original
- * sender replies GROUP_SEEN_ACK, and retried by PendingRetryWorker with backoff
- * in between. Against senders on older versions, which never ack, the retry cap
- * spends a handful of tiny FCMs over two days and the entry dies quietly: no
- * worse than today, where the first loss was already final.
+ * Entries are recorded when the GROUP_SEEN is sent, removed when the original sender replies
+ * GROUP_SEEN_ACK, and retried by PendingRetryWorker with backoff in between. Against senders on
+ * older versions, which never ack, the cap spends a handful of tiny FCMs over two days and the
+ * entry dies quietly: no worse than before, where the first loss was already final.
  *
- * Same shape as [IncomingPendingTracker] on purpose.
+ * Same shape as [IncomingPendingTracker], apposta.
  */
 object GroupSeenTracker {
 

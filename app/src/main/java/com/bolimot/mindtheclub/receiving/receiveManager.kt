@@ -60,8 +60,8 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
         return
     }
 
-    // Reactions carry their target in replyId. Peers on the previous build instead reused the
-    // target's own id, which in a group arrives as groupId because the relay re-mints the id per
+    // Reactions carry their target in replyId. Peers on the previous build reused the
+    // target's own id, which in a group arrives as groupId because the relay re-mints per
     // member; both are still accepted so a reaction from an older peer is not lost.
     val targetMessageId = inboxMessage.replyId?.takeIf { it.isNotEmpty() }
         ?: if (inboxMessage.chatGroupId != null && inboxMessage.groupId.isNotEmpty()) {
@@ -70,20 +70,18 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
             messageId
         }
 
-    // In a group the relay rewrites fromUserId at every hop, so only originalSenderId identifies
+    // In a group the relay rewrites fromUserId at every hop, so only originalSenderId says
     // who actually reacted.
     val reactorUserId = inboxMessage.originalSenderId?.takeIf { it.isNotEmpty() }
         ?: inboxMessage.fromUserId
 
     // Stored whether or not the target is here yet. This used to bail out when the
-    // reacted-to message was missing from the local database, which threw away far
-    // more than the pill: the acknowledgement never left, so the sender kept
-    // re-offering the reaction for hours, and the gossip relay never ran, so every
-    // member downstream of this one lost it too. It happens routinely to anyone who
-    // joined a group after the conversation started (14 Aug, White: reaction
-    // received and silently dropped, chunks left orphaned for the recovery worker).
-    // The Reaction table has no foreign key to Message, so an orphan row is legal;
-    // saveMessage recomputes the pill from these rows when the target finally lands.
+    // reacted-to message was missing locally, which threw away much more than the pill: the
+    // acknowledgement never left, so the sender kept re-offering for hours, and the gossip
+    // relay never ran, so every member downstream lost it too. Succede sempre a chi joined a
+    // group after the conversation started (14 Aug, White: reaction received and silently
+    // dropped, chunks left orphaned). The Reaction table has no foreign key to Message, so an
+    // orphan row is legal; saveMessage recomputes the pill when the target lands.
     ReactionManager.apply(targetMessageId, reactorUserId, emoji, inboxMessage.date)
 
     val reactionContentKey = resolveContentKey(inboxDao, messageId)
@@ -91,10 +89,9 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
 
     ProcessedMessageCache.markProcessed(messageId)
 
-    // A reaction is a group-gossip message like any other type: acknowledge with the
-    // delivery doc id (so the original sender's re-dispatch path engages) and relay it
-    // onward to the remaining group members. Without this, a reaction only reached the
-    // members the sender directly fanned out to (GROUP_DISPATCH_FANOUT).
+    // A reaction is group gossip like any other type: acknowledge with the delivery doc id
+    // (so the original sender's re-dispatch path engages) and relay it onward. Without this a
+    // reaction only reached the members the sender fanned out to (GROUP_DISPATCH_FANOUT).
     val deliveryId = inboxMessage.chatGroupId?.let {
         computeDeliveryDocId(it, inboxMessage.originalSenderId ?: "", inboxMessage.date)
     }
@@ -126,14 +123,12 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
     )
 }
 
-// A discarded duplicate may have already inserted its own RECEIVING placeholder:
-// a copy relayed with an empty groupId lands under a fresh key, so neither the
-// placeholder guard nor the already-exists branch sees the saved original. The
-// duplicate branches below delete the chunks and return, which used to leave that
-// row in the chat forever, stuck at 0/0 and asking the sender for the missing
-// chunks every 15 minutes (Gio, 15 Aug). Remove it, and only it: a row that is
-// not RECEIVING is a real message and is never touched, so even a call with the
-// wrong key cannot destroy anything visible.
+// A discarded duplicate may already have inserted its own RECEIVING placeholder: a copy
+// relayed with an empty groupId lands under a fresh key, so neither the placeholder guard nor
+// the already-exists branch sees the saved original. The duplicate branches below delete the
+// chunks and return, which used to leave that row in the chat per sempre, stuck at 0/0 and
+// asking the sender for the missing chunks every 15 minutes (Gio, 15 Aug). Remove it, and
+// only it: a row that is not RECEIVING is a real message and is never touched.
 private suspend fun dropOrphanPlaceholder(messageKey: String) {
     try {
         val repository = getMessageRepository(App.context())
@@ -174,9 +169,9 @@ suspend fun receiveText(messageId: String) {
                 debugLine("receiveText", "Duplicate group message, skipping")
                 inboxDao.deleteByContent(contentKey)
                 dropOrphanPlaceholder(messageKey)
-                // The completed FCM for this copy may still be in flight; remember the
-                // hop id so it is answered from the cache instead of with an allMissing
-                // that would trigger a full resend of a message we already have.
+                // The completed FCM for this copy may still be in flight; remember the hop
+                // id so it is answered from the cache instead of with an allMissing that
+                // would trigger a full resend of a message we already have.
                 ProcessedMessageCache.markProcessed(messageId)
                 val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
                     inboxMessage.originalSenderId, inboxMessage.date)
@@ -229,17 +224,16 @@ suspend fun receiveText(messageId: String) {
 
         if(messageRepository.saveMessage(message, messageIn = true)){
             inboxDao.deleteByContent(contentKey)
-            // Group messages are saved under the group key, not under this hop's
-            // messageId, and the chunks are gone: without this the completed FCM
-            // naming the hop id finds nothing, answers allMissing and triggers a
-            // full resend of a message that was just saved (Black, 15 Aug: the
-            // same text redelivered 21 times in 16 seconds).
+            // Group messages are saved under the group key, not under this hop's messageId,
+            // and the chunks are gone: without this the completed FCM naming the hop id finds
+            // nothing, answers allMissing and triggers a full resend of a message that was
+            // just saved (Black, 15 Aug: the same text redelivered 21 times in 16 seconds).
             ProcessedMessageCache.markProcessed(messageId)
 
             val deliveryId = message.chatGroupId?.let {
                 computeDeliveryDocId(it, message.originalSenderId ?: "", message.date)
             }
-            // I now hold a complete copy: register as seeder (see the media paths).
+            // Ce l'ho tutta: register as seeder (see the media paths).
             markContentComplete(deliveryId)
             notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
@@ -253,8 +247,8 @@ suspend fun receiveText(messageId: String) {
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
-                // Read on screen right now: mark it so a later relay echo or
-                // sendMe resend cannot notify a message the user already saw.
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
                 MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
@@ -408,8 +402,8 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
-            // I now hold a complete copy: register as seeder so recovery can
-            // ask me instead of the (possibly distant) original sender.
+            // Ce l'ho tutta: register as seeder so recovery can ask me instead of the
+            // (possibly distant) original sender.
             markContentComplete(deliveryId)
 
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
@@ -424,8 +418,8 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
-                // Read on screen right now: mark it so a later relay echo or
-                // sendMe resend cannot notify a message the user already saw.
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
                 MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
@@ -515,8 +509,8 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
             } else {
                 // Named after the COPY, not the content: two copies of the same content
                 // sharing one temp file is what corrupted Romy's photos on 15 Aug. The
-                // activeContent claim already serializes them; this makes a collision
-                // physically impossible even if something ever slips past it.
+                // activeContent claim already serializes them, this makes a collision
+                // physically impossible even if something slips past it.
                 val assembled = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageId}.bin")
                 if (assembled == null) {
                     debugLine("receiveObject", "Failed to assemble file from chunks")
@@ -586,8 +580,8 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
-            // I now hold a complete copy: register as seeder so recovery can
-            // ask me instead of the (possibly distant) original sender.
+            // Ce l'ho tutta: register as seeder so recovery can ask me instead of the
+            // (possibly distant) original sender.
             markContentComplete(deliveryId)
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
@@ -606,8 +600,8 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
-                // Read on screen right now: mark it so a later relay echo or
-                // sendMe resend cannot notify a message the user already saw.
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
                 MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
@@ -763,8 +757,8 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
-            // I now hold a complete copy: register as seeder so recovery can
-            // ask me instead of the (possibly distant) original sender.
+            // Ce l'ho tutta: register as seeder so recovery can ask me instead of the
+            // (possibly distant) original sender.
             markContentComplete(deliveryId)
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
@@ -776,8 +770,8 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
-                // Read on screen right now: mark it so a later relay echo or
-                // sendMe resend cannot notify a message the user already saw.
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
                 MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }
@@ -838,10 +832,10 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
 
         val originalSender = inboxMessage.originalSenderId ?: fromUserId
 
-        // The duplicate guard every other receive path has always had. Single images
-        // were the one type without it, and a copy of an already saved photo arriving
-        // under a different key was saved again as a second bubble (Black, 15 Aug:
-        // same photo, same caption, twice in the chat).
+        // The duplicate guard every other receive path has always had. Single images were
+        // the one type without it, and a copy of an already saved photo arriving under a
+        // different key was saved again as a second bubble (Black, 15 Aug: same photo, same
+        // caption, twice in the chat).
         if (inboxMessage.chatGroupId != null && inboxMessage.originalSenderId != null) {
             if (messageRepository.groupMessageExists(inboxMessage.chatGroupId, inboxMessage.originalSenderId, inboxMessage.date)) {
                 debugLine("receiveImage", "Duplicate group message, skipping")
@@ -859,7 +853,7 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             }
         }
 
-        // ---- HASH‑BASED DEDUPLICATION START ----
+        // ---- dedup by hash, start ----
         val tempFile = if (content.isNotEmpty()) {
             File(content.toUri().path!!)
         } else {
@@ -884,7 +878,7 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
         var finalUri = getExistingUriByHash(context, hashFileName, relativePath, isVideo = false)
 
         if (finalUri == null) {
-            // No duplicate – save new file under hash name
+            // No duplicate, save the new file under the hash name
             finalUri = saveMediaToPublicStorage(context, tempFile, hashFileName, "image/jpeg", isVideo = false)
             if (finalUri == null) {
                 debugLine("receiveImage", "Failed to save image to public storage")
@@ -895,11 +889,11 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             debugLine("receiveImage", "Duplicate image detected – reusing existing file: $finalUri")
         }
 
-// Clean up temporary file if it was assembled
+// Temp file cleanup, if it was assembled
         if (content.isEmpty()) {
             tempFile.delete()
         } else if (finalUri.toString() != content) {
-            // Original temp file not needed anymore
+            // Il temp originale non serve piu'
             File(content.toUri().path!!).delete()
         }
 
@@ -950,8 +944,8 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             val deliveryId = inboxMessage.chatGroupId?.let {
                 computeDeliveryDocId(it, originalSender, inboxMessage.date)
             }
-            // I now hold a complete copy: register as seeder so recovery can
-            // ask me instead of the (possibly distant) original sender.
+            // Ce l'ho tutta: register as seeder so recovery can ask me instead of the
+            // (possibly distant) original sender.
             markContentComplete(deliveryId)
             notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
@@ -965,8 +959,8 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
             if(!chatScreenIsInForeground(message.fromUserId)){
                 MessageReceivedNotification.show(message)
             } else {
-                // Read on screen right now: mark it so a later relay echo or
-                // sendMe resend cannot notify a message the user already saw.
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
                 MessageReceivedNotification.markShown(message.messageId)
                 SoundManager.playIncoming()
             }

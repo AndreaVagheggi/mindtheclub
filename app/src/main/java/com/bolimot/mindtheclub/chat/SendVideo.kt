@@ -134,11 +134,10 @@ class SendVideo : BaseActivity() {
 
             closeKeyboard(this)
 
-            // Transcode BEFORE the size check, not after. A 60 MB clip that comes
-            // out at 8 MB used to be refused for a limit it would never have hit;
-            // now the limit judges what actually goes on the wire. A forward is
-            // left alone: that video already went through this once when it was
-            // first sent, and a second pass would only shave quality.
+            // Transcode BEFORE the size check, not after. A 60 MB clip that comes out at 8 MB
+            // used to be refused for a limit it would never have hit; now the limit judges what
+            // actually goes on the wire. A forward is left alone: that video already went through
+            // this once when it was first sent, and a second pass would only shave quality.
             val isForward = !messageToForward.isNullOrEmpty()
 
             lifecycleScope.launch {

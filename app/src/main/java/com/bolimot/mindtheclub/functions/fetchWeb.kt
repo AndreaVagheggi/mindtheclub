@@ -46,8 +46,7 @@ suspend fun fetchWebsiteInfo(url: String, context: Context): WebsiteInfo {
 
             val info = getWebsiteInfo(connection.get())
 
-            // CRITICAL FIX: If Jsoup scraped the "Login" page, return null.
-            // This forces the app to use the WebView fallback below.
+            // If Jsoup scraped the "Login" page, return null: forces the WebView fallback below.
             if (info != null) {
                 if (info.title.contains("Login", ignoreCase = true) ||
                     (info.title.equals("Instagram", ignoreCase = true) && info.description.isEmpty())) {

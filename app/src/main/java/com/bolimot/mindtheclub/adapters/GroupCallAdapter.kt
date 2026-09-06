@@ -22,12 +22,11 @@ import org.webrtc.VideoTrack
 /**
  * The tile grid.
  *
- * The delicate part is not the layout, it is the renderers: a SurfaceViewRenderer
- * holds a GPU surface and a sink on a live video track, and a RecyclerView
- * recycles views underneath both. Every tile therefore remembers which track it
- * is attached to, re-attaches only when that actually changes, and gives the
- * surface back in onViewRecycled. Skipping either turns a reordered grid into
- * frozen pictures on the wrong faces.
+ * The delicate part is not the layout, it is the renderers: a SurfaceViewRenderer holds a GPU
+ * surface and a sink on a live video track, and a RecyclerView recycles views underneath both.
+ * So every tile remembers which track it is attached to, re-attaches only when that actually
+ * changes, and gives the surface back in onViewRecycled. Skip either and a reordered grid
+ * becomes frozen pictures on the wrong faces.
  */
 class GroupCallAdapter(
     private val onTileClick: (String) -> Unit
@@ -51,9 +50,9 @@ class GroupCallAdapter(
     var tileHeight: Int = 0
 
     /**
-     * True while a single participant fills the screen. The picture is then
-     * fitted rather than cropped: a face pinned on purpose should be shown
-     * whole, where a small tile in a grid looks better filled.
+     * True while a single participant fills the screen. The picture is then fitted rather than
+     * cropped: a face pinned on purpose should be shown whole, where a small tile in a grid
+     * looks better filled.
      */
     var pinnedMode: Boolean = false
 
@@ -91,9 +90,9 @@ class GroupCallAdapter(
         holder.name.visibility = if (label.isEmpty()) View.GONE else View.VISIBLE
         holder.micOff.visibility = if (member.mic) View.GONE else View.VISIBLE
 
-        // A participant who is not in this phone's contacts has no name to show.
-        // An empty plate is worse than none, so it only appears when it carries
-        // something: a name, a muted microphone, or both.
+        // A participant who is not in this phone's contacts has no name to show. An empty plate
+        // is worse than none, so it only appears when it carries something: a name, a muted
+        // microphone, or both.
         holder.label.visibility =
             if (label.isEmpty() && member.mic) View.GONE else View.VISIBLE
         holder.speaking.visibility = if (member.speaking) View.VISIBLE else View.GONE
@@ -106,8 +105,8 @@ class GroupCallAdapter(
             .error(R.drawable.peer)
             .into(holder.avatar)
 
-        // The local tile shows the camera through the same path as everyone
-        // else's, so there is only one way for a picture to reach the screen.
+        // The local tile shows the camera through the same path as everyone else's, so there is
+        // only one way for a picture to reach the screen.
         val track = if (member.isSelf) GroupCallManager.localVideoTrack else member.videoTrack
         val wantsVideo = track != null && member.cam
 
@@ -122,9 +121,8 @@ class GroupCallAdapter(
         val egl = GroupCallManager.eglContext
         if (!holder.initialised && egl != null) {
             try {
-                // Read now, not in the constructor: the screen opens while the
-                // SFU leg is still being built, and the shared GL context does
-                // not exist until it is.
+                // Read now, not in the constructor: the screen opens while the SFU leg is still
+                // being built, and the shared GL context does not exist until it is.
                 holder.renderer.init(egl, object : RendererCommon.RendererEvents {
                     override fun onFirstFrameRendered() {}
                     override fun onFrameResolutionChanged(width: Int, height: Int, rotation: Int) {}
@@ -137,8 +135,8 @@ class GroupCallAdapter(
         }
 
         if (holder.initialised) {
-            // Set on every bind, not once at init: the same holder is reused
-            // when a tile is pinned, and its scaling has to follow.
+            // Set on every bind, not once at init: the same holder is reused when a tile is
+            // pinned, and its scaling has to follow.
             holder.renderer.setScalingType(
                 if (pinnedMode) RendererCommon.ScalingType.SCALE_ASPECT_FIT
                 else RendererCommon.ScalingType.SCALE_ASPECT_FILL
@@ -188,8 +186,8 @@ class GroupCallAdapter(
     }
 
     /**
-     * Releases the renderers of tiles that are still attached. Recycling handles
-     * the rest, but the ones visible when the screen closes were never recycled.
+     * Releases the renderers of tiles that are still attached. Recycling handles the rest, but
+     * the ones visible when the screen closes were never recycled.
      */
     fun releaseAll(recycler: RecyclerView) {
         for (i in 0 until recycler.childCount) {

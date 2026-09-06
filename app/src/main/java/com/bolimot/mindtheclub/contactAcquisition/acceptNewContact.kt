@@ -28,17 +28,15 @@ const val PREF_AUTO_INVITE_MODE = "mtc_auto_invite_mode_enabled"
 fun isAutoInviteEnabled(context: Context): Boolean =
     getPreference(PREF_AUTO_INVITE_MODE, context) != "false"
 
-/** Tracks requesters currently being auto-accepted, shared across the two triggers
- *  (AppTab requests listener and the CONTACT_REQUEST FCM handler) so the same
- *  request can never be processed twice concurrently. */
+/** Requesters currently being auto-accepted, shared across the two triggers (the AppTab requests
+ *  listener and the CONTACT_REQUEST FCM handler) so the same request is never processed twice. */
 private val requestAcceptInFlight: MutableSet<String> =
     java.util.Collections.synchronizedSet(HashSet())
 
 /**
- * Processes one incoming contact-request document: unseals the encrypted payload
- * and accepts the requester. Single source of truth for auto-invite, used by both
- * the AppTab Firestore listener (app open) and the CONTACT_REQUEST FCM nudge
- * (app closed/background/doze).
+ * Processes one incoming contact request document: unseals the encrypted payload and accepts the
+ * requester. Single source of truth for auto-invite, used by both the AppTab Firestore listener
+ * (app open) and the CONTACT_REQUEST FCM nudge (app closed, background, doze).
  */
 suspend fun autoAcceptRequestDocument(
     doc: com.google.firebase.firestore.DocumentSnapshot,
@@ -48,12 +46,11 @@ suspend fun autoAcceptRequestDocument(
     if (!requestAcceptInFlight.add(userId)) return false
 
     try {
-        // Don't downgrade an existing contact back to a new/pending request, and
-        // NEVER auto-accept a key change: with no server to trust, a silently
-        // swapped key is indistinguishable from an attack. But a request from a
-        // peer we already know, carrying a DIFFERENT key fingerprint, is exactly
-        // what a contact who changed phone looks like: record it so the chat
-        // surfaces the explicit accept dialog instead of dying silently.
+        // Do not downgrade an existing contact back to a pending request, and NEVER auto-accept a
+        // key change: with no server to trust, a silently swapped key is indistinguishable from an
+        // attack. But a request from a peer we already know carrying a DIFFERENT fingerprint is
+        // exactly what a contact who changed phone looks like: record it so the chat surfaces the
+        // explicit accept dialog instead of dying in silenzio.
         val existingPeer = getPeerViewModel().getPeer(userId)
         if (existingPeer != null) {
             try {
@@ -115,8 +112,8 @@ suspend fun acceptNewContact(
         return false
     }
 
-    // Verify the requester's public key against the sealed fingerprint
-    // from the request BEFORE we admit them as a contact.
+    // Verify the requester's public key against the sealed fingerprint from the request BEFORE
+    // we admit them as a contact.
     val verified = com.bolimot.mindtheclub.crypto.KeyManager
         .fetchAndStorePublicKeyVerified(userId, expectedFingerprint, context)
     if (!verified) {
@@ -147,10 +144,10 @@ suspend fun acceptNewContact(
 
             if (peerViewModel.addOrUpdatePeer(newPeer)) {
                 // The verification above ran BEFORE this peer row existed, so its
-                // updatePeerPublicKey (an SQL UPDATE) affected zero rows and the
-                // verified key was silently lost. Re-run it now that the row exists,
-                // so outgoing wake-up FCMs and signalling can encrypt from the start
-                // instead of relying on the one-shot in-signal key recovery.
+                // updatePeerPublicKey (an SQL UPDATE) touched zero rows and the verified key was
+                // silently lost. Re-run it now that the row exists, so outgoing wake-up FCMs and
+                // signalling can encrypt from the start instead of leaning on the one shot in
+                // signal key recovery.
                 val stored = com.bolimot.mindtheclub.crypto.KeyManager
                     .fetchAndStorePublicKeyVerified(userId, expectedFingerprint, context)
                 if (!stored) {

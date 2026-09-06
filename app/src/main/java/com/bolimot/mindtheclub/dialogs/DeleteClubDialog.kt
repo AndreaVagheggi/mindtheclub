@@ -56,8 +56,8 @@ class DeleteClubDialog : DialogFragment() {
             builder.setView(view)
 
             builder.setPositiveButton("Yes") { dialog, _ ->
-                // STEP 1: Capture the listener locally BEFORE the dialog dismisses/detaches
-                // This reference will stay valid inside the coroutine even if 'listener' becomes null
+                // Capture the listener locally BEFORE the dialog dismisses and detaches: this
+                // reference stays valid inside the coroutine even if 'listener' goes null.
                 val callback = activity as? DeleteClubListener
 
                 requireActivity().lifecycleScope.launch {
@@ -70,12 +70,12 @@ class DeleteClubDialog : DialogFragment() {
 
                     debugLine("DeleteClubDialog", "Calling onClubDeleted")
 
-                    // STEP 2: Use the local 'callback' variable, NOT the class property 'listener'
+                    // Use the local 'callback', NOT the class property 'listener'
                     if (success) {
                         callback?.onClubDeleted()
                     }
 
-                    // STEP 3: Ensure dialog is dismissed (if not already done by auto-dismiss)
+                    // Make sure the dialog is dismissed, if auto-dismiss has not done it
                     if (this@DeleteClubDialog.isVisible) {
                         dialog.dismiss()
                     }

@@ -30,9 +30,9 @@ class InboxRecoveryWorker(
         private const val INTERVAL_MINUTES = 15L
         private const val TAG = "InboxRecovery"
 
-        // Pass 3 bounds. Younger sets are still being fed by the reactive
-        // someMissing path; older ones are dead transfers whose chunks would
-        // otherwise pin the DataSyncService "assembly pending" loop for ever.
+        // Pass 3 bounds. Younger sets are still being fed by the reactive someMissing path;
+        // older ones are dead transfers whose chunks would otherwise pin the DataSyncService
+        // "assembly pending" loop for ever.
         private const val MIN_ORPHAN_AGE_MS = 5 * 60 * 1000L
         private const val MAX_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000L
 
@@ -88,9 +88,9 @@ class InboxRecoveryWorker(
                         continue
                     }
 
-                    // Assembly must run under WorkManager protection, never as a
-                    // fire-and-forget coroutine: doWork() returning while assembly
-                    // is still running drops the doze protection mid-write.
+                    // Assembly must run under WorkManager protection, never as a fire and
+                    // forget coroutine: doWork() returning while assembly is still running
+                    // drops the doze protection mid write.
                     debugLine(TAG, "Re-triggering assembly for $messageId ($type)")
                     AssembleMessageWorker.enqueue(applicationContext, messageId)
                 } catch (e: Exception) {
@@ -102,9 +102,9 @@ class InboxRecoveryWorker(
         // Pass 2: incomplete RECEIVING messages (placeholders stuck with partial chunks)
         try {
             val receivingMessages = messageDao.getReceivingMessages()
-            // Bounded seeder lookups for the whole pass: an informed choice is
-            // worth one doc read, a Firestore crawl over a pile of stalled
-            // contents is the 15 Aug mistake and must stay impossible.
+            // Bounded seeder lookups for the whole pass: an informed choice is worth one doc
+            // read, a Firestore crawl over a pile of stalled contents is the 15 Aug mistake and
+            // must stay impossible.
             var seederLookups = 0
             if (receivingMessages.isNotEmpty()) {
                 debugLine(TAG, "Found ${receivingMessages.size} RECEIVING message(s) to check")
@@ -120,24 +120,21 @@ class InboxRecoveryWorker(
                             continue
                         }
 
-                        // The one recovery track that had no ceiling of any kind.
-                        // Pass 3 below stops at MAX_ORPHAN_AGE_MS and drops the
-                        // chunks; the outgoing tracker prunes at 14 days; the
-                        // incoming one caps at 6 requests. This loop had neither an
-                        // age nor a retry limit: a placeholder whose content no
-                        // longer exists anywhere asked for it every INTERVAL_MINUTES
-                        // for ever, 96 requests a day, until the message was deleted
-                        // by hand. Each one is an FCM plus a signalling room, and on
-                        // 19 and 20 Aug several such requests were still going out
-                        // twelve hours later against holders that answered
-                        // "no message in DB and no batch tables" and said nothing
-                        // back, so the asker never learned to stop.
+                        // The one recovery track that had no ceiling of any kind. Pass 3 below
+                        // stops at MAX_ORPHAN_AGE_MS and drops the chunks; the outgoing tracker
+                        // prunes at 14 days; the incoming one caps at 6 requests. This loop had
+                        // neither an age nor a retry limit: a placeholder whose content no
+                        // longer exists anywhere asked for it every INTERVAL_MINUTES for ever,
+                        // 96 requests a day, until the message was deleted by hand. Each one is
+                        // an FCM plus a signalling room, and on 19 and 20 Aug several were
+                        // still going out twelve hours later against holders that answered "no
+                        // message in DB and no batch tables" and said nothing back, so the
+                        // asker never learned to stop.
                         //
-                        // Capped at the same 24 hours as pass 3, deliberately: past
-                        // that point pass 3 has already deleted every orphan chunk
-                        // set of that age, so a request made later cannot be served
-                        // by anyone whose copy was itself partial. The placeholder is
-                        // left alone, only the soliciting stops.
+                        // Capped at the same 24 hours as pass 3, apposta: past that point pass
+                        // 3 has already deleted every orphan chunk set of that age, so a later
+                        // request cannot be served by anyone anyway. The placeholder is left
+                        // alone, only the soliciting stops.
                         val age = System.currentTimeMillis() - msg.date
                         if (age > MAX_RECEIVING_AGE_MS) {
                             debugLine(
@@ -147,24 +144,24 @@ class InboxRecoveryWorker(
                             continue
                         }
 
-                        // originalSenderId is only populated for group messages. For a
-                        // 1:1 the placeholder's fromUserId IS the sender, so fall back
-                        // to it: without this the whole pass silently skipped every
-                        // stalled 1:1 transfer and only groups ever got re-solicited.
+                        // originalSenderId is only populated for group messages. For a 1:1 the
+                        // placeholder's fromUserId IS the sender, so fall back to it: without
+                        // this the whole pass silently skipped every stalled 1:1 transfer and
+                        // only groups ever got re-solicited.
                         val originalSender = msg.originalSenderId?.takeIf { it.isNotEmpty() }
                             ?: msg.fromUserId.takeIf { !it.startsWith("group") }
                         if (!originalSender.isNullOrEmpty()) {
-                            // Resume-aware: report the missing range so the sender can
-                            // re-send only those chunks (see the PENDING/SEND_ME handlers).
+                            // Resume aware: report the missing range so the sender re-sends
+                            // only those chunks (see the PENDING/SEND_ME handlers).
                             val missing = missingChunksByContent(inboxDao, ck)
                             val missingRange = if (missing != null && missing.isNotEmpty()) {
                                 "${missing.min()},${missing.max()}"
                             } else {
                                 null
                             }
-                            // Ask a member holding a COMPLETE copy when one is known,
-                            // the original sender otherwise. The origin may be a weak
-                            // holiday uplink while a seeder sits on the same Wi-Fi.
+                            // Ask a member holding a COMPLETE copy when one is known, the
+                            // original sender otherwise. The origin may be on a weak holiday
+                            // uplink while a seeder sits on the same Wi-Fi.
                             val recoveryTarget = if (!msg.chatGroupId.isNullOrEmpty()
                                 && seederLookups < MAX_SEEDER_LOOKUPS_PER_PASS
                             ) {
@@ -187,15 +184,13 @@ class InboxRecoveryWorker(
             debugLine(TAG, "Failed to query RECEIVING messages: ${e.message}")
         }
 
-        // Pass 3: incomplete chunk sets with NO Message row. Profiles never create
-        // a receiving placeholder (receiveData skips Type.PROFILE on purpose, a
-        // profile must not show as a bubble in the chat), so a profile interrupted
-        // mid-transfer was invisible to pass 2 and had exactly one recovery shot:
-        // the reactive someMissing sent when the peer's `completed` arrived. If
-        // that single round failed, the contact sat on "Pending" forever, which is
-        // what stuck Romy at 36/41 chunks on 7 Aug. This pass makes the receiver
-        // re-solicit ANY orphan incomplete set every run, same cadence and same
-        // resume-aware sendMe as pass 2.
+        // Pass 3: incomplete chunk sets with NO Message row. Profiles never create a receiving
+        // placeholder (receiveData skips Type.PROFILE apposta, a profile must not show as a
+        // bubble in the chat), so a profile interrupted mid transfer was invisible to pass 2 and
+        // had exactly one recovery shot: the reactive someMissing sent when the peer's
+        // `completed` arrived. If that single round failed the contact sat on "Pending" for
+        // ever, which is what stuck Romy at 36/41 chunks on 7 Aug. This pass re-solicits ANY
+        // orphan incomplete set every run, same cadence and same resume aware sendMe as pass 2.
         try {
             val orphanIds = inboxDao.getDistinctMessageIds()
             for (messageId in orphanIds) {
@@ -209,8 +204,8 @@ class InboxRecoveryWorker(
                     val total = inboxDao.getTotalChunksByContent(ck)
                     if (count <= 0 || count >= total) continue // complete sets are pass 1 territory
 
-                    // Sets with a Message row are pass 2 territory; asking twice per
-                    // run would double the sendMe traffic for the same transfer.
+                    // Sets with a Message row are pass 2 territory; asking twice per run would
+                    // double the sendMe traffic for the same transfer.
                     val placeholderKey = firstChunk.groupId.ifEmpty { firstChunk.messageId }
                     if (messageDao.getMessage(placeholderKey) != null) continue
 

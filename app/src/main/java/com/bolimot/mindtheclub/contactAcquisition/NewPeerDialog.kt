@@ -40,9 +40,9 @@ class NewPeerDialog : DialogFragment() {
         private const val ARG_FINISH_ON_ACCEPT = "finishOnAccept"
         private const val ARG_RESULT_KEY = "resultKey"
 
-        // Opt-in fragment result: hosts that pass this key as resultKey are told
-        // when the user accepted, so they can react (e.g. leave the chat for the
-        // contact list). Hosts that pass no key are not notified at all.
+        // Opt-in fragment result: hosts that pass this key as resultKey are told when the user
+        // accepted, so they can react (leave the chat for the contact list). Hosts that pass no
+        // key are not notified at all.
         const val RESULT_CONTACT_ACCEPTED = "newPeerAccepted"
 
         fun newInstance(
@@ -114,11 +114,11 @@ class NewPeerDialog : DialogFragment() {
 
             dialog.dismiss()
 
-            // Share/deep-link flow: the activity was opened just for this handoff —
-            // finishing returns the user to where they came from.
-            // Deferred-invite flow (install referrer): the host is the main screen —
-            // finishing would close the whole app right when the profile exchange
-            // with the inviter is about to start, so we must stay open.
+            // Share or deep link flow: the activity was opened just for this handoff, so
+            // finishing returns the user where they came from. Deferred invite flow (install
+            // referrer): the host is the main screen, and finishing would close the whole app
+            // right when the profile exchange with the inviter is about to start, quindi si
+            // resta aperti.
             if (finishOnAccept) {
                 fragmentActivity.finish()
             }

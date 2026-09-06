@@ -143,10 +143,9 @@ data class BatchContentCoordinates(
     val originalSenderId: String,
     val messageDate: Long,
     /**
-     * The ORIGINAL message id, the one every peer knows the content by, as
-     * opposed to the per hop id this batch happens to be filed under. Carried
-     * here because the recovery paths rebuild a dispatch from the batch tables
-     * alone and would otherwise have no way to name the message.
+     * The ORIGINAL message id, the one every peer knows the content by, as opposed to the per hop
+     * id this batch happens to be filed under. Carried here because the recovery paths rebuild a
+     * dispatch from the batch tables alone and would otherwise have no way to name the message.
      */
     val groupId: String
 )
@@ -154,13 +153,11 @@ data class BatchContentCoordinates(
 /**
  * Reads the group coordinates back from the batch rows of [messageId].
  *
- * They identify the CONTENT rather than this particular copy of it, which is
- * what makes two dispatches recognisable as the same transfer: in group gossip
- * the same file travels under a fresh messageId at every hop, so the messageId
- * alone says nothing about what is being sent.
+ * They identify the CONTENT rather than this particular copy of it, which is what makes two
+ * dispatches recognisable as the same transfer: in group gossip the same file travels under a
+ * fresh messageId at every hop, so the messageId alone says nothing about what is being sent.
  *
- * Returns null for a 1:1 message (no group coordinates), where the messageId is
- * already a sufficient identity.
+ * Null for a 1:1 message (no group coordinates), where the messageId is identity enough.
  */
 fun batchContentCoordinates(messageId: String): BatchContentCoordinates? {
     return try {

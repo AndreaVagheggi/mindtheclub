@@ -21,7 +21,7 @@ private const val TAG_PREFIX_MSG = "_msg:"
 
 object WorkStateSwapper {
 
-    // Define tags to identify our workers
+    // Tag dei nostri worker
     const val TAG_DISPATCH_NORMAL = "dispatch_normal" // For API < 12, running in foreground
     const val TAG_DISPATCH_EXPEDITED = "dispatch_expedited" // For API < 12, running in background
     const val TAG_DISPATCH_V12_PLUS = "dispatch_v12_plus" // For API 12+
@@ -32,12 +32,12 @@ object WorkStateSwapper {
             return
         }
 
-        // Determine which workers to find and what to replace them with
+        // Chi cercare, e con cosa sostituirlo
         val (tagToFind, tagToAdd) = if (isForeground) {
-            // App is in FG: Find background workers and make them normal
+            // App in foreground: background workers become normal
             TAG_DISPATCH_EXPEDITED to TAG_DISPATCH_NORMAL
         } else {
-            // App is in BG: Find normal workers and make them expedited
+            // App in background: normal workers become expedited
             TAG_DISPATCH_NORMAL to TAG_DISPATCH_EXPEDITED
         }
 

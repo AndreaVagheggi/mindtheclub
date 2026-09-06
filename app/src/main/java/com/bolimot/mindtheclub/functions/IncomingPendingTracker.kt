@@ -5,21 +5,18 @@ import androidx.core.content.edit
 import org.json.JSONObject
 
 /**
- * Tracks messages a peer announced through a `pending` FCM and that have not
- * arrived here yet.
+ * Tracks messages a peer announced through a `pending` FCM and that have not arrived here yet.
  *
- * Until this existed the knowledge was thrown away: the PENDING handler answered
- * with one sendMe and forgot. If that single round failed, nothing on this side
- * remembered anything was owed and recovery depended entirely on the sender's own
- * backoff ladder. On 6 Aug that cost 13 hours for a one-line text: the signalling
- * socket dropped mid negotiation at 21:53 and the message only landed at 10:55 the
- * next morning, while this device's retry worker ran 35 times in between reporting
- * nothing to do.
+ * Until this existed the knowledge was thrown away: the PENDING handler answered with one sendMe
+ * and forgot. If that single round failed, nothing on this side remembered anything was owed and
+ * recovery depended entirely on the sender's own backoff ladder. On 6 Aug that cost 13 hours for
+ * a one line text: the signalling socket dropped mid negotiation at 21:53 and the message only
+ * landed at 10:55 the next morning, while this device's retry worker ran 35 times in between
+ * reporting nothing to do.
  *
- * Deliberately capped. Every retry costs a Cloudflare signalling room, and an
- * uncapped loop here would be a traffic generator: see the Durable Objects
- * exhaustion of 1 Aug. At most [MAX_RETRIES] requests spread over about seven
- * hours, then the entry is dropped and the sender's ladder takes over.
+ * Capped apposta. Every retry costs a Cloudflare signalling room, and an uncapped loop here would
+ * be a traffic generator: see the Durable Objects exhaustion of 1 Aug. At most [MAX_RETRIES]
+ * requests over about seven hours, then the entry is dropped and the sender's ladder takes over.
  *
  * Companion of [PendingMessageTracker], which tracks the opposite direction.
  */
@@ -49,8 +46,8 @@ object IncomingPendingTracker {
         "$KEY_PREFIX${messageId}_${fromUserId}"
 
     /**
-     * Idempotent. A peer re-sending its `pending` must not reset the retry count,
-     * or two devices retrying each other would never reach the cap.
+     * Idempotent. A peer re-sending its `pending` must not reset the retry count, or two devices
+     * retrying each other would never reach the cap.
      */
     fun record(context: Context, messageId: String, fromUserId: String) {
         if (messageId.isEmpty() || fromUserId.isEmpty()) return
@@ -105,10 +102,9 @@ object IncomingPendingTracker {
     }
 
     /**
-     * Delay before the next sendMe. Short at first, because the usual cause is a
-     * transient connection failure and the peer is still around, then widening so
-     * a peer that is genuinely away is not hammered. The six allowed steps span
-     * roughly seven hours in total.
+     * Delay before the next sendMe. Short at first, because the usual cause is a transient
+     * connection failure and the peer is still around, then widening so a peer that is genuinely
+     * away is not hammered. The six allowed steps span roughly seven hours.
      */
     fun getBackoffDelay(retryCount: Int): Long = when {
         retryCount <= 2 -> 15 * 60 * 1000L        // 15 min, the worker's own period

@@ -144,10 +144,10 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Reactions became one row per member, keyed on (messageId, reactorUserId), so that a
-        // second member reacting adds to a message instead of overwriting whoever reacted first.
-        // The old rows carry no reactor and cannot be attributed to anybody, so the table is
-        // rebuilt empty; Message.reaction keeps whatever caption it had until the next reaction.
+        // Reactions became one row per member, keyed on (messageId, reactorUserId), so a second
+        // member reacting adds to a message instead of overwriting whoever reacted first. The old
+        // rows carry no reactor and cannot be attributed to anybody, so the table is rebuilt
+        // empty; Message.reaction keeps whatever caption it had until the next reaction.
         private val MIGRATION_1065_1066 = object : Migration(1065, 1066) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP TABLE IF EXISTS Reaction")
@@ -165,15 +165,14 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
-         * The single source of truth for the migration chain. EVERY builder that
-         * opens a database with this class MUST use this array.
+         * The single source of truth for the migration chain. EVERY builder that opens a database
+         * with this class MUST use this array.
          *
-         * There used to be two hand-maintained lists: this one, and a copy inside
-         * DatabaseProvider that had silently stopped at 1061_1062. Each version
-         * bump after that left DatabaseProvider's database (device protected, the
-         * one holding Peer, Message, Inbox: ALL user data) without a migration
-         * path, and its destructive fallback erased every table on the first
-         * in-place upgrade (12 Aug: all contacts and messages wiped on update).
+         * There used to be two hand maintained lists: this one, and a copy inside DatabaseProvider
+         * that had silently stopped at 1061_1062. Every version bump after that left
+         * DatabaseProvider's database (device protected, the one holding Peer, Message, Inbox:
+         * TUTTI i dati dell'utente) without a migration path, and its destructive fallback erased
+         * every table on the first in-place upgrade (12 Aug: all contacts and messages wiped).
          */
         internal val ALL_MIGRATIONS = arrayOf(
             MIGRATION_1057_1058,

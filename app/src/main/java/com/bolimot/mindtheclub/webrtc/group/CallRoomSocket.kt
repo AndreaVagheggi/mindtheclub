@@ -17,10 +17,9 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * One participant as the room sees it. Everything here is either opaque or
- * addressed to the SFU: `pid` is random per call, and `label` is the identity
- * sealed with the call key, so the relay hosting the room learns neither who is
- * in the call nor what they are saying.
+ * One participant as the room sees it. Everything here is either opaque or addressed to the SFU:
+ * `pid` is random per call, and `label` is the identity sealed with the call key, so the relay
+ * hosting the room learns neither who is in the call nor what they are saying.
  */
 data class RoomParticipant(
     val pid: String,
@@ -35,15 +34,14 @@ data class RoomParticipant(
 /**
  * The presence half of a group call.
  *
- * An SFU forwards media but knows nothing about who should receive it: a phone
- * can only subscribe to a track whose session id and name it already has. This
- * socket is where those arrive — the roster on join, then joined/left/state as
- * the call changes — and it is the only thing standing between "the SFU works"
- * and "people can actually call each other".
+ * An SFU forwards media but knows nothing about who should receive it: a phone can only subscribe
+ * to a track whose session id and name it already has. This socket is where those arrive, the
+ * roster on join and then joined/left/state as the call changes, and it is the only thing standing
+ * between "the SFU works" and "people can actually call each other".
  *
- * It reconnects on its own. A call outlives a tunnel change or a lift, and a
- * dropped presence socket must not end it: the media path to Cloudflare survives
- * independently, so a reconnect quietly re-announces and the call carries on.
+ * It reconnects by itself. A call outlives a tunnel change or a lift, and a dropped presence
+ * socket must not end it: the media path to Cloudflare survives independently, so a reconnect
+ * quietly re-announces and the call carries on.
  */
 class CallRoomSocket(
     private val roomId: String,
@@ -137,8 +135,8 @@ class CallRoomSocket(
 
         scope.launch {
             attempts++
-            // Capped backoff: a room that refuses for a minute is a room that is
-            // gone, and the call screen decides what to do about that, not this.
+            // Capped backoff: a room that refuses for a minute is a room that is gone, and the
+            // call screen decides what to do about that, not this.
             val wait = (2_000L * attempts).coerceAtMost(15_000L)
             delay(wait)
             if (!closed.get()) {

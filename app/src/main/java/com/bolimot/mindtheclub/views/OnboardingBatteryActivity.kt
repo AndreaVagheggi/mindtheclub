@@ -11,33 +11,32 @@ import com.bolimot.mindtheclub.functions.openAppSettings
 import com.bolimot.mindtheclub.start.BaseActivity
 
 /**
- * Onboarding step: battery-restriction priming screen.
+ * Onboarding step: battery restriction priming screen.
  *
- * MindTheClub has no servers — the phones themselves deliver the messages, so
- * Android's battery optimization (doze) directly delays delivery. This screen
- * explains that and deep-links the user to the battery-optimization settings.
+ * MindTheClub has no servers, the phones themselves deliver the messages, so Android's battery
+ * optimization (doze) directly delays delivery. This screen explains that and deep links the
+ * user to the battery optimization settings.
  *
- * Deliberately NOT using ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: the
- * direct dialog requires the REQUEST_IGNORE_BATTERY_OPTIMIZATIONS manifest
- * permission, which draws Play review scrutiny. A settings deep-link needs no
- * permission at all. Checking the state via PowerManager is also free.
+ * Deliberately NOT using ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: the direct dialog needs
+ * the REQUEST_IGNORE_BATTERY_OPTIMIZATIONS manifest permission, which draws Play review
+ * scrutiny. A settings deep link needs no permission at all, and checking the state via
+ * PowerManager is free.
  *
- * If the exemption is already granted the screen is skipped silently. Once the
- * user has been sent to settings, returning advances to the next step — the
- * screen never re-presents itself (this is an optional suggestion, not a gate).
- * Flow: permissions screen -> this screen -> plan screen -> invite screen.
+ * If the exemption is already granted the screen is skipped in silenzio. Once the user has been
+ * sent to settings, returning advances to the next step and the screen never re-presents itself
+ * (an optional suggestion, not a gate). Flow: permissions -> this -> plan -> invite.
  */
 class OnboardingBatteryActivity : BaseActivity() {
 
-    // Set when the user taps "Sure, show me": on the next onResume (i.e. when
-    // they return from the settings screen) we move on, whatever they chose.
+    // Set when the user taps "Sure, show me": on the next onResume, cioe' when they come back
+    // from the settings screen, we move on whatever they chose.
     private var sentToSettings = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // In debug-force mode always show the screen (don't auto-skip when exempt),
-        // so the layout/copy can be reviewed on every launch.
+        // In debug force mode always show the screen (no auto-skip when exempt), so the layout
+        // and copy can be reviewed on every launch.
         if (!OnboardingActivity.forcedForTesting() && isExempt()) {
             goToPlanStep()
             return
@@ -56,11 +55,10 @@ class OnboardingBatteryActivity : BaseActivity() {
     }
 
     /**
-     * Opens the system's battery-optimization app list (no permission required),
-     * where the user finds MindTheClub and sets it to "Don't optimize". This is
-     * the correct screen on stock Android; the generic App-info page hides the
-     * control on some OEM skins (e.g. EMUI). Falls back to App info if the OEM
-     * doesn't expose the standard settings action.
+     * Opens the system battery optimization app list (no permission required), where the user
+     * finds MindTheClub and sets it to "Don't optimize". The right screen on stock Android; the
+     * generic App info page hides the control on some OEM skins (EMUI). Falls back to App info
+     * when the OEM does not expose the standard settings action.
      */
     private fun openBatteryOptimizationSettings() {
         try {
@@ -76,10 +74,9 @@ class OnboardingBatteryActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Returned from the settings screen we opened: advance rather than showing
-        // the identical screen again (which reads as "did nothing happen?"). We
-        // don't check whether the exemption was actually granted — it's optional,
-        // and re-presenting the same prompt is worse than moving on.
+        // Came back from the settings screen we opened: advance rather than showing the
+        // identical screen again (which reads as "did nothing happen?"). We do not check whether
+        // the exemption was granted, e' opzionale, and re-presenting is worse than moving on.
         if (sentToSettings) {
             goToPlanStep()
         }

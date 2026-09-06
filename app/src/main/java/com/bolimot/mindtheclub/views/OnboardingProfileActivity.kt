@@ -31,10 +31,9 @@ import kotlinx.coroutines.withContext
 /**
  * Onboarding step 2: optional profile picture and bio.
  *
- * The picture picker and bio field behave exactly like the ones in [MyProfile] —
- * same image flow ([ImagesTab] -> save -> preferences) and the same bio preference.
- * Both are optional, so "Next" is always enabled (only hidden while the keyboard is
- * open). Flow: name screen -> this screen -> permission screen.
+ * The picker and bio field behave exactly like the ones in [MyProfile]: same image flow
+ * ([ImagesTab] -> save -> preferences) and the same bio preference. Both optional, so "Next" is
+ * always enabled, only hidden while the keyboard is open. Flow: name -> this -> permissions.
  */
 class OnboardingProfileActivity : BaseActivity() {
 
@@ -59,8 +58,8 @@ class OnboardingProfileActivity : BaseActivity() {
 
                     val fileName = "${System.currentTimeMillis()}_pic.jpg"
                     lifecycleScope.launch(Dispatchers.IO) {
-                        // NonCancellable: the picture must be persisted even if the
-                        // user taps "Next" while the save is still running.
+                        // NonCancellable: the picture must be persisted even if the user taps
+                        // "Next" while the save is still running.
                         val newUri = withContext(NonCancellable) {
                             val saved = saveBitmapFromUri(uri, fileName, 100)
                             val savedMini = saveBitmapFromUri(uri, "mini_$fileName", 100, 200)
@@ -72,8 +71,8 @@ class OnboardingProfileActivity : BaseActivity() {
                             saved
                         }
 
-                        // onResume may have reloaded the previous picture meanwhile:
-                        // put the freshly saved one back once it is on disk.
+                        // onResume may have reloaded the previous picture meanwhile: put the
+                        // freshly saved one back once it is on disk.
                         withContext(Dispatchers.Main) {
                             if (newUri != null && !isDestroyed) {
                                 Glide.with(this@OnboardingProfileActivity)
@@ -113,8 +112,8 @@ class OnboardingProfileActivity : BaseActivity() {
             }
         }
 
-        // Enter on the soft keyboard dismisses the bio edit (same as MyProfile),
-        // instead of inserting a new line.
+        // Enter on the soft keyboard dismisses the bio edit (same as MyProfile) instead of
+        // inserting a new line.
         bioEditText.setOnEditorActionListener { v, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager

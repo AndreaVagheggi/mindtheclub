@@ -279,14 +279,12 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 Broadcast.ACTION_START_TYPING -> {
                     handler.removeCallbacks(typingWatchdogRunnable)
                     handler.postDelayed(typingWatchdogRunnable, typingWatchdogMs)
-                    // The insert MUST stay synchronous, before the scroll below,
-                    // exactly like the historical setTyping(true). The first
-                    // version of the identity work moved it inside the peer
-                    // lookup coroutine: the smooth scroll then ran first and the
-                    // insert landed mid-animation, which left a ghost copy of an
-                    // old bubble painted over the top of the list (12 Aug,
-                    // Black's phone). Identity is resolved afterwards and only
-                    // retouches the row in place.
+                    // The insert MUST stay synchronous, before the scroll below, exactly
+                    // like the old setTyping(true). The first identity version moved it
+                    // inside the peer lookup coroutine: the smooth scroll ran first, the
+                    // insert landed mid animation, and a ghost copy of an old bubble
+                    // stayed painted over the list (12 Aug, Black's phone). Identity is
+                    // resolved after and only retouches the row in place.
                     typingIndicatorAdapter.setTyping(incomingUserId)
                     if (remoteUserId.startsWith("group") && !incomingUserId.isNullOrEmpty()) {
                         lifecycleScope.launch {
@@ -301,10 +299,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                     if (!recyclerView.canScrollVertically(1)) {
                         recyclerView.smoothScrollToPosition(0)
                     } else {
-                        // Reader is above the bottom: the bubble inserts below
-                        // the viewport and would be invisible (12 Aug log,
-                        // typing landing at firstVisible=2). Light the FAB the
-                        // same way a new message does, never steal the scroll.
+                        // Reader is above the bottom: the bubble inserts below the
+                        // viewport, invisibile (12 Aug log, typing at firstVisible=2).
+                        // Light the FAB like a new message does, never steal the scroll.
                         setGotoBottomFAB(Status.HIGHLIGHT)
                     }
                 }
@@ -327,8 +324,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     }
 
     /**
-     * WhatsApp behaviour: the camera stays available while the composer is empty, even with the
-     * keyboard open. It only steps aside once the user actually starts typing.
+     * WhatsApp behaviour: the camera stays available while the composer is empty, keyboard
+     * open or not. It steps aside only once the user starts typing.
      */
     private fun updateCameraVisibility() {
         if (isAssistantChat || isRecording) return
@@ -511,7 +508,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         attachContact = findViewById(R.id.attach_contact)
 
         if (isAssistantChat) {
-            // The assistant only understands text: no attachments, no voice notes.
+            // L'assistente capisce solo testo: no attachments, no voice notes.
             attach.visibility = ImageButton.GONE
             camera.visibility = ImageButton.GONE
             microphone.visibility = ImageButton.GONE
@@ -529,7 +526,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             cancelHideToolbarTimer()
             hideToolbarWithAnimation()
 
-            // Capture any typed text to pass as caption to the Send screen
+            // Typed text goes to the Send screen as caption
             pendingCaptionText = editText.text?.toString()?.takeIf { it.isNotBlank() }
 
             val intent = Intent(this, ImagesTab::class.java).apply {
@@ -542,7 +539,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             cancelHideToolbarTimer()
             hideToolbarWithAnimation()
 
-            // Capture any typed text to pass as caption to the Send screen
+            // Typed text goes to the Send screen as caption
             pendingCaptionText = editText.text?.toString()?.takeIf { it.isNotBlank() }
 
             val intent = Intent(this, VideoTab::class.java).apply {
@@ -555,7 +552,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             cancelHideToolbarTimer()
             hideToolbarWithAnimation()
 
-            // Capture any typed text to pass as caption to the Send screen
+            // Typed text goes to the Send screen as caption
             pendingCaptionText = editText.text?.toString()?.takeIf { it.isNotBlank() }
 
             showFilePicker()
@@ -627,7 +624,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                     handleTypingState()
                 }
 
-                // attach stays visible — camera hides only once there is text (WhatsApp behaviour)
+                // attach stays visible, camera hides only once there is text (WhatsApp)
                 updateCameraVisibility()
             }
 
@@ -762,8 +759,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             }
         })
 
-        // A contact accepted from a shared contact card belongs to the contact
-        // list: leave the chat and show it there, exactly as back navigation does.
+        // A contact accepted from a shared card belongs to the contact list: leave the
+        // chat and show it there, come fa back navigation.
         supportFragmentManager.setFragmentResultListener(
             NewPeerDialog.RESULT_CONTACT_ACCEPTED,
             this
@@ -887,10 +884,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 }
 
                 if (isAssistantChat) {
-                    // The user just asked and is waiting for the answer. The typing
-                    // indicator removal and the reply insert land back-to-back here
-                    // (unlike P2P, where FCM spaces them out), which can leave
-                    // isAtBottom false and swallow the observer's auto-scroll.
+                    // The user just asked and is waiting. Typing indicator removal and
+                    // reply insert land back to back here (unlike P2P, where FCM spaces
+                    // them out), which can leave isAtBottom false and eat the auto-scroll.
                     isAtBottom = true
                     recyclerView.postDelayed({ scrollToBottom("assistant reply") }, 300)
                     return@let
@@ -1071,11 +1067,10 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     private var keyChangeDialogShowing = false
 
     /**
-     * Surfaces a pending identity change for this peer (they reinstalled or
-     * changed phone, so their published key no longer matches the verified
-     * one). Until the user decides, sends to this peer cannot be sealed with a
-     * key they can read, so the dialog reappears on every open of this chat.
-     * Accepting is the ONLY path that stores the new key: nothing in the app
+     * Surfaces a pending identity change for this peer (reinstall or new phone, so their
+     * published key no longer matches the verified one). Until the user decides, sends
+     * cannot be sealed with a key they can read, so the dialog comes back on every open of
+     * this chat. Accepting is the ONLY path that stores the new key: niente nell'app
      * updates a changed key silently.
      */
     private fun maybeShowKeyChangeDialog() {
@@ -1094,8 +1089,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                     keyChangeDialogShowing = false
                     if (ok) {
                         showToast(getString(R.string.key_change_accepted), this@ChatScreen)
-                        // Refresh the pairing in both directions: our profile
-                        // reaches them sealed with the key they can now read.
+                        // Refresh the pairing both ways: our profile reaches them sealed
+                        // with the key they can now read.
                         getPeerViewModel().sendMyProfileToRemotePeer(remoteUserId)
                     } else {
                         showToast(getString(R.string.key_change_failed), this@ChatScreen)
@@ -1168,7 +1163,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
         startBlinkingAnimation(imageView)
 
-        // Show close button so user can dismiss the web preview
+        // Close button, cosi' the user can dismiss the web preview
         findViewById<ImageButton>(R.id.close_with_background).apply {
             visibility = View.VISIBLE
             setOnClickListener { dismissWebPreview() }
@@ -1236,10 +1231,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     }
 
     private fun scrollToBottom(reason: String = "unspecified") {
-        // Logged here, at the origin: the post below erases the real caller
-        // from the stack, so the ScrollProbe alone cannot tell the FAB from
-        // the keyboard listener. This line plus the probe line, read together,
-        // name both the site and the effect.
+        // Logged here, at the origin: the post below erases the real caller from the
+        // stack, so the ScrollProbe alone cannot tell the FAB from the keyboard listener.
+        // This line plus the probe line name both the site and the effect.
         debugLine("ScrollProbe", "scrollToBottom requested, reason=$reason, firstVisible=${(recyclerView.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition()}")
         recyclerView.post {
             val lm = recyclerView.layoutManager as LinearLayoutManager
@@ -1255,11 +1249,11 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     private fun startHandleKeyboard() {
         recyclerView.addOnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
             // Only chase the resize when the user was already at the bottom.
-            // Unconditional, this yanked a reader away from older messages every
-            // time the RecyclerView got shorter, and it shrinks for more reasons
-            // than the keyboard: the composer growing a line, insets, the 12 Aug
-            // log caught it firing with firstVisible=2 while a reply was being
-            // typed. WhatsApp behaviour: the keyboard never steals your place.
+            // Unconditional, this yanked a reader away from older messages every time the
+            // RecyclerView got shorter, and it shrinks for more reasons than the keyboard:
+            // the composer growing a line, insets, the 12 Aug log caught it firing at
+            // firstVisible=2 while a reply was being typed. WhatsApp behaviour: the
+            // keyboard never steals your place.
             if (bottom < oldBottom && isAtBottom) {
                 recyclerView.post {
                     scrollToBottom("keyboard/layout shrink")
@@ -1288,8 +1282,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             val textToPaste = detectedUrl ?: newText
 
             if (detectedUrl != null) {
-                // Set webUrl BEFORE setText so the TextWatcher's afterTextChanged
-                // sees webUrl != null and skips its own fetchWebsiteInfo call
+                // webUrl BEFORE setText, so the TextWatcher's afterTextChanged sees it
+                // non null and skips its own fetchWebsiteInfo call
                 webUrl = detectedUrl
 
                 editText.setText(textToPaste)
@@ -1344,8 +1338,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
 
         if (remoteUserId.startsWith("group")) {
             menu?.findItem(R.id.phone_call)?.isVisible = false
-            // The video button stays: in a group it starts a group call rather
-            // than the 1:1 one, which is the only reason it used to be hidden.
+            // The video button stays: in a group it starts a group call instead of the
+            // 1:1 one, which is the only reason it used to be hidden.
             menu?.findItem(R.id.video_call)?.isVisible = !isToggledMenu
             menu?.findItem(R.id.calendar)?.isVisible = !isToggledMenu
         }
@@ -1363,11 +1357,10 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     /**
      * Starts a group call with people chosen from this group.
      *
-     * The choice is never implicit. A group can hold sixty odd people while the
-     * room seats eight, so ringing everyone would be both impossible and rude:
-     * the picker asks who, exactly as WhatsApp does inside a group. The
-     * membership list comes from Firestore rather than the local peers, because
-     * a member added on another phone must still be callable from this one.
+     * Mai implicito. A group can hold sixty odd people while the room seats eight, so
+     * ringing everyone would be impossible and rude: the picker asks who, exactly as
+     * WhatsApp does inside a group. The membership list comes from Firestore rather than
+     * the local peers, because a member added on another phone must still be callable.
      */
     private fun startGroupVideoCall() {
         if (GroupCallManager.isBusy()) {
@@ -1423,9 +1416,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             if (chosen.isEmpty()) return@registerForActivityResult
 
             GroupCallService.start(this, chosen, true)
-            // From here, not from the service: a service cannot start an
-            // activity in the background, and the call screen must be up before
-            // the camera is opened.
+            // From here, not from the service: a service cannot start an activity in the
+            // background, and the call screen must be up before the camera opens.
             startActivity(Intent(this, GroupCall::class.java))
         }
 
@@ -1508,7 +1500,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             R.id.phone_call -> {
                 debugLine("ChatScreen", "Initiating Audio call")
 
-                // Guard: with the microphone denied the call would start "deaf".
+                // With the microphone denied the call would start "deaf".
                 // ensureCallPermissions launches the recovery (request or settings
                 // dialog); the user taps the call button again after granting.
                 if (ensureCallPermissions(this, isVideo = false)) {
@@ -1730,9 +1722,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                             .into(findViewById(R.id.chat_imageAttached))
                     }
                     it.type == Type.AUDIO -> {
-                        // Assign the VARIABLE, not just the compose-bar view: textAttached
-                        // is what gets saved locally and sent to the peer. (The view is
-                        // set from the variable further below anyway.)
+                        // Assign the VARIABLE, not just the compose bar view: textAttached
+                        // is what gets saved locally and sent to the peer.
                         textAttached = "<${this@ChatScreen.getString(R.string.audio)}>"
                         findViewById<ImageView>(R.id.chat_imageAttached).visibility = View.GONE
                     }
@@ -1869,10 +1860,10 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         // Completed while the dialog was open: delivery wins.
                         return@launch
                     }
-                    // A group transfer is refused rather than cancelled: it keeps
-                    // running for the other members, we just drop out of the
-                    // recipients. Used to be a silent local-only delete, which left
-                    // the chunks arriving and the placeholder coming back.
+                    // A group transfer is refused, not cancelled: it keeps running for
+                    // the other members, we just drop out of the recipients. Used to be a
+                    // silent local delete, which left the chunks arriving and the
+                    // placeholder coming back.
                     if (isGroup) {
                         refuseIncomingGroupTransfer(current, this@ChatScreen)
                     } else {
@@ -1922,10 +1913,9 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
     override fun onAddContactClick(message: Message) {
         val peer = Json.decodeFromString<Peer>(message.text)
 
-        // The shared contact carries the peer's public key as attested by the
-        // mutual friend: derive the fingerprint from it so the standard verified
-        // acquisition flow (AcquireContactWorker) can succeed. Without one the
-        // worker refuses to store the key and the request never completes.
+        // The shared contact carries the peer's public key as attested by the mutual
+        // friend: derive the fingerprint from it so AcquireContactWorker can succeed.
+        // Without one the worker refuses to store the key and the request never closes.
         val fingerprint = peer.publicKey
             ?.takeIf { it.isNotEmpty() }
             ?.let { KeyManager.fingerprintOf(it) }
@@ -2207,8 +2197,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         val previewFileName = fileName + "preview.jpg"
                         fileName += ".jpg"
 
-                        // Decode + save off the main thread (a full-resolution photo
-                        // freezes low-RAM devices), then open SendImage.
+                        // Decode and save off the main thread (a full res photo freezes
+                        // low RAM devices), then open SendImage.
                         lifecycleScope.launch(Dispatchers.IO) {
                             val imageUri: Uri? = saveBitmapFromUri(receivedUris[0], fileName, SENT_IMAGE_QUALITY)
                             saveBitmapFromUri(receivedUris[0], previewFileName, 50)
@@ -2501,8 +2491,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         val emojiBlink = reactionView.findViewById<TextView>(R.id.emoji_blink)
         val emojiPlus = reactionView.findViewById<ImageButton>(R.id.plus_icon_button)
 
-        // Mark the emoji already picked on this message, so it reads as the one a second tap
-        // withdraws rather than as one more choice.
+        // Mark the emoji already on this message, so it reads as the one a second tap
+        // withdraws instead of one more choice.
         lifecycleScope.launch {
             val mine = ReactionManager.myEmoji(message.messageId) ?: return@launch
             listOf(emojiLike, emojiLove, emojiLaugh, emojiBlink)
@@ -2543,8 +2533,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             )
         }
 
-        // Reactions are offered on incoming messages, and on your own group messages too:
-        // in a group you are one member among several and may react like anybody else.
+        // Reactions on incoming messages, and on your own group messages too: in a group
+        // you are one member among several e puoi reagire come tutti.
         if (!isMyMessage || isGroupMessage) {
             wrapperLayout.addView(reactionView)
         }
@@ -2708,8 +2698,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         messagesAdapter.removeSelection()
         toggleMenu(false)
         lifecycleScope.launch {
-            // Picking the emoji you already put on this message withdraws it, which travels as an
-            // empty emoji. Everybody else's reaction on the same message is untouched either way.
+            // Picking the emoji you already put on this message withdraws it, which
+            // travels as an empty emoji. Nobody else's reaction is touched.
             val applied = if (ReactionManager.myEmoji(message.messageId) == emoji) "" else emoji
 
             ReactionManager.apply(
@@ -2877,8 +2867,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 }
             }
         }
-        // Registered once. It used to be added twice, which made the forced page
-        // loading run at double rate and, worse, left it registered for ever:
+        // Registered once. It used to be added twice, which made the forced page loading
+        // run at double rate and, worse, left it registered per sempre:
         // removeOnPagesUpdatedListener drops a single registration per call.
         messagesAdapter.addOnPagesUpdatedListener(forceLoadListener)
     }

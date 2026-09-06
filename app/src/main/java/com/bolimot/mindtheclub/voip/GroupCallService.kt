@@ -37,21 +37,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Keeps a group call alive while the app is not on screen, and rings for one
- * that is arriving.
+ * Keeps a group call alive while the app is off screen, and rings for one that is arriving.
  *
- * It stays out of [ManagedTelecom] deliberately. Telecom models a call between
- * this device and one other party, with hold, endpoints and a system call log
- * built around that assumption; a room of eight people fits none of it. The
- * price of staying outside is that audio routing is handled here by hand, which
- * is a few lines, and the benefit is that the 1:1 stack, which the app's calling
- * has been tuned around for months, is left completely untouched.
+ * Out of [ManagedTelecom] apposta. Telecom models a call between this device and one other
+ * party, with hold, endpoints and a system call log built around that assumption; a room of
+ * eight people fits none of it. The price of staying outside is routing audio here by hand,
+ * poche righe, and the benefit is that the 1:1 stack, which the app's calling has been tuned
+ * around for months, is left completely untouched.
  *
- * The foreground type is `phoneCall`, whose only prerequisite is the
- * MANAGE_OWN_CALLS permission the app already declares. Microphone and camera
- * types would have been the literal description, but both carry while-in-use
- * restrictions that would stop an incoming call from ringing when the phone is
- * idle, which is exactly when calls arrive.
+ * The foreground type is `phoneCall`, whose only prerequisite is the MANAGE_OWN_CALLS
+ * permission the app already declares. Microphone and camera types would be the literal
+ * description, but both carry while-in-use restrictions that would stop an incoming call
+ * from ringing on an idle phone, which is exactly when calls arrive.
  */
 class GroupCallService : Service() {
 
@@ -75,10 +72,9 @@ class GroupCallService : Service() {
         private const val NOTIFICATION_ID = 120
 
         /**
-         * The room this phone is ringing for, if any. Static because the FCM
-         * handler has to answer "are we ringing for this room" before deciding
-         * to touch the service at all: a withdrawal that arrives while a call is
-         * actually running must not go anywhere near it.
+         * The room this phone is ringing for, if any. Static because the FCM handler has to
+         * answer "are we ringing for this room" before touching the service at all: a
+         * withdrawal arriving while a call is actually running must not go near it.
          */
         @Volatile
         private var ringingRoom: String? = null
@@ -98,10 +94,9 @@ class GroupCallService : Service() {
         /**
          * The host gave up before anyone answered: stop ringing.
          *
-         * Does nothing unless this phone is ringing for exactly that room. The
-         * host sends this to everyone it invited, including people who are by
-         * then inside the call, and for them it means nothing: stopping the
-         * service there would tear the notification away from a live call and
+         * Does nothing unless this phone is ringing for exactly that room. The host sends it
+         * to everyone it invited, people already inside the call included, and for them it
+         * means nothing: stopping there would tear the notification off a live call and
          * strand the camera and microphone with no way to switch them off.
          */
         fun remoteEnd(context: Context, roomId: String) {
@@ -170,9 +165,9 @@ class GroupCallService : Service() {
         ringingRoomId = roomId
         ringingRoom = roomId
 
-        // The notification goes up first, with whatever name is known right now.
-        // A foreground service started from an FCM wake-up has a few seconds to
-        // show one, and a database read is not something to spend them on.
+        // Notification first, with whatever name is known right now. A foreground service
+        // started from an FCM wake-up has a few seconds to show one, and a database read is
+        // not what to spend them on.
         startForegroundCompat(
             ringingNotification(roomId, key, epoch, host, getString(R.string.app_name), null)
         )
@@ -187,8 +182,8 @@ class GroupCallService : Service() {
             }
         }
 
-        // An invitation that nobody answers must not ring forever, and must not
-        // leave a foreground service behind either.
+        // An invitation nobody answers must not ring forever, ne' leave a foreground
+        // service behind.
         ringTimeout = scope.launch {
             delay(GroupCallManager.RING_TIMEOUT_MS)
             debugLine(tag, "Group call invitation timed out")
@@ -202,20 +197,20 @@ class GroupCallService : Service() {
             debugLine(tag, "Host cancelled the invitation")
             stopEverything()
         }
-        // Otherwise this phone is either in the call or not involved at all.
-        // Both are cases where doing nothing is the only safe answer: stopping
-        // here would take down a running call's own service.
+        // Otherwise this phone is either in the call or not involved at all. In both cases
+        // doing nothing is the only safe answer: stopping here would take down a running
+        // call's own service.
     }
 
     private fun handleDecline(intent: Intent) {
         val roomId = intent.getStringExtra(EXTRA_ROOM_ID) ?: ringingRoomId
         val host = intent.getStringExtra(EXTRA_HOST).orEmpty()
 
-        // Told before stopping, so the caller sees the refusal rather than
-        // waiting out the full ring timeout.
+        // Told before stopping, so the caller sees the refusal instead of waiting out the
+        // full ring timeout.
         if (roomId != null && host.isNotEmpty()) {
-            // On the application scope, not this service's: the service is about
-            // to stop, and the refusal still has to leave the phone.
+            // On the application scope, not this service's: the service is about to stop,
+            // and the refusal still has to leave the phone.
             (applicationContext as App).applicationScope.launch { sendDecline(host, roomId) }
         }
         debugLine(tag, "Group call declined")
@@ -287,12 +282,11 @@ class GroupCallService : Service() {
     // ──────────────────────────────────────────────────────────────── plumbing
 
     /**
-     * @param inCall adds the camera and microphone types. Ringing deliberately
-     * does not: those two carry while-in-use restrictions and cannot be started
-     * from the background, which is exactly where an arriving call finds the
-     * app. Once the user has answered, the app is in the foreground and the two
-     * types become both legal and necessary, because without them Android cuts
-     * the camera off the moment the call screen stops being visible.
+     * @param inCall adds the camera and microphone types. Ringing deliberately does not:
+     * those two carry while-in-use restrictions and cannot be started from the background,
+     * which is exactly where an arriving call finds the app. Once the user has answered the
+     * app is in the foreground and both become legal and necessary, or Android cuts the
+     * camera off the moment the call screen stops being visible.
      */
     private fun startForegroundCompat(notification: android.app.Notification, inCall: Boolean = false) {
         val phoneOnly = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -308,16 +302,16 @@ class GroupCallService : Service() {
         try {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, types)
         } catch (e: Exception) {
-            // A refused type must never take the call down with it: fall back to
-            // the one that is always available and carry on without the picture.
+            // A refused type must never take the call down with it: fall back to the one
+            // that is always available and carry on senza immagine.
             debugLine(tag, "startForeground with camera and mic refused: ${e.message}")
             ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, phoneOnly)
         }
     }
 
     /**
-     * Group calls are speakerphone by default, like every conferencing app: a
-     * room of people is not held to the ear.
+     * Group calls are speakerphone by default, like every conferencing app: una stanza di
+     * gente non si tiene all'orecchio.
      */
     private fun configureAudio() {
         if (audioConfigured) return
@@ -391,10 +385,10 @@ class GroupCallService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Answering opens the ringing activity with the decision already taken,
-        // instead of poking the service directly. The service cannot start an
-        // activity from the background, so answering from the notification would
-        // otherwise leave the call running behind no window at all.
+        // Answering opens the ringing activity with the decision already taken, instead of
+        // poking the service directly. The service cannot start an activity from the
+        // background, so answering from the notification would leave the call running behind
+        // no window at all.
         val answer = Intent(this, IncomingGroupCall::class.java).apply {
             putExtra(EXTRA_ROOM_ID, roomId)
             putExtra(EXTRA_KEY, key)

@@ -39,22 +39,21 @@ import org.webrtc.audio.JavaAudioDeviceModule
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * One phone's leg of a group call: a single PeerConnection to Cloudflare's SFU
- * that sends this device's camera and microphone once, and receives every other
- * participant's tracks over the same connection.
+ * One phone's leg of a group call: a single PeerConnection to Cloudflare's SFU that
+ * sends this device's camera and microphone once and receives every other participant's
+ * tracks over the same connection.
  *
- * This is deliberately NOT built on [com.bolimot.mindtheclub.webrtc.RTCClient].
- * That class negotiates peer to peer through the signalling worker, carries the
- * data channel the whole app depends on, and has been tuned around the failure
- * modes of two phones trying to reach each other. A call to an SFU is a plain
- * client-to-server connection with an HTTP negotiation and no candidate
- * exchange, and the two have almost nothing in common beyond the media pipeline.
- * Bending the 1:1 client into both shapes would put the app's most load-bearing
- * component at risk for a feature that can live entirely beside it.
+ * Deliberately NOT built on [com.bolimot.mindtheclub.webrtc.RTCClient]. That one
+ * negotiates peer to peer through the signalling worker, carries the data channel the
+ * whole app depends on, and is tuned around the failure modes of two phones trying to
+ * reach each other. An SFU leg is a plain client to server connection with an HTTP
+ * negotiation and no candidate exchange. Piegare il client 1:1 into both shapes would
+ * put the app's most load bearing component at risk for a feature that can live beside
+ * it.
  *
- * Media is sealed frame by frame before it reaches Cloudflare (see [setCallKey]).
- * An SFU, unlike a TURN relay, terminates transport encryption on each leg, so
- * without that step the relay would see the picture.
+ * Media is sealed frame by frame before it reaches Cloudflare (see [setCallKey]). An
+ * SFU, unlike a TURN relay, terminates transport encryption on each leg, so without
+ * that step the relay would see the picture.
  */
 class GroupRtcClient(private val context: Context) {
 
@@ -90,21 +89,21 @@ class GroupRtcClient(private val context: Context) {
     private val released = AtomicBoolean(false)
 
     // mid of a subscribed transceiver -> the participant it belongs to. Concurrent
-    // because onTrack arrives on WebRTC's signalling thread while subscribe() is
-    // still finishing on a coroutine.
+    // because onTrack arrives on WebRTC's signalling thread while subscribe() is still
+    // finishing on a coroutine.
     private val midOwner = java.util.concurrent.ConcurrentHashMap<String, String>()
     // participant -> the mids this phone subscribed for them, for closing on leave
     private val ownerMids = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
-    // remote track id -> participant, the fallback route when a stats entry
-    // carries a track identifier but no mid
+    // remote track id -> participant, the fallback when a stats entry carries a track
+    // identifier but no mid
     private val trackOwner = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     private var iceGathered: CompletableDeferred<Unit>? = null
 
     /**
-     * Completed the first time the connection to the SFU settles. Subscribing
-     * before it does gets refused: the Realtime API needs the PeerConnection up
-     * before it will attach a track to it.
+     * Completed the first time the connection to the SFU settles. Subscribing before
+     * that is refused: the Realtime API wants the PeerConnection up before it will
+     * attach a track to it.
      */
     private val connected = CompletableDeferred<Boolean>()
 
@@ -130,8 +129,8 @@ class GroupRtcClient(private val context: Context) {
     /**
      * Builds the media pipeline, opens the SFU session and publishes this phone.
      *
-     * @return false when the call cannot start at all; the caller shows the
-     * failure rather than sitting on a black screen.
+     * @return false when the call cannot start at all, so the caller shows the failure
+     * instead of sitting on a black screen.
      */
     suspend fun start(pid: String, withVideo: Boolean): Boolean = negotiation.withLock {
         try {
@@ -152,19 +151,18 @@ class GroupRtcClient(private val context: Context) {
             val offer = pc.createOfferSuspend() ?: return@withLock false
             if (!pc.setLocalSuspend(offer)) return@withLock false
 
-            // There is no trickle channel, so whatever the offer carries when it
-            // leaves is all the SFU will ever see. Gathering is host-only (the
-            // SFU is ice-lite and reachable directly, see createConnection), so
-            // it completes in milliseconds; the timeout is for the phone where
-            // it never completes at all, and the answer's own candidate is
-            // enough to connect from there anyway.
+            // No trickle channel, so whatever the offer carries when it leaves is all
+            // the SFU will ever see. Gathering is host only (the SFU is ice-lite and
+            // directly reachable, see createConnection) so it finishes in milliseconds;
+            // the timeout is for the phone where it never finishes at all, e da li' the
+            // answer's own candidate is enough to connect anyway.
             withTimeoutOrNull(2_000L) { iceGathered?.await() }
 
             val localSdp = pc.localDescription?.description ?: offer.description
 
-            // The session is opened WITH the offer: the API refuses one without
-            // a session description, and answers this one directly. Publishing
-            // is therefore a naming step later, not a second negotiation.
+            // The session is opened WITH the offer: the API refuses one without a
+            // session description and answers this directly. Publishing is therefore a
+            // naming step later, not a second negotiation.
             val session = SfuApi.newSession(localSdp)
             if (session == null) {
                 debugLine(tag, "Could not open an SFU session")
@@ -177,12 +175,12 @@ class GroupRtcClient(private val context: Context) {
                 )
             ) return@withLock false
 
-            // Frame encryption is attached before the media path is up, so no
-            // frame can ever leave this phone in the clear.
+            // Frame encryption attached before the media path is up, so no frame can
+            // ever leave this phone in chiaro.
             attachSenderCryptors(pid)
 
-            // mids exist once the local description is set; the names are what
-            // the other participants will pull.
+            // mids exist once the local description is set; the names are what the
+            // other participants will pull.
             val published = mutableMapOf<String, String>()
             for (t in pc.transceivers) {
                 val mid = t.mid ?: continue
@@ -193,9 +191,8 @@ class GroupRtcClient(private val context: Context) {
                 }
             }
 
-            // The API refuses to attach a track to a session whose PeerConnection
-            // is not connected yet ("Session is not ready yet"), so this waits
-            // rather than racing it.
+            // The API refuses to attach a track to a session whose PeerConnection is
+            // not connected yet ("Session is not ready yet"), so wait, do not race.
             val live = withTimeoutOrNull(20_000L) { connected.await() } ?: false
             if (!live) {
                 debugLine(tag, "Never connected to the SFU")
@@ -208,9 +205,9 @@ class GroupRtcClient(private val context: Context) {
                 return@withLock false
             }
 
-            // Not expected here, since the transceivers were negotiated by the
-            // offer that opened the session. Handled anyway: if the SFU ever does
-            // ask, ignoring it would leave this phone publishing into nothing.
+            // Not expected here, the transceivers were negotiated by the offer that
+            // opened the session. Handled anyway: if the SFU ever does ask, ignoring it
+            // would leave this phone publishing into nothing.
             if (result.requiresImmediateRenegotiation && result.offerSdp != null) {
                 if (!pc.setRemoteSuspend(
                         SessionDescription(SessionDescription.Type.OFFER, result.offerSdp)
@@ -271,23 +268,22 @@ class GroupRtcClient(private val context: Context) {
     }
 
     private fun createConnection(): Boolean {
-        // No ICE servers at all, on purpose. The SFU answers with `a=ice-lite`
-        // and a public host candidate, which means this phone is the controlling
-        // side and simply sends to that address: the outgoing packet opens the
-        // NAT binding by itself. A STUN round trip would only slow the start,
-        // and a TURN relay would add a hop, a cost and a second thing to fail.
+        // Nessun ICE server, apposta. The SFU answers with `a=ice-lite` and a public
+        // host candidate, so this phone is the controlling side and simply sends to
+        // that address: the outgoing packet opens the NAT binding by itself. A STUN
+        // round trip would only slow the start, and TURN would add a hop, a cost and a
+        // second thing to fail.
         //
-        // It is also why a group call is expected to connect where the old
-        // relay-only mode failed nine times out of ten: that was two phones
-        // trying to meet in the middle, this is an ordinary client to server
-        // connection.
+        // It is also why a group call connects where the old relay only mode failed
+        // nine times out of ten: that was two phones meeting in the middle, this is an
+        // ordinary client to server connection.
         val config = PeerConnection.RTCConfiguration(emptyList()).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
             rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
-            // Gather once and finish, so COMPLETE actually fires and the offer
-            // can leave immediately. Continual gathering never reports COMPLETE
-            // and would cost every call the full wait for nothing.
+            // Gather once and finish, so COMPLETE actually fires and the offer can
+            // leave. Continual gathering never reports COMPLETE and would cost every
+            // call the full wait for nothing.
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_ONCE
         }
 
@@ -322,8 +318,8 @@ class GroupRtcClient(private val context: Context) {
                 }
             }
 
-            // No trickle: candidates travel inside the offer, so there is
-            // nothing to send when one shows up.
+            // No trickle: candidates travel inside the offer, so there is nothing to
+            // send when one shows up.
             override fun onIceCandidate(candidate: IceCandidate?) {}
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) {}
 
@@ -382,8 +378,8 @@ class GroupRtcClient(private val context: Context) {
             any = true
         }
 
-        // A phone with no working camera still joins, muted picture and all: the
-        // call is worth more than the tile.
+        // A phone with no working camera still joins, muted picture and all: la call
+        // vale piu' della tile.
         if (withVideo && startCapture()) {
             localVideoTrack?.let {
                 pc.addTransceiver(
@@ -450,17 +446,17 @@ class GroupRtcClient(private val context: Context) {
     /**
      * Subscribes to one participant's published tracks.
      *
-     * The mid mapping is recorded before the SFU's offer is applied, because
-     * onTrack fires inside setRemoteDescription: register late and the first
-     * track arrives with nobody to attach it to.
+     * The mid mapping is recorded before the SFU's offer is applied, because onTrack
+     * fires inside setRemoteDescription: register late and the first track arrives with
+     * nobody to attach it to.
      */
     suspend fun subscribe(participant: RoomParticipant): Boolean = negotiation.withLock {
         val session = sessionId ?: return@withLock false
         val pc = connection ?: return@withLock false
 
-        // The roster can arrive within milliseconds of publishing, well before
-        // the media path is up. Pulling then is simply refused by the SFU, and
-        // the participant would sit as a permanently blank tile.
+        // The roster can arrive within milliseconds of publishing, well before the
+        // media path is up. Pulling then is simply refused by the SFU, and the
+        // participant would sit as a permanently blank tile.
         val live = withTimeoutOrNull(20_000L) { connected.await() } ?: false
         if (!live) {
             debugLine(tag, "Not connected to the SFU, cannot subscribe to ${participant.pid}")
@@ -479,10 +475,10 @@ class GroupRtcClient(private val context: Context) {
         var attached = 0
         var pending = refs
 
-        // Two passes. A publisher whose camera has not produced its first frame
-        // yet is answered with empty_track_error, and that is a moment in time,
-        // not a verdict: without the second ask, a tile that was a fraction of a
-        // second late stays blank for the whole call.
+        // Due passate. A publisher whose camera has not produced its first frame yet
+        // is answered with empty_track_error, and that is a moment in time, not a
+        // verdict: without the second ask, a tile a fraction of a second late stays
+        // blank for the whole call.
         repeat(2) { attempt ->
             if (pending.isEmpty()) return@repeat
             if (attempt > 0) delay(3_000L)
@@ -532,13 +528,13 @@ class GroupRtcClient(private val context: Context) {
     // ──────────────────────────────────────────────────────────── frame crypto
 
     /**
-     * Installs the call key. Every sender and receiver on this connection uses
-     * the same key, which reached this phone sealed inside the call invitation
-     * over the app's existing encrypted channel — the SFU never sees it.
+     * Installs the call key. Every sender and receiver on this connection uses the same
+     * key, which reached this phone sealed inside the call invitation over the app's
+     * own encrypted channel, so the SFU never sees it.
      *
-     * @param epoch increments on every re-key, and doubles as the key ring slot
-     * so a participant who is a moment behind can still decrypt with the
-     * previous key instead of seeing a frozen picture.
+     * @param epoch increments on every re-key and doubles as the key ring slot, so a
+     * participant a moment behind still decrypts with the previous key instead of
+     * seeing a frozen picture.
      */
     fun setCallKey(key: ByteArray, epoch: Int) {
         if (!GroupCallConfig.E2EE_ENABLED) return
@@ -564,9 +560,9 @@ class GroupRtcClient(private val context: Context) {
         if (!GroupCallConfig.E2EE_ENABLED) return
         val f = factory ?: return
         val provider = keyProvider ?: run {
-            // The manager installs the call key before starting. Reaching here
-            // means outgoing media would leave in the clear, which is the one
-            // outcome this feature must never have.
+            // The manager installs the call key before starting. Arrivare qui means
+            // outgoing media would leave in the clear, the one outcome this feature
+            // must never have.
             debugLine(tag, "No call key at publish time, refusing to attach senders")
             return
         }
@@ -628,8 +624,8 @@ class GroupRtcClient(private val context: Context) {
                     )
                 }
             } else {
-                // Stopping the capturer, not just the track: a disabled track
-                // still sends black frames, and black frames still cost money.
+                // Stopping the capturer, not just the track: a disabled track still
+                // sends black frames, and black frames still cost money.
                 videoCapturer?.stopCapture()
             }
         } catch (e: Exception) {
@@ -649,14 +645,13 @@ class GroupRtcClient(private val context: Context) {
     )
 
     /**
-     * Reads the connection's counters once and answers both questions the call
-     * screen has: how many bytes this phone has moved through the SFU since the
-     * previous reading, which is what the monthly allowance is spent against,
-     * and who is speaking, which is what promotes a tile to the spotlight.
+     * Reads the connection's counters once and answers both questions the call screen
+     * has: how many bytes this phone moved through the SFU since the previous reading,
+     * which is what the monthly allowance is spent against, and who is speaking, which
+     * promotes a tile to the spotlight.
      *
-     * One report serves both on purpose. Speaker detection needs to be quick and
-     * metering does not, so asking twice would double the cost of the fast loop
-     * for nothing.
+     * One report for both apposta: speaker detection must be quick and metering must
+     * not, so asking twice would double the cost of the fast loop for nothing.
      */
     suspend fun pollStats(): StatsSnapshot = withContext(Dispatchers.Default) {
         val pc = connection ?: return@withContext StatsSnapshot(0L, emptyMap())
@@ -695,9 +690,9 @@ class GroupRtcClient(private val context: Context) {
             }
         }
 
-        // First reading establishes the baseline; a counter that goes backwards
-        // means the transport was replaced, so start again from there rather than
-        // charging the user for a negative or a bogus jump.
+        // First reading sets the baseline; a counter that goes backwards means the
+        // transport was replaced, so start again from there rather than charging the
+        // user for a negative or a bogus jump.
         val delta = if (total <= 0L) 0L
         else if (lastBytes < 0L || total < lastBytes) 0L
         else total - lastBytes

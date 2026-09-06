@@ -8,25 +8,21 @@ import kotlin.math.min
 import androidx.core.view.isGone
 
 /**
- * Vertical column for chat bubbles that makes "child fills the bubble" work
- * correctly in every case.
+ * Vertical column for chat bubbles that makes "child fills the bubble" work in every case.
  *
- * Why stock LinearLayout cannot do this (both verified in AOSP measureVertical):
- *  1. When the LinearLayout is wrap_content, children with match_parent width are
- *     EXCLUDED from the width computation (alternativeMaxWidth only counts
- *     non-matching children) — so a match_parent reply preview never widens the
- *     bubble, and gets squeezed when it is the widest element.
- *  2. forceUniformWidth() then re-measures match_parent children at the final
- *     width but LOCKS their height to the previous measurement — text that
- *     re-wraps onto more lines gets vertically clipped.
+ * Why stock LinearLayout cannot (both verified in AOSP measureVertical):
+ *  1. When the LinearLayout is wrap_content, children with match_parent width are EXCLUDED from
+ *     the width computation (alternativeMaxWidth only counts non matching children), so a
+ *     match_parent reply preview never widens the bubble and gets squeezed when it is widest.
+ *  2. forceUniformWidth() then re-measures match_parent children at the final width but LOCKS
+ *     their height to the previous measurement, so text that re-wraps gets clipped.
  *
- * This layout measures in two passes instead:
- *  - Pass 1: every child is measured at its NATURAL width (match_parent treated
- *    as wrap_content), bounded by the available space. The column takes the
- *    width of the widest child, so every child votes.
- *  - Pass 2: children are re-measured against the final width (match_parent →
- *    exactly, wrap_content → at most) with height unconstrained, so heights are
- *    always consistent with the final widths. No prediction, no clipping.
+ * Two passes instead:
+ *  - Pass 1: every child measured at its NATURAL width (match_parent treated as wrap_content),
+ *    bounded by the available space. The column takes the widest, so every child votes.
+ *  - Pass 2: children re-measured against the final width (match_parent exactly, wrap_content
+ *    at most) with height unconstrained, so heights match the final widths. Niente previsioni,
+ *    niente tagli.
  */
 class BubbleColumnLayout @JvmOverloads constructor(
     context: Context,
@@ -34,8 +30,8 @@ class BubbleColumnLayout @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
-    // android:maxWidth is honoured here (CardView/LinearLayout silently ignore it):
-    // the hard cap for the whole bubble, e.g. 260dp.
+    // android:maxWidth is honoured here (CardView/LinearLayout silently ignore it): the hard
+    // cap for the whole bubble, e.g. 260dp.
     private val maxWidthAttr: Int = context.obtainStyledAttributes(
         attrs, intArrayOf(android.R.attr.maxWidth)
     ).let { a ->
@@ -47,16 +43,14 @@ class BubbleColumnLayout @JvmOverloads constructor(
     /**
      * The width a child really needs, as opposed to the one it declares.
      *
-     * A TextView that has to wrap measures itself at the FULL width it was
-     * offered, never at the longest line it actually produced. So a bubble
-     * holding "Gia' questo sarebbe da implementare", which breaks after "da",
-     * still claimed the whole 260dp and left a band of empty space to the right
-     * of the shorter last line. Reading the produced Layout back gives the real
-     * figure.
+     * A TextView that has to wrap measures itself at the FULL width it was offered, never at
+     * the longest line it actually produced. So a bubble holding "Gia' questo sarebbe da
+     * implementare", which breaks after "da", still claimed the whole 260dp and left a band of
+     * empty space to the right of the shorter last line. Reading the produced Layout back gives
+     * the real figure.
      *
-     * Only ever narrows the answer (min against the measured width), so a child
-     * that is not a TextView, or one whose text fits on a single line, votes
-     * exactly as it did before.
+     * Only ever narrows the answer (min against the measured width), so a child that is not a
+     * TextView, or one whose text fits on a single line, votes exactly as before.
      */
     private fun naturalTextWidth(child: android.view.View): Int {
         val measured = child.measuredWidth
@@ -129,8 +123,8 @@ class BubbleColumnLayout @JvmOverloads constructor(
             val target = max(0, inner - lp.leftMargin - lp.rightMargin)
 
             child.measure(
-                // Parent EXACTLY(target): match_parent → exactly, wrap_content →
-                // at most, fixed dp → exactly(dp). Standard getChildMeasureSpec rules.
+                // Parent EXACTLY(target): match_parent exactly, wrap_content at most, fixed dp
+                // exactly(dp). Standard getChildMeasureSpec rules.
                 getChildMeasureSpec(
                     MeasureSpec.makeMeasureSpec(target, MeasureSpec.EXACTLY),
                     0, lp.width

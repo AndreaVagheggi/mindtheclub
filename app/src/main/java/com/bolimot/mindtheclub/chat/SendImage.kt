@@ -135,11 +135,10 @@ class SendImage : BaseActivity() {
             }
 
             if (selectedPeerUserIds.any { it.startsWith("group") }) {
-                // Same correction as SendImages: this photo goes out through
-                // saveBitmapFromUri at 2048px and quality 80, so the cap has to be
-                // measured on that and not on the gallery original. Rarer to bite
-                // here than on an album, but a panorama or a raw file is quite
-                // capable of clearing 50 MB before compression and nothing after it.
+                // Same correction as SendImages: this photo goes out through saveBitmapFromUri at
+                // 2048px and quality 80, so the cap has to be measured on that and not on the
+                // gallery original. Rarer to bite here than on an album, ma un panorama or a raw
+                // file can clear 50 MB before compression and nothing after it.
                 lifecycleScope.launch {
                     val wireSize = compressedSizeOfImages(listOf(imagePath.toUri()))
                     if (wireSize > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {

@@ -55,14 +55,12 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
     /**
      * Which photo is on screen, and whether we have already placed the user.
      *
-     * The opening position used to be derived from the intent's messageId on
-     * every pass, and that can only ever resolve to the FIRST photo of an album,
-     * because all the photos of one album share a single messageId. So a
-     * rotation, which rebuilds the activity from scratch, threw the reader from
-     * the third photo back to the first. The list observer made it worse: the
-     * positioning lived inside it, so it re-ran on every change to the image
-     * table and yanked the reader back mid-browse, without them touching
-     * anything.
+     * The opening position used to be derived from the intent's messageId on every pass, and
+     * that can only ever resolve to the FIRST photo of an album, because all the photos of one
+     * album share a single messageId. So a rotation, which rebuilds the activity from scratch,
+     * threw the reader from the third photo back to the first. The list observer made it worse:
+     * the positioning lived inside it, so it re-ran on every change to the image table and
+     * yanked the reader back mid browse, senza che toccasse niente.
      */
     private var currentPosition = RecyclerView.NO_POSITION
     private var restoredPosition = RecyclerView.NO_POSITION
@@ -74,8 +72,8 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
         val messageId = intent?.getStringExtra("messageId") ?: return
         userId = intent?.getStringExtra("userId") ?: return
 
-        // A rebuild (rotation above all) brings the reader back where they were.
-        // Absent on a genuine open, and then the intent's messageId decides.
+        // A rebuild (rotation above all) brings the reader back where they were. Absent on a
+        // genuine open, and then the intent's messageId decides.
         restoredPosition =
             savedInstanceState?.getInt(KEY_GALLERY_POSITION, RecyclerView.NO_POSITION)
                 ?: RecyclerView.NO_POSITION
@@ -130,9 +128,9 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
         recyclerView.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
-        // The block that used to sit here restored null into the layout manager,
-        // deliberately throwing away the position Android had kept across the
-        // rebuild. That is now handled explicitly, through KEY_GALLERY_POSITION.
+        // The block that used to sit here restored null into the layout manager, deliberately
+        // throwing away the position Android had kept across the rebuild. Handled explicitly
+        // now, through KEY_GALLERY_POSITION.
 
         imageAdapter = ImageAdapter(emptyList(), this)
         recyclerView.adapter = imageAdapter
@@ -146,19 +144,17 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
         imageViewModel.getAllImages(userId).observe(this) { images ->
             imageAdapter.updateImages(images)
 
-            // Place the reader ONCE. This observer fires again on every change to
-            // the image table, and it used to re-scroll each time: a photo
-            // arriving in the chat while the album was open threw the reader back
-            // to its first frame with no action on their part.
+            // Place the reader ONCE. This observer fires again on every change to the image
+            // table, and it used to re-scroll each time: a photo arriving in the chat while the
+            // album was open threw the reader back to its first frame.
             if (images.isNotEmpty() && !hasPositioned) {
                 hasPositioned = true
 
                 val startPosition = if (restoredPosition in images.indices) {
                     restoredPosition
                 } else {
-                    // All the photos of one album carry the same messageId, so
-                    // this can only land on the album's first frame. It is the
-                    // right answer when opening, and the wrong one after a
+                    // All the photos of one album carry the same messageId, so this can only
+                    // land on the album's first frame. Right when opening, wrong after a
                     // rotation, which is why the saved position wins above.
                     images.indexOfFirst { it.messageId == messageId }.takeIf { it != -1 } ?: 0
                 }
@@ -190,9 +186,8 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
                     val snappedView = snapHelper.findSnapView(layoutManager)
                     if (snappedView != null) {
                         val position = layoutManager.getPosition(snappedView)
-                        // Remembered here, where the photo on screen is already
-                        // being computed for the date header, so a rebuild can
-                        // put the reader back on it.
+                        // Remembered here, where the photo on screen is already being computed
+                        // for the date header, so a rebuild can put the reader back on it.
                         currentPosition = position
 
                         val imageItem = imageAdapter.getImageAt(position)
@@ -303,9 +298,9 @@ class ImageGalleryActivity : BaseActivity(), ImageAdapter.OnScaleChangeListener 
     }
 
     /**
-     * Carries the photo on screen across a rebuild. NO_POSITION is saved happily:
-     * on the way back it simply fails the `in images.indices` test and the opening
-     * rule takes over, which is the correct answer when nothing was ever shown.
+     * Carries the photo on screen across a rebuild. NO_POSITION is saved happily: on the way
+     * back it simply fails the `in images.indices` test and the opening rule takes over, which
+     * is the correct answer when nothing was ever shown.
      */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)

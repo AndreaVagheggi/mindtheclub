@@ -20,15 +20,13 @@ class TypingIndicatorAdapter : RecyclerView.Adapter<TypingIndicatorAdapter.Typin
     private var typerPicture: String? = null
 
     /**
-     * Shows the bubble for [userId], synchronously and without identity: the
-     * caller invokes this straight from the broadcast, BEFORE any scroll, the
-     * same ordering the historical setTyping(true) had. When several members
-     * type at once the last writer wins.
+     * Shows the bubble for [userId], synchronously and without identity: the caller invokes this
+     * straight from the broadcast, BEFORE any scroll, the same ordering the old setTyping(true)
+     * had. When several members type at once the last writer wins.
      *
-     * The identity row (group chats) arrives later via [updateTyperIdentity],
-     * once the peer lookup completes. Do not merge the two: resolving the peer
-     * first and inserting after was tried, and the insert landing mid scroll
-     * animation left ghost bubbles painted on screen (12 Aug).
+     * The identity row (group chats) arrives later via [updateTyperIdentity], once the peer lookup
+     * completes. Non unire i due: resolving the peer first and inserting after was tried, and the
+     * insert landing mid scroll animation left ghost bubbles painted on screen (12 Aug).
      */
     fun setTyping(userId: String?) {
         val typerChanged = userId != typerUserId
@@ -44,10 +42,9 @@ class TypingIndicatorAdapter : RecyclerView.Adapter<TypingIndicatorAdapter.Typin
     }
 
     /**
-     * Fills in name and picture for the member already on display. A no-op
-     * when the bubble has since been hidden or another member took it over:
-     * the lookup result that arrives late must not resurrect or repaint
-     * anything.
+     * Fills in name and picture for the member already on display. A no-op when the bubble has
+     * since been hidden or another member took it over: a lookup result that arrives late must not
+     * resurrect or repaint anything.
      */
     fun updateTyperIdentity(userId: String?, name: String?, picture: String?) {
         if (!isTyping || userId != typerUserId) return
@@ -58,11 +55,10 @@ class TypingIndicatorAdapter : RecyclerView.Adapter<TypingIndicatorAdapter.Typin
     }
 
     /**
-     * Hides the bubble. A stop that names a user is honoured only when that
-     * user is the one on display: with two members typing, A stopping must not
-     * erase B's bubble, because B's phone sends START only on the pause/resume
-     * transition and a wrongly hidden bubble would stay hidden until B pauses.
-     * A null [userId] (the watchdog, or leaving the screen) hides
+     * Hides the bubble. A stop that names a user is honoured only when that user is the one on
+     * display: with two members typing, A stopping must not erase B's bubble, because B's phone
+     * sends START only on the pause/resume transition and a wrongly hidden bubble would stay
+     * hidden until B pauses. A null [userId] (the watchdog, or leaving the screen) hides
      * unconditionally.
      */
     fun stopTyping(userId: String? = null) {

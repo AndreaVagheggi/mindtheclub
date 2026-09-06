@@ -26,23 +26,21 @@ import org.webrtc.VideoTrack
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * The one live group call, from the invitation to the last person hanging up.
+ * The one live group call, from the invitation to the last hangup.
  *
- * It owns three things that only make sense together: the SFU leg
- * ([GroupRtcClient]), the presence room ([CallRoomSocket]) that says who else is
- * there, and the call key that seals both the media and the roster. The call
- * screen only reads the state flows below and pushes buttons; nothing about
- * WebRTC or Cloudflare reaches the UI.
+ * Owns three things that only make sense together: the SFU leg ([GroupRtcClient]), the
+ * presence room ([CallRoomSocket]) that says who else is there, and the call key that
+ * seals both media and roster. The call screen reads the flows below and pushes
+ * buttons, niente WebRTC o Cloudflare reaches the UI.
  *
- * A singleton on purpose: a phone can be in exactly one group call, and making
- * that a fact of the architecture is cheaper than defending against it
- * everywhere.
+ * Singleton apposta: a phone can be in exactly one group call, and making that an
+ * architectural fact is cheaper than defending against it everywhere.
  */
 object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
 
     private const val TAG = "GroupCallManager"
 
-    /** How long an unanswered invitation keeps ringing on the other phones. */
+    /** Quanto suona an unanswered invitation on the other phones. */
     const val RING_TIMEOUT_MS = 45_000L
 
     enum class Status {
@@ -52,9 +50,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         CONNECTED,
         /** Presence lost; media may still be flowing. */
         RECONNECTING,
-        /** The room already holds the maximum number of participants. */
+        /** Room piena. */
         FULL,
-        /** This month's video allowance is gone; no new call can start. */
+        /** This month's video allowance is gone, no new call. */
         NO_ALLOWANCE,
         FAILED,
         ENDED
@@ -87,7 +85,7 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     private val _cameraEnabled = MutableStateFlow(true)
     val cameraEnabled: StateFlow<Boolean> = _cameraEnabled.asStateFlow()
 
-    /** Set when the picture was dropped because the allowance ran low. */
+    /** Set when the picture was dropped perche' the allowance ran low. */
     private val _audioOnly = MutableStateFlow(false)
     val audioOnly: StateFlow<Boolean> = _audioOnly.asStateFlow()
 
@@ -127,13 +125,12 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     private val invited = mutableSetOf<String>()
 
     /**
-     * Who answered the invitation with a refusal, including the phones that
-     * could not enter at all. Only the host fills [invited], so only the host
-     * ever acts on this.
+     * Who refused the invitation, including the phones that could not enter at all.
+     * Only the host fills [invited], so only the host acts on this.
      *
-     * Concurrent on purpose: declines arrive on the FCM thread and are handled
-     * on Dispatchers.Default, so two refusals landing together would otherwise
-     * write into the same LinkedHashSet from two threads.
+     * Concurrent apposta: declines arrive on the FCM thread and are handled on
+     * Dispatchers.Default, so two landing together would write the same set from two
+     * threads.
      */
     private val declined: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
@@ -143,10 +140,10 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /**
      * Ends a call that nobody ever entered.
      *
-     * The rule in [onLeft] cannot cover this: it needs [hadCompany], which only
-     * becomes true when somebody is admitted. A host whose invitees all refuse,
-     * or whose phones never answer at all, would otherwise sit alone with the
-     * camera on until MAX_CALL_DURATION_MS, which is four hours.
+     * The rule in [onLeft] cannot cover this: it needs [hadCompany], true only once
+     * somebody is admitted. A host whose invitees all refuse, or whose phones never
+     * answer, would otherwise sit alone with the camera on for MAX_CALL_DURATION_MS,
+     * quattro ore.
      */
     private var lonelyJob: Job? = null
     private var startedAt = 0L
@@ -154,9 +151,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     private var pendingBytes = 0L
 
     /**
-     * Whether anybody ever answered. Until they do, being alone in the room is
-     * normal (the invitations are still ringing); afterwards it means the call
-     * is over and nothing should keep the camera on.
+     * Whether anybody ever answered. Until they do, being alone in the room is normal,
+     * the invitations are still ringing; afterwards it means the call is over and
+     * nothing should keep the camera on.
      */
     private var hadCompany = false
 
@@ -167,8 +164,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /**
      * Starts a call and rings the given peers.
      *
-     * The allowance is checked before anything is built: refusing here costs the
-     * user a dialog, refusing halfway costs them a call that half-connected.
+     * The allowance is checked before anything is built: refusing here costs the user a
+     * dialog, refusing halfway costs them a call that half connected.
      */
     fun startCall(context: Context, inviteeUserIds: List<String>, withVideo: Boolean) {
         if (isBusy()) {
@@ -180,9 +177,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
             return
         }
 
-        // Set synchronously, before anything is launched: the service and the
-        // call screen both read this the instant they start, and a status left
-        // over from the previous call would make them close on sight.
+        // Set synchronously, before anything is launched: the service and the call
+        // screen both read it the instant they start, and a status left over from the
+        // previous call would make them close on sight.
         _status.value = Status.CONNECTING
 
         val key = CallCrypto.newKey()
@@ -195,8 +192,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         scope.launch {
             if (!join(context, id, key, 0, withVideo)) return@launch
 
-            // The invitation carries the key, sealed to each recipient by the
-            // FCM sender. It is also the only place the key ever travels.
+            // The invitation carries the key, sealed to each recipient by the FCM
+            // sender. Unico posto where the key ever travels.
             val encoded = CallCrypto.encodeKey(key)
             for (userId in inviteeUserIds) {
                 fcmSendInstant(
@@ -218,8 +215,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     }
 
     /**
-     * A peer said no, or could not come. Ignored unless it belongs to the call
-     * this phone is actually hosting.
+     * A peer said no, or could not come. Ignored unless it belongs to the call this
+     * phone is actually hosting.
      */
     fun onDeclined(room: String, userId: String) {
         if (room != roomId || userId.isEmpty()) return
@@ -230,10 +227,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     }
 
     /**
-     * Closes a call that is still empty and has nothing left to wait for.
-     *
-     * Deliberately silent once anybody has been admitted: from that moment the
-     * call is real and [onLeft] owns its ending.
+     * Closes a call that is still empty and has nothing left to wait for. Silent once
+     * anybody has been admitted: from that moment the call is real and [onLeft] owns
+     * its ending.
      */
     private fun endIfNobodyIsComing(reason: String) {
         if (hadCompany) return
@@ -244,8 +240,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     }
 
     /**
-     * Started once the invitations are out. Ten seconds past the ring timeout,
-     * so a phone that is merely slow to answer is never cut off by this.
+     * Started once the invitations are out, ten seconds past the ring timeout, so a
+     * phone that is merely slow to answer is never cut off by this.
      */
     private fun startLonelyGuard() {
         lonelyJob?.cancel()
@@ -269,11 +265,10 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /**
      * Rings more people into a call that is already running.
      *
-     * They get the key as it stands right now, epoch included, so they can decode
-     * what is already in the air instead of waiting for the next rotation. Anyone
-     * in the call can invite, not just whoever started it: the key is in every
-     * participant's hands by definition, so restricting this to the host would
-     * buy no secrecy and cost a common courtesy.
+     * They get the key as it stands right now, epoch included, so they decode what is
+     * already in the air instead of waiting for the next rotation. Anyone in the call
+     * can invite, not just the host: the key is in every participant's hands by
+     * definition, so restricting it would buy no secrecy e costerebbe una cortesia.
      */
     fun invite(userIds: List<String>) {
         val id = roomId ?: return
@@ -352,8 +347,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         rtc.listener = this
         client = rtc
 
-        // The key goes in before the connection publishes anything: a frame that
-        // leaves before the cryptor exists is a frame Cloudflare can read.
+        // Key in before the connection publishes anything: a frame that leaves before
+        // the cryptor exists is a frame Cloudflare can read.
         rtc.setCallKey(key, keyEpoch)
 
         val ok = rtc.start(myPid, _cameraEnabled.value)
@@ -383,8 +378,7 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
                 sessionId = rtc.sessionId.orEmpty(),
                 audioTrack = rtc.audioTrackName,
                 videoTrack = rtc.videoTrackName,
-                // Sealed with the call key: the room relays it, only the call
-                // can read it.
+                // Sealed with the call key: the room relays it, solo la call lo legge.
                 label = CallCrypto.seal(key, MySelf.userId().orEmpty()),
                 mic = true,
                 cam = _cameraEnabled.value
@@ -398,12 +392,12 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     }
 
     /**
-     * Leaves the call. The others see the tile disappear; nothing else ends.
+     * Leaves the call. The others see the tile disappear, nothing else ends.
      *
-     * Synchronised and idempotent because two departures can land at the same
-     * instant: on 24 Aug both remaining participants left within seconds of each
-     * other, two coroutines each concluded the room was empty, and the bytes
-     * pending at that moment were charged to the meter twice.
+     * Synchronised and idempotent because two departures can land at the same instant:
+     * on 24 Aug both remaining participants left within seconds of each other, two
+     * coroutines each decided the room was empty, and the bytes pending at that moment
+     * were charged to the meter twice.
      */
     @Synchronized
     fun leave() {
@@ -418,8 +412,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         _status.value = Status.ENDED
         cleanup()
 
-        // Courtesy only: a host that walks away stops the ringing on phones that
-        // never answered. It does not end the call for anyone already in it.
+        // Cortesia: a host that walks away stops the ringing on phones that never
+        // answered. It does not end the call for anyone already in it.
         if (wasHost && id != null) {
             scope.launch {
                 for (userId in peers) {
@@ -440,7 +434,7 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
         statsJob?.cancel(); statsJob = null
         durationJob?.cancel(); durationJob = null
 
-        // Anything counted but not yet committed is still money spent.
+        // Counted but not yet committed e' comunque money spent.
         if (pendingBytes > 0L) {
             VideoUsageTracker.addVideoBytes(pendingBytes)
             pendingBytes = 0L
@@ -561,18 +555,18 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
             _members.value = _members.value.filter { it.pid != pid }
             client?.unsubscribe(pid)
 
-            // Last one in the room after a real call: end it. Sitting alone with
-            // the camera and microphone running is not a call, it is a leak, and
-            // on the phone it shows up as an indicator that will not go away.
+            // Last one in the room after a real call: end it. Sitting alone with the
+            // camera and microphone running is not a call, it is a leak, and on the
+            // phone it shows up as an indicator that will not go away.
             if (hadCompany && _members.value.none { !it.isSelf }) {
                 debugLine(TAG, "Everyone else has left, ending the call")
                 leave()
                 return@launch
             }
 
-            // Whoever left keeps the key they were given, and the room has no
-            // door. Re-keying is what actually removes them: a fresh key goes to
-            // everyone still here, and their old one stops decrypting anything.
+            // Whoever left keeps the key they were given, and the room has no door.
+            // Re-keying is what actually removes them: a fresh key to everyone still
+            // here, and their old one stops decrypting.
             if (isHost) rekey()
         }
     }
@@ -605,8 +599,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     }
 
     override fun onRemoteAudio(pid: String, track: AudioTrack) {
-        // Nothing to attach: remote audio plays through the device's audio
-        // module as soon as the track arrives.
+        // Niente da attaccare: remote audio plays through the device's audio module as
+        // soon as the track arrives.
     }
 
     override fun onConnectionState(state: PeerConnection.PeerConnectionState) {
@@ -627,10 +621,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /**
      * Issues a new call key to everyone still in the room after a departure.
      *
-     * The sender keeps encrypting under the old key for a moment: the key ring
-     * holds both, so a phone that gets the new one a second late still decodes
-     * the frames arriving meanwhile, and nobody sees the picture freeze over a
-     * housekeeping message.
+     * The sender keeps encrypting under the old key for a moment: the key ring holds
+     * both, so a phone that gets the new one a second late still decodes the frames
+     * arriving meanwhile, and nobody sees the picture freeze over housekeeping.
      */
     private fun rekey() {
         val key = CallCrypto.newKey()
@@ -674,12 +667,11 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     // ─────────────────────────────────────────────────────── metering and limits
 
     /**
-     * One second loop: it decides who is in the spotlight, and every fifteen
-     * seconds it commits what the call has cost so far.
+     * One second loop: it decides who is in the spotlight, and every fifteen seconds it
+     * commits what the call has cost so far.
      *
-     * Bytes are committed in batches rather than per reading because each commit
-     * writes preferences, and a four-hour call would otherwise write fourteen
-     * thousand times for no better number.
+     * Bytes go in batches rather than per reading because each commit writes
+     * preferences, and a four hour call would write fourteen thousand times.
      */
     private fun startStatsLoop() {
         statsJob?.cancel()
@@ -707,9 +699,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     }
 
     private fun applySpeaking(levels: Map<String, Double>) {
-        // A low bar on purpose: this promotes a tile, it does not decide
-        // anything, and a talker who is momentarily quiet should not flicker
-        // out of the spotlight.
+        // Bar basso apposta: this promotes a tile, it does not decide anything, and a
+        // talker who goes quiet for a moment should not flicker out of the spotlight.
         val loudest = levels.maxByOrNull { it.value }?.takeIf { it.value > 0.02 }?.key
         val current = _members.value
         if (current.none { it.speaking } && loudest == null) return
@@ -719,9 +710,9 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /**
      * Applies the monthly allowance to a call in progress.
      *
-     * Running out never hangs up: the picture goes and the voices stay, because
-     * audio costs about a thirtieth of video and a call that survives is worth
-     * more than a tile that looks right.
+     * Running out never hangs up: the picture goes and the voices stay. Audio costs
+     * about a thirtieth of video, and a call that survives is worth more than a tile
+     * that looks right.
      */
     private fun enforceAllowance() {
         if (VideoUsageTracker.consumeWarning()) _allowanceWarning.value = true
@@ -760,9 +751,8 @@ object GroupCallManager : CallRoomSocket.Listener, GroupRtcClient.Listener {
     /**
      * Whether this device may start or join a group call at all.
      *
-     * Both tiers can, deliberately: a trial user who cannot try the feature
-     * never becomes a paying one. What separates them is the size of the
-     * allowance, not the door.
+     * Both tiers can, apposta: a trial user who cannot try the feature never becomes a
+     * paying one. What separates them is the size of the allowance, not the door.
      */
     fun canUseGroupCalls(context: Context): Boolean =
         BillingManager.hasAccess(context) && !VideoUsageTracker.isExhausted()

@@ -19,22 +19,20 @@ import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 
 /**
- * Retries the processing of incoming contact-request documents when the inline
- * FCM handler could not.
+ * Retries the processing of incoming contact request documents when the inline FCM handler could
+ * not.
  *
- * The CONTACT_REQUEST nudge punches doze at high priority and cold-starts the
- * process, but a process born one second ago often has no usable network yet:
- * on Raoul's 7 Aug log the App Check warm-up failed with an unresolvable host,
- * the handler's Firestore read got PERMISSION_DENIED (no attestation token, so
- * enforcement rejects the call), and the handler logged the error and gave up.
- * The request document then sat in Firestore for six hours until the app was
- * opened by hand, at which point the very same processing took two seconds.
+ * The CONTACT_REQUEST nudge punches doze at high priority and cold starts the process, but a
+ * process born one second ago often has no usable network yet: on Raoul's 7 Aug log the App Check
+ * warm-up failed with an unresolvable host, the handler's Firestore read got PERMISSION_DENIED
+ * (no attestation token, so enforcement refuses the call), and the handler logged the error and
+ * gave up. The request document then sat in Firestore for six hours until the app was opened by
+ * hand, at which point the same processing took two seconds.
  *
- * This worker is the missing retry: network-constrained, exponential backoff,
- * so by the time it runs the radio is up and the App Check token is warm. It
- * processes every pending request document, not just the one that triggered
- * the nudge, and stops for good after [MAX_ATTEMPTS] or when auto-invite is
- * off (the request then surfaces in the UI on next app open, by design).
+ * This worker is the missing retry: network constrained, exponential backoff, so by the time it
+ * runs the radio is up and the App Check token is warm. It processes every pending request, not
+ * just the one that triggered the nudge, and stops for good after [MAX_ATTEMPTS] or when
+ * auto-invite is off (the request then surfaces in the UI on next app open, by design).
  */
 class ContactRequestRetryWorker(
     context: Context,
@@ -92,9 +90,9 @@ class ContactRequestRetryWorker(
             }
             debugLine(TAG, "Processed ${docs.size()} request(s), $failures failure(s), attempt $runAttemptCount")
 
-            // A failure can also be a permanent condition (peer already exists),
-            // which autoAcceptRequestDocument reports the same way as a transient
-            // one: the attempt cap keeps that ambiguity from spinning for ever.
+            // A failure can also be a permanent condition (peer already exists), which
+            // autoAcceptRequestDocument reports the same way as a transient one: the attempt cap
+            // keeps that ambiguity from spinning for ever.
             if (failures > 0 && runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.success()
         } catch (e: Exception) {
             debugLine(TAG, "Attempt $runAttemptCount failed: ${e.message}")

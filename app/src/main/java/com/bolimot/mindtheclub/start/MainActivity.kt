@@ -70,22 +70,22 @@ class MainActivity : BaseActivity() {
 
         getParameters(intent)
 
-        // Deferred-invite handoff: if this install came from an invite link while the
-        // app wasn't installed, the Play Store carries the inviter's profile in the
-        // install referrer. Read it once now; AppTab consumes it after onboarding.
+        // Deferred invite handoff: if this install came from an invite link while the app was
+        // not installed, the Play Store carries the inviter's profile in the install referrer.
+        // Read once here, AppTab consumes it after onboarding.
         captureInstallReferrerOnce(this)
 
         maybeInjectDebugReferrer(intent)
     }
 
     /**
-     * Debug-only: simulate a deferred-install referrer locally, with no Play Store
-     * round-trip. Stashes a pending invite seed exactly as the real referrer would,
-     * so the full post-install flow (onboarding -> "add this contact?" dialog ->
-     * acquisition) can be exercised on a sideloaded build. Never active in release.
+     * Debug only: simulate a deferred install referrer locally, senza Play Store. Stashes a
+     * pending invite seed exactly as the real referrer would, so the whole post install flow
+     * (onboarding -> "add this contact?" -> acquisition) can be exercised on a sideloaded
+     * build. Never active in release.
      *
-     * Usage (debug build; pass a real second account's invite params for a true
-     * end-to-end, or any fake n/u for just the dialog):
+     * Usage (debug build; real invite params for a true end to end, any fake n/u for just the
+     * dialog):
      *   adb shell am start -n com.bolimot.mindtheclub/.start.MainActivity \
      *     -e mtc_debug_referrer 'n=Mario&u=testuser123&b=Hi&f=ABCD1234'
      */
@@ -100,15 +100,14 @@ class MainActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
 
-        // Set up Firebase / App Check only if Play Services is ready right now. This
-        // is best-effort and must NEVER block or delay the UI — otherwise a transient
-        // Play Services state (common on the very first launch after install, while
-        // it is still updating) would strand the user on the splash screen.
+        // Firebase and App Check only if Play Services is ready right now. Best effort, and it
+        // must NEVER block or delay the UI, or a transient Play Services state (common on the
+        // very first launch after install, while it is still updating) strands the user on the
+        // splash screen.
         setUpFirebaseIfAvailable()
 
-        // Always start the app, regardless of Play Services state. Token/push sync
-        // runs in the background and retries on its own; nothing here needs Play
-        // Services to show onboarding or the main screen.
+        // Start the app whatever Play Services is doing. Token and push sync run in the
+        // background and retry on their own; nothing here needs it to show onboarding.
         checkAndRequestPermissions()
     }
 
@@ -123,9 +122,8 @@ class MainActivity : BaseActivity() {
                 WorkManager.getInstance(this).enqueue(appCheckRequest)
             }
         } else {
-            // Not ready (e.g. still updating right after install). Don't block:
-            // Firebase Messaging retries token retrieval automatically, and App Check
-            // will be enqueued on a later launch once Play Services is available.
+            // Not ready (still updating right after install). Non bloccare: Firebase Messaging
+            // retries the token by itself, and App Check is enqueued on a later launch.
             debugLine("PlayServices", "Play Services not ready (code=$resultCode); continuing without blocking.")
         }
     }
@@ -140,13 +138,12 @@ class MainActivity : BaseActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        // No runtime permissions are requested at cold start. Each is requested in
-        // context, where it's actually needed:
+        // No runtime permissions at cold start. Each is asked in context, where it is needed:
         //   - microphone, camera, notifications -> onboarding (OnboardingPermissionsActivity)
         //   - photos/videos (media)             -> ImagesTab, when the picker opens
         //   - contacts                          -> InviteActivity
         //   - Bluetooth                         -> MyProfile (transport switch)
-        // READ_PHONE_STATE was requested historically but is not read by any code.
+        // READ_PHONE_STATE was asked historically and is read by nothing.
         startApplication()
     }
 
@@ -165,21 +162,20 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    // VideoCompressor wraps media3 Transformer and carries @UnstableApi, so every
-    // call into it has to opt in. Lint reports it as an error; the Kotlin compiler
-    // does not, which is why the build passes with the red marks still there.
+    // VideoCompressor wraps media3 Transformer and carries @UnstableApi, so every call into it
+    // has to opt in. Lint calls it an error, the Kotlin compiler does not, which is why the
+    // build passes with the red marks still there.
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun startApplication() {
         debugLine("StartApplication", "Starting application.")
 
-        // Measured here and nowhere else: the gap between the last sign of life
-        // and now only exists at the moment the app comes back, and asking later
-        // would always find it running and conclude all was well. See
-        // DeliveryHealth.checkForSuppression.
+        // Measured here and nowhere else: the gap between the last sign of life and now only
+        // exists at the moment the app comes back, and asking later would always find it
+        // running. See DeliveryHealth.checkForSuppression.
         com.bolimot.mindtheclub.functions.DeliveryHealth.checkForSuppression(this)
 
-        // This installation lost the identity to another phone: stay paused.
-        // The moved screen has its own re-check, nothing else may run here.
+        // This installation lost the identity to another phone: stay paused. The moved screen
+        // has its own re-check, nient'altro deve girare qui.
         if (com.bolimot.mindtheclub.functions.InstallationIdentity.isDeactivated(this)) {
             startActivity(Intent(this, com.bolimot.mindtheclub.views.IdentityMovedActivity::class.java))
             finish()
@@ -196,12 +192,12 @@ class MainActivity : BaseActivity() {
         PendingRetryWorker.schedule(this)
         InboxRecoveryWorker.schedule(this)
 
-        // Transcoded videos live in the cache and are consumed by the send that
-        // produced them; a send abandoned halfway leaves one behind.
+        // Transcoded videos live in the cache and are consumed by the send that produced them;
+        // a send abandoned halfway leaves one behind.
         VideoCompressor.purgeStaleOutputs()
 
-        // SOAK_TEST is false in every build type: this now only clears the periodic
-        // work left over on handsets that ran an older debug build.
+        // SOAK_TEST is false in every build type: this only clears the periodic work left over
+        // on handsets that ran an older debug build.
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
             SoakTestWorker.schedule(applicationContext)
         }

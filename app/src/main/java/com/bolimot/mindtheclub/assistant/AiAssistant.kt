@@ -44,10 +44,10 @@ import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 /**
- * The AI Assistant is a local pseudo-peer backed by the mtc-ai Cloudflare Worker.
- * Messages addressed to [USER_ID] never enter the P2P pipeline: they are POSTed to
- * the Worker (App Check protected) and the model reply is inserted as a normal
- * incoming message, so the rest of the app treats this like any other conversation.
+ * The AI Assistant is a local pseudo peer backed by the mtc-ai Cloudflare Worker. Messages
+ * addressed to [USER_ID] never enter the P2P pipeline: they are POSTed to the Worker (App Check
+ * protected) and the model reply is inserted as a normal incoming message, so the rest of the app
+ * treats this like any other conversation.
  */
 object AiAssistant {
 
@@ -69,15 +69,15 @@ object AiAssistant {
 
     fun isAssistant(userId: String?): Boolean = userId == USER_ID
 
-    /** "Show Clubby" option (OptionsActivity), on by default. Hides the pinned
-     *  row, forward selection and search entries — the chat data stays intact. */
+    /** "Show Clubby" option (OptionsActivity), on by default. Hides the pinned row, forward
+     *  selection and search entries; the chat data stays intact. */
     fun isVisible(context: Context): Boolean =
         getPreference(SHOW_CLUBBY_KEY, context) != "false"
 
     /**
-     * Creates the Assistant peer and its welcome message once, on first launch.
-     * If the user blocked the peer it is not re-created: getPeer() also returns
-     * blocked peers, so the existence check keeps their choice.
+     * Creates the Assistant peer and its welcome message once, on first launch. If the user
+     * blocked the peer it is not re-created: getPeer() returns blocked peers too, so the
+     * existence check keeps their choice.
      */
     suspend fun ensureSeeded(context: Context) {
         try {
@@ -139,8 +139,8 @@ object AiAssistant {
     }
 
     /**
-     * Replaces the whole outbound P2P path for messages addressed to the Assistant.
-     * Called from sendMessage() — the outgoing message is already stored and visible.
+     * Replaces the whole outbound P2P path for messages addressed to the Assistant. Called from
+     * sendMessage(), where the outgoing message is already stored and visible.
      */
     fun handleOutgoing(data: MessageData) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -180,11 +180,10 @@ object AiAssistant {
     private suspend fun requestReply(context: Context): String {
         val myUserId = MySelf.userId() ?: return context.getString(R.string.assistant_error_generic)
 
-        // With App Check off no provider is installed, so asking for a token here
-        // would throw on every request and the assistant would answer "network
-        // error" for ever. Unverified on the server side: unlike mtc-ice and
-        // mtc-signal, whose sources were read and confirmed to ignore the token,
-        // the mtc-ai worker is not on this machine. If that one does check it,
+        // With App Check off no provider is installed, so asking for a token here would throw on
+        // every request and the assistant would answer "network error" for ever. Unverified on
+        // the server side: unlike mtc-ice and mtc-signal, whose sources were read and confirmed
+        // to ignore the token, the mtc-ai worker is not on this machine. Se quello lo controlla,
         // this is the feature that stops working.
         val token = if (!APP_CHECK_ENABLED) null else {
             try {
@@ -287,9 +286,9 @@ object AiAssistant {
     }
 
     /**
-     * Copies the bundled avatar into filesDir so Peer.picture behaves exactly like
-     * any received profile picture (loadBitmap requires a real file:// path).
-     * Saved as PNG: clubby.png has transparency, which JPEG would turn black.
+     * Copies the bundled avatar into filesDir so Peer.picture behaves exactly like any received
+     * profile picture (loadBitmap needs a real file:// path). Saved as PNG: clubby.png has
+     * transparency, which JPEG would turn black.
      */
     private fun savedAvatarUri(context: Context): String {
         return try {

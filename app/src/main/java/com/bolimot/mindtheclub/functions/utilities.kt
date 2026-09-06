@@ -146,12 +146,11 @@ fun formatTime(time: Long): String {
 /**
  * Bubble timestamp: always the time the message was sent, in every build type.
  *
- * This used to branch on BuildConfig.ENABLE_DEBUG_TOOLS and render the transfer
- * latency instead ("+1.2s" = received 1.2s after it was sent) for incoming
- * messages, to judge delivery performance while testing. That is gone for good:
- * the bubble is user-facing and must read as a clock everywhere. Latency is
- * still measured, from the receivedAt stamped in MessageRepository.saveMessage(),
- * and consumed by DeliveryHealth; it simply never reaches the bubble.
+ * It used to branch on BuildConfig.ENABLE_DEBUG_TOOLS and render the transfer latency instead
+ * ("+1.2s" = received 1.2s after it was sent) for incoming messages, to judge delivery while
+ * testing. Gone for good: the bubble is user facing and must read as a clock everywhere. Latency
+ * is still measured, from the receivedAt stamped in MessageRepository.saveMessage(), and consumed
+ * by DeliveryHealth; it just never reaches the bubble.
  */
 fun formatMessageTime(message: Message): String = formatTime(message.date)
 

@@ -18,20 +18,19 @@ import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.bolimot.mindtheclub.works.dispatchMessageTag
 
 /**
- * Cancellation of an in-flight transfer, from either end.
+ * Cancellation of an in flight transfer, from either end.
  *
- * A 1:1 cancel travels as its own CANCEL_TRANSFER signal, which kills the
- * transfer on both sides.
+ * A 1:1 cancel travels as its own CANCEL_TRANSFER signal, which kills the transfer on both
+ * sides.
  *
- * A group cancel cannot: the file reaches a member through several peers, and no
- * single FCM revokes it everywhere. [refuseIncomingGroupTransfer] instead removes
- * this device from the recipients and lets the transfer carry on for everybody
- * else, which is what the user asked for anyway. It says so by reusing
- * allReceived, the signal every build already understands, so it works against
- * peers running older versions too.
+ * A group cancel cannot: the file reaches a member through several peers, and no single FCM
+ * revokes it everywhere. [refuseIncomingGroupTransfer] instead removes this device from the
+ * recipients and lets the transfer carry on for everybody else, che poi e' quello che l'utente
+ * voleva. It says so by reusing allReceived, the signal every build already understands, so it
+ * works against peers on older versions too.
  *
- * Delivery wins every race: a cancel arriving after the message completed on the
- * receiver, or after the sender saw Delivered/Seen, is ignored.
+ * Delivery wins every race: a cancel arriving after the message completed on the receiver, or
+ * after the sender saw Delivered/Seen, is ignored.
  */
 
 // Sender side: the user withdrew an outgoing message that is not yet Delivered.
@@ -65,19 +64,17 @@ suspend fun cancelIncomingTransfer(placeholder: Message, context: Context) {
 /**
  * Receiver side, GROUP: the user swiped an incoming group placeholder away.
  *
- * Removes this device from the recipients rather than killing the transfer:
- * everybody else keeps receiving it. The signal is a plain allReceived carrying
- * a "refused:" marker, which means:
- *  - senders delete their batch tables for us and stop mid-stream, no new code
- *    needed on their side, older builds included;
- *  - the group delivery document drops us from its member map, so no peer will
- *    ever pick us as a relay target for this content again;
- *  - the marker tells an updated sender NOT to count us towards the fanout, or
- *    two refusals would convince it the message had spread and it would stop
- *    relaying to the members who actually want it.
+ * Removes this device from the recipients rather than killing the transfer: everybody else
+ * keeps receiving it. The signal is a plain allReceived carrying a "refused:" marker, so:
+ *  - senders delete their batch tables for us and stop mid stream, nessun codice nuovo on their
+ *    side, older builds included;
+ *  - the group delivery document drops us from its member map, so no peer will pick us as a
+ *    relay target for this content again;
+ *  - the marker tells an updated sender NOT to count us towards the fanout, or two refusals
+ *    would convince it the message had spread and it would stop relaying to who wants it.
  *
- * The refusal is remembered by contentKey, not messageId, because a relay hop
- * would otherwise walk the very same file back in under a new name.
+ * The refusal is remembered by contentKey, not messageId, because a relay hop would otherwise
+ * walk the very same file back in under a new name.
  */
 suspend fun refuseIncomingGroupTransfer(placeholder: Message, context: Context) {
     val messageId = placeholder.messageId
@@ -92,9 +89,8 @@ suspend fun refuseIncomingGroupTransfer(placeholder: Message, context: Context) 
     CancelledTransferRegistry.markCancelled(context, messageId)
     CancelledTransferRegistry.markContentCancelled(context, contentKey)
 
-    // Tell everyone who could still be sending, BEFORE dropping the local state:
-    // the admitted-sender list is what identifies the peers with a stream open
-    // towards us right now.
+    // Tell everyone who could still be sending, BEFORE dropping the local state: the admitted
+    // sender list is what identifies the peers with a stream open towards us right now.
     val deliveryId = if (!chatGroupId.isNullOrEmpty() && !originalSenderId.isNullOrEmpty() && placeholder.date > 0L) {
         "refused:" + computeDeliveryDocId(chatGroupId, originalSenderId, placeholder.date)
     } else {
@@ -125,9 +121,9 @@ suspend fun receiveTransferCancelled(fromUserId: String, messageId: String, cont
 
     when {
         message == null -> {
-            // Chunks may exist without a placeholder yet (single-chunk message or
-            // a cancel that outran the data). Only act if the chunks really came
-            // from the peer that claims to cancel.
+            // Chunks may exist without a placeholder yet (single chunk message, or a cancel
+            // that outran the data). Only act if the chunks really came from the peer that
+            // claims to cancel.
             val inboxDao = getInboxDao(context)
             val contentKey = resolveContentKey(inboxDao, messageId)
             val firstChunk = inboxDao.getFirstByContent(contentKey)

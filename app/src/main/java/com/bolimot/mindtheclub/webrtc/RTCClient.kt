@@ -170,7 +170,7 @@ class RTCClient private constructor(
     companion object {
         const val ACTION_WEBRTC_SHUTDOWN = "com.bolimot.mindtheclub.ACTION_WEBRTC_SHUTDOWN"
 
-        // How often to sample WebRTC stats to meter TURN-relay usage (read-only).
+        // Sampling period for TURN relay metering, read only.
         private const val RELAY_STATS_POLL_MS = 10_000L
 
         fun create(channelId: String,
@@ -223,12 +223,11 @@ class RTCClient private constructor(
                 debugLine("Initialize", "Initiator: $isInitiator")
 
                 // Every media call prepares the EGL context, audio ones included. The
-                // shared context can only be handed to the PeerConnectionFactory at
-                // creation time, and the factory cannot be rebuilt without dropping the
-                // PeerConnection, so an audio call that never made one could only be
-                // upgraded to video through a slower non-shared path. Failing to get a
-                // context is fatal for a video call; an audio call still goes through and
-                // simply loses the ability to be upgraded later.
+                // shared context can only go into the PeerConnectionFactory at creation,
+                // and the factory cannot be rebuilt without dropping the
+                // PeerConnection, so an audio call that never made one could only reach
+                // video through a slower non shared path. Fatal for a video call; an
+                // audio one still goes through and just loses the upgrade.
                 if(!onlyData) {
                     val eglSuccess = createEglContextWithRetry(fatal = video)
                     if (!eglSuccess) {
@@ -396,7 +395,7 @@ class RTCClient private constructor(
     }
 
     /**
-     * @param fatal when false the failure is reported but no CONNECTION_FAILED event is
+     * @param fatal when false the failure is reported but no CONNECTION_FAILED is
      * emitted, so an audio call that cannot get a GPU context still connects.
      */
     private suspend fun createEglContextWithRetry(
@@ -774,8 +773,8 @@ class RTCClient private constructor(
                 if(!onlyData) {
                     setupBitrateAdaptation()
                     hasAudio = true
-                    // Not just the type the call started as: an audio call upgraded to
-                    // video keeps its camera across an ICE restart.
+                    // Non il tipo iniziale: an audio call upgraded to video keeps its
+                    // camera across an ICE restart.
                     hasVideo = video || localVideoTrack != null
                 }
             }
@@ -935,13 +934,12 @@ class RTCClient private constructor(
     }
 
     /**
-     * Re-establishes the signalling WebSocket if it was torn down mid-call (e.g. a
-     * transient WS failure). Without an open signalling channel the ICE-restart
-     * offer/answer/candidates cannot reach the peer, so reconnection silently fails.
-     * Reuses [openSignal] but with a no-op onIceServersFetched, so the existing
-     * PeerConnection is preserved — we are only restoring the channel, not
-     * renegotiating media. Only ever invoked when [socket] is null, a state that
-     * otherwise guarantees a failed reconnect, so it cannot regress the happy path.
+     * Re-opens the signalling WebSocket if it was torn down mid call. Without it the ICE
+     * restart offer/answer/candidates never reach the peer and reconnection fails in
+     * silenzio. Reuses [openSignal] with a no-op onIceServersFetched, so the existing
+     * PeerConnection survives: we are restoring the channel, not renegotiating media.
+     * Only ever called when [socket] is null, a state that guarantees a failed
+     * reconnect anyway, so it cannot regress the happy path.
      */
     private suspend fun reopenSignaling(): Boolean {
         if (socket != null) return true
@@ -1006,28 +1004,25 @@ class RTCClient private constructor(
     }
 
     /**
-     * Meters TURN-relayed bytes for this call and feeds them to [RelayUsageTracker].
-     * Read-only: it samples WebRTC stats on a timer and never touches signalling,
-     * media, or reconnection. Starts once per call; runs across ICE restarts since
-     * the same PeerConnection is reused. Cancelled in [cleanup].
+     * Meters TURN relayed bytes for this call and feeds them to [RelayUsageTracker].
+     * Read only: samples stats on a timer, never touches signalling, media or
+     * reconnection. Starts once per call, survives ICE restarts since the same
+     * PeerConnection is reused, cancelled in [cleanup].
      */
     /**
-     * Writes the ICE path that was ACTUALLY chosen, plus the round trip time
-     * WebRTC measured on it.
+     * Writes the ICE path that was ACTUALLY chosen, plus the round trip time WebRTC
+     * measured on it.
      *
-     * Needed because forcing a path and getting one are different things. Two
-     * phones on one Wi-Fi under NOHOST can only reach each other from outside if
-     * the router does hairpinning, and plenty of home routers do not: ICE then
-     * falls back to relay candidates, which NOHOST still allows, and a run meant
-     * to compare direct against TURN quietly compares TURN against TURN. The
-     * candidate types say which of the two actually happened.
+     * Forcing a path and getting one are different things. Two phones on one Wi-Fi under
+     * NOHOST can only reach each other from outside if the router does hairpinning, and
+     * molti router domestici non lo fanno: ICE falls back to relay candidates, which
+     * NOHOST still allows, and a run meant to compare direct against TURN quietly
+     * compares TURN against TURN.
      *
-     * srflx means the direct path through the NAT, relay means TURN, host means
-     * the LAN (so, a mode of "all"). The RTT comes from WebRTC's own STUN
-     * probes, which avoids comparing the clocks of two different phones.
-     *
-     * Three seconds of delay because currentRoundTripTime is null until a few
-     * probes have gone round. Debug builds only: this is a measurement tool.
+     * srflx is the direct path through the NAT, relay is TURN, host is the LAN (so, an
+     * "all" run). The RTT comes from WebRTC's own STUN probes, which avoids comparing
+     * the clocks of two phones. Three seconds of delay because currentRoundTripTime is
+     * null until a few probes have gone round. Debug builds only.
      */
     private fun logIcePath() {
         if (!BuildConfig.ENABLE_DEBUG_TOOLS) return
@@ -1069,9 +1064,9 @@ class RTCClient private constructor(
         if (!relayTrackingStarted.compareAndSet(false, true)) return
 
         relayUsageJob = clientScope.launch {
-            // Cumulative bytes already counted per candidate-pair id, so deltas stay
-            // correct across ICE restarts (a restart nominates a new pair whose byte
-            // counters start from zero, recorded under a new id).
+            // Cumulative bytes per candidate pair id, so deltas stay correct across
+            // ICE restarts: a restart nominates a new pair whose counters start at
+            // zero, recorded under a new id.
             val countedPerPair = HashMap<String, Long>()
             try {
                 while (true) {
@@ -1102,7 +1097,7 @@ class RTCClient private constructor(
             val localType = localId?.let { stats[it]?.members?.get("candidateType") } as? String
             val remoteType = remoteId?.let { stats[it]?.members?.get("candidateType") } as? String
 
-            // Count only traffic that actually used a TURN relay (our side or the peer's).
+            // Solo il traffico che ha davvero usato un TURN relay, nostro o del peer.
             if (localType != "relay" && remoteType != "relay") continue
 
             val sent = (s.members["bytesSent"] as? Number)?.toLong() ?: 0L
@@ -1130,10 +1125,9 @@ class RTCClient private constructor(
             audioJitterBufferMaxPackets = 20
             audioJitterBufferFastAccelerate = true
 
-            // Test only, see the iceMode flag in build.gradle.kts. On "all",
-            // which is what every release build without an explicit -PiceMode
-            // gets, the field below is never assigned and this block compiles
-            // away, so production behaviour is untouched.
+            // Test only, see the iceMode flag in build.gradle.kts. On "all", which
+            // every release build without an explicit -PiceMode gets, the field below
+            // is never assigned and this block compiles away.
             when (BuildConfig.ICE_MODE) {
                 "nohost" -> {
                     iceTransportsType = PeerConnection.IceTransportsType.NOHOST
@@ -1366,12 +1360,12 @@ class RTCClient private constructor(
 
     /**
      * Builds the camera capture pipeline and attaches the local video track to the
-     * PeerConnection. Shared by the initial setup of a video call and by the mid-call
-     * upgrade of an audio one, so both produce an identical capture and encode path.
+     * PeerConnection. Shared by the initial setup of a video call and by the mid call
+     * upgrade of an audio one, so both get an identical capture and encode path.
      *
      * @return null when the pipeline is usable, otherwise the reason it could not be
-     * built. A null video track is reported through the log only, matching the original
-     * behaviour where a call carried on without a camera rather than failing outright.
+     * built. A null video track is only logged, matching the old behaviour where a call
+     * carried on senza camera rather than failing outright.
      */
     private fun createAndAddVideoTrack(): String? {
         debugLine("RTCClient", "Creating video capturer")
@@ -1449,12 +1443,12 @@ class RTCClient private constructor(
 
     /**
      * Turns an established audio call into a video one by adding a camera track to the
-     * live PeerConnection. Only the local side is touched: the peer sees nothing until
+     * live PeerConnection. Local side only: the peer sees nothing until
      * [renegotiateForVideo] re-offers, so both ends can add their track first and settle
-     * the whole upgrade in a single offer/answer exchange.
+     * the whole upgrade in a single offer/answer.
      *
-     * Safe to call twice: a call that already carries video reports success and does
-     * nothing.
+     * Safe to call twice, a call that already carries video reports success and does
+     * nulla.
      */
     fun enableLocalVideo(): Boolean {
         if (onlyData) {
@@ -1488,9 +1482,9 @@ class RTCClient private constructor(
     }
 
     /**
-     * Re-offers the session now that a video track has been added mid-call. Only the
-     * side that asked for the upgrade calls this; the other side answers through the
-     * ordinary [handleOffer] path, with its own track already in place.
+     * Re-offers the session now that a video track was added mid call. Only the side
+     * that asked for the upgrade calls this; the other answers through the ordinary
+     * [handleOffer] path, with its own track already in place.
      */
     fun renegotiateForVideo() {
         clientScope.launch {
@@ -1499,16 +1493,16 @@ class RTCClient private constructor(
                 return@launch
             }
 
-            // The signalling socket stays open for the whole of a media call, but a
+            // The signalling socket stays open for the whole media call, but a
             // transient failure can have torn it down: without it the offer never
-            // reaches the peer and the upgrade would hang.
+            // reaches the peer and the upgrade hangs.
             if (socket == null && !reopenSignaling()) {
                 debugLine("RTCClient", "renegotiateForVideo: signalling channel unavailable, aborting")
                 return@launch
             }
 
-            // The initial negotiation latched this guard, and the upgrade brings a
-            // second answer that would otherwise be dropped.
+            // Latched by the initial negotiation, and the upgrade brings a second
+            // answer that would otherwise be dropped.
             isAnswerHandled.set(false)
 
             sendVideoUpgradeOffer()
@@ -1516,9 +1510,9 @@ class RTCClient private constructor(
     }
 
     /**
-     * Deliberately separate from [sendOffer]: that one claims the initiator role and
-     * moves the ICE state, which would leave both ends believing they drive ICE
-     * restarts. An upgrade only renegotiates media on an already connected session.
+     * Separate from [sendOffer] apposta: that one claims the initiator role and moves
+     * the ICE state, which would leave both ends believing they drive ICE restarts. An
+     * upgrade only renegotiates media on an already connected session.
      */
     private fun sendVideoUpgradeOffer() {
         debugLine("RTCClient", "Sending video upgrade offer")
@@ -1781,10 +1775,9 @@ class RTCClient private constructor(
     }
 
     /**
-     * Serialises sends on this client's data channel. Several dispatch workers
-     * can share one RTCClient, and without this each of them queued a chunk
-     * believing on its own that the buffer threshold was respected, so the
-     * queue grew to a multiple of the intended size.
+     * Serialises sends on this client's data channel. Several dispatch workers can share
+     * one RTCClient, and without this each queued a chunk believing on its own that the
+     * buffer threshold was respected, so the queue grew to a multiple of its size.
      */
     private val sendMutex = Mutex()
 
@@ -1814,12 +1807,11 @@ class RTCClient private constructor(
 
                         debugLine("sendData", "Initial buffered amount: ${channel.bufferedAmount()}")
 
-                        // Drain first, queue after. Queueing first meant every
-                        // chunk landed on top of an already full buffer, and a
-                        // buffer that had stopped draining kept being fed while
-                        // we waited on it. On a low bandwidth path that standing
-                        // queue is what starves the connectivity checks and gets
-                        // the connection declared dead.
+                        // Drain first, queue after. Queueing first meant every chunk
+                        // landed on top of an already full buffer, and a buffer that had
+                        // stopped draining kept being fed while we waited on it. On a
+                        // low bandwidth path that standing queue is what starves the
+                        // connectivity checks and gets the connection declared dead.
                         while (channel.bufferedAmount() > maxBufferSize) {
 
                             if (System.currentTimeMillis() - startTime > bufferTimeout) {

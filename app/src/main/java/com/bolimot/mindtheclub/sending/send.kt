@@ -52,12 +52,11 @@ fun sendMessage(message: MessageData) {
         NoteToSelf.handleOutgoing(message)
         return
     }
-    // The first message the user authored to a real person starts the 30-day
-    // trial clock (activation-based trial: downloads that never engage cost
-    // nothing and are never gated). Everything else is excluded: Clubby and
-    // Note to self return above and are refused again inside startsTrial,
-    // contact acquisition and profile broadcasts travel through here as
-    // Type.PROFILE, and a received message never reaches this function.
+    // The first message the user authored to a real person starts the 30 day trial clock
+    // (activation based: downloads that never engage cost nothing and are never gated).
+    // Everything else is out: Clubby and Note to self return above and are refused again inside
+    // startsTrial, contact acquisition and profile broadcasts pass through here as Type.PROFILE,
+    // and a received message never reaches this function.
     if (TrialManager.startsTrial(message.toUserId, message.type)) {
         TrialManager.markActivated(App.context())
     }
@@ -111,18 +110,17 @@ fun reSendMessage(userId: String, messageId: String, missingItems: List<Int>, co
         if (hasNetworkAvailable(App.context())
             || runBlocking { hasBluetoothPathTo(userId, App.context()) }
         ) {
-            // Carry the group coordinates so the worker is tagged by CONTENT and
-            // not just by this copy's messageId: without them contentTag falls
-            // back to peer_<messageId>_<target>, which cannot recognise two
-            // dispatches of the same file as being the same transfer, and the
-            // same-content guard in the sendMe handler has nothing to match on.
+            // Carry the group coordinates so the worker is tagged by CONTENT and not just by
+            // this copy's messageId: without them contentTag falls back to
+            // peer_<messageId>_<target>, which cannot recognise two dispatches of the same file
+            // as the same transfer, and the same content guard in the sendMe handler has nothing
+            // to match on.
             val coords = batchContentCoordinates(messageId)
             submitDispatchWorker(
                 messageId, userId, context,
-                // Without this the worker falls back to naming the message by its
-                // per hop id, and every announcement, pending entry and delivery
-                // confirmation built from it stops matching. See DispatchWorker's
-                // messageKey.
+                // Without this the worker falls back to naming the message by its per hop id,
+                // and every announcement, pending entry and delivery confirmation built from it
+                // stops matching. See DispatchWorker's messageKey.
                 groupId = coords?.groupId ?: "",
                 chatGroupId = coords?.chatGroupId ?: "",
                 originalSenderId = coords?.originalSenderId ?: "",
@@ -200,9 +198,9 @@ fun setMessageToNotSent(messageId: String, missingItems: List<Int>, context: Con
 }
 
 /**
- * Inverse of setMessageToNotSent: marks everything as already sent, then
- * re-enables only [missingItems]. Used when serving a partial sendMe on a
- * freshly rebuilt batch, so dispatch transmits just the missing chunks.
+ * Inverse of setMessageToNotSent: marks everything as already sent, then re-enables only
+ * [missingItems]. Used when serving a partial sendMe on a freshly rebuilt batch, so dispatch
+ * transmits just the missing chunks.
  */
 fun restrictBatchToMissing(messageId: String, missingItems: List<Int>, context: Context): Boolean {
     val db = AppDatabase.getInstance(context).openHelper.writableDatabase
@@ -240,11 +238,10 @@ fun sendMessageWork(
     }
 
     val contentResolver = context.contentResolver
-    // Raw bytes per chunk. On the wire each one becomes about 4/3 of this after
-    // Base64, plus the Outbox metadata, so 40 KB here is roughly 55 KB queued.
-    // Kept small on purpose: a relayed path has a fraction of the bandwidth of a
-    // direct one, and large chunks built a standing send queue there that
-    // starved the connectivity checks and had the connection declared dead.
+    // Raw bytes per chunk. On the wire each becomes about 4/3 of this after Base64, plus the
+    // Outbox metadata, so 40 KB here is roughly 55 KB queued. Piccolo apposta: a relayed path has
+    // a fraction of the bandwidth of a direct one, and large chunks built a standing send queue
+    // there that starved the connectivity checks and had the connection declared dead.
     val chunkSize = 40000
     val maxChunksPerTable = 100
     var tableCounter = 1
@@ -420,9 +417,9 @@ fun sendMessageWork(
             debugLine("sendMediaMessage", "Batch totalNo reconciled to $reconciled for ${message.messageId}")
         }
 
-        // Partial sendMe: the requester told us which chunks it is missing —
-        // don't re-transmit the ones it already has. On any failure the batch
-        // stays complete and a full (current-behavior) send happens instead.
+        // Partial sendMe: the requester told us which chunks it is missing, so do not
+        // re-transmit the ones it already has. On any failure the batch stays complete and a
+        // full send happens instead.
         if (!resendMissing.isNullOrEmpty()) {
             if (restrictBatchToMissing(message.messageId, resendMissing, context)) {
                 debugLine("sendMediaMessage", "Restricted batch to ${resendMissing.size} missing chunks for ${message.messageId}")

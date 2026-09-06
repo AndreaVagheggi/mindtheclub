@@ -12,13 +12,12 @@ import com.bolimot.mindtheclub.tools.MySelf
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 
 /**
- * Onboarding step 4 (final): encourage inviting friends.
+ * Onboarding step 4, the last one: encourage inviting friends.
  *
- * Inviting is the pivotal step — without peers the app can't be used. The "Invite"
- * button is identical to the one in [MyProfile] (same payload, same [InviteActivity]).
- * "Skip for now" is offered as a low-key text link, since the user can't be forced
- * to invite someone immediately. Either choice opens the app. Onboarding won't run
- * again because the name was already saved on the first screen.
+ * Inviting is the pivotal step, senza peer l'app non serve a niente. The "Invite" button is
+ * identical to the one in [MyProfile] (same payload, same [InviteActivity]). "Skip for now" is a
+ * low key text link, since nobody can be forced to invite someone right away. Either choice opens
+ * the app; onboarding will not run again because the name was saved on the first screen.
  */
 class OnboardingInviteActivity : BaseActivity() {
 

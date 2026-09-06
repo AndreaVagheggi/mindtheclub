@@ -12,12 +12,12 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * The four Cloudflare Realtime calls a phone needs, taken through the mtc-sfu
- * Worker. The Realtime App secret signs the upstream request there; nothing in
- * this file could be used to talk to Cloudflare directly, which is the point.
+ * The four Cloudflare Realtime calls a phone needs, taken through the mtc-sfu Worker. The
+ * Realtime App secret signs the upstream request there; niente in questo file could be used to
+ * talk to Cloudflare directly, che e' il punto.
  *
- * Every body here is SDP and track names. The Worker forwards them untouched,
- * so the shapes below are Cloudflare's own, verbatim.
+ * Every body here is SDP and track names. The Worker forwards them untouched, so the shapes
+ * below are Cloudflare's own, verbatim.
  */
 object SfuApi {
 
@@ -45,9 +45,9 @@ object SfuApi {
         /** trackName to mid, for matching the transceivers that onTrack delivers. */
         val mids: Map<String, String>,
         /**
-         * Track names the SFU refused. Usually `empty_track_error`, which means
-         * the publisher has not started sending that track yet: worth asking
-         * again in a moment rather than leaving a permanently blank tile.
+         * Track names the SFU refused. Usually `empty_track_error`, which means the publisher
+         * has not started sending that track yet: worth asking again in a moment rather than
+         * leaving a permanently blank tile.
          */
         val failed: List<String> = emptyList()
     )
@@ -60,10 +60,9 @@ object SfuApi {
     /**
      * Opens a session. One per phone per call.
      *
-     * The offer goes in here rather than into a later call: the API refuses a
-     * session created without a session description and answers this one
-     * directly. Verified against the live API on 24 Aug 2026, where an empty
-     * body comes back as `decoding_error: sessionDescription`.
+     * The offer goes in here rather than into a later call: the API refuses a session created
+     * without a session description and answers this one directly. Verified against the live API
+     * on 24 Aug 2026, where an empty body comes back as `decoding_error: sessionDescription`.
      */
     suspend fun newSession(offerSdp: String): SessionResult? = withContext(Dispatchers.IO) {
         val payload = JSONObject().apply { put("sessionDescription", sdp(offerSdp, "offer")) }
@@ -86,12 +85,12 @@ object SfuApi {
     // --------------------------------------------------------------- publishing
 
     /**
-     * Gives the already negotiated local transceivers the names the other
-     * participants will pull them by.
+     * Gives the already negotiated local transceivers the names the other participants will pull
+     * them by.
      *
-     * No session description here: the transceivers exist from the offer that
-     * opened the session, so this only binds a name to each mid. The connection
-     * has to be up first, or the API answers "Session is not ready yet".
+     * No session description here: the transceivers exist from the offer that opened the
+     * session, so this only binds a name to each mid. The connection has to be up first, or the
+     * API answers "Session is not ready yet".
      *
      * @param tracks mid to trackName for each local transceiver being published.
      */
@@ -128,10 +127,9 @@ object SfuApi {
     // -------------------------------------------------------------- subscribing
 
     /**
-     * Subscribes to tracks published by other sessions. When the SFU has to add
-     * transceivers for them it answers with an offer and sets
-     * requiresImmediateRenegotiation, and the caller must answer it before the
-     * media flows.
+     * Subscribes to tracks published by other sessions. When the SFU has to add transceivers for
+     * them it answers with an offer and sets requiresImmediateRenegotiation, and the caller must
+     * answer it before the media flows.
      */
     suspend fun pullTracks(
         sessionId: String,
@@ -193,9 +191,9 @@ object SfuApi {
     }
 
     /**
-     * Drops subscribed tracks when their owner leaves, so this phone stops paying
-     * for a picture nobody is sending. `force` closes them without a renegotiation
-     * round trip, which is what a departure calls for.
+     * Drops subscribed tracks when their owner leaves, so this phone stops paying for a picture
+     * nobody is sending. `force` closes them without a renegotiation round trip, che e' quello
+     * che serve quando uno se ne va.
      */
     suspend fun closeTracks(sessionId: String, mids: List<String>): Boolean = withContext(Dispatchers.IO) {
         if (mids.isEmpty()) return@withContext true

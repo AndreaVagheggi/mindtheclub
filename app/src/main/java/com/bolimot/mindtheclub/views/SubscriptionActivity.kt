@@ -14,12 +14,11 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 
 /**
- * Paywall / subscription management screen.
+ * Paywall and subscription management screen.
  *
- * Launched (a) as a blocking gate from BaseActivity when the 30-day trial has
- * ended and no subscription is active (EXTRA_REQUIRED = true: back sends the
- * task to the background instead of dismissing the gate), and (b) voluntarily
- * from the Subscription row in OptionsActivity.
+ * Launched (a) as a blocking gate from BaseActivity when the 30 day trial has ended and no
+ * subscription is active (EXTRA_REQUIRED = true: back sends the task to the background instead of
+ * dismissing the gate), and (b) voluntarily from the Subscription row in OptionsActivity.
  */
 class SubscriptionActivity : BaseActivity() {
 

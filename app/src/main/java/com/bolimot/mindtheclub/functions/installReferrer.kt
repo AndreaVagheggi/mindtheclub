@@ -8,35 +8,33 @@ import androidx.core.net.toUri
 /**
  * Deferred contact acquisition via the Play Install Referrer.
  *
- * When a friend who does NOT have MindTheClub installed taps an invite link, the
- * website (www.mindtheclub.com/add) forwards the inviter's profile parameters into
- * the Play Store URL as the `referrer` value:
+ * When a friend who does NOT have MindTheClub installed taps an invite link, the website
+ * (www.mindtheclub.com/add) forwards the inviter's profile parameters into the Play Store URL
+ * as the `referrer` value:
  *
  *   https://play.google.com/store/apps/details?id=com.bolimot.mindtheclub&referrer=<...>
  *
- * After the app is installed, the Play Store hands that string back to us exactly
- * once, on first run. We parse the inviter's profile out of it and stash it, so that —
- * once onboarding is complete and the main screen opens — the normal
- * "add this contact?" flow can be triggered automatically (see AppTab).
+ * After the install the Play Store hands that string back exactly once, on first run. We parse
+ * the inviter's profile out of it and stash it, so that once onboarding is complete and the
+ * main screen opens the normal "add this contact?" flow can fire (see AppTab).
  *
- * The referrer value is expected in one of two shapes:
+ * The value comes in one of two shapes:
  *   - the invite-link query form:  n=<name>&u=<userId>&b=<bio>&f=<fingerprint>
  *   - the raw payload form:        mtc;<name>;<userId>;<bio>;<fingerprint>
  * Either is normalised to the canonical "mtc;..." payload before stashing.
  *
- * Requires no dangerous permission and no server: the inviter's seed travels inside
- * the link itself. Works only for installs attributed through Google Play (the
- * intended "tap link -> Play Store -> install" flow); sideloaded installs carry no
- * referrer, in which case nothing happens.
+ * No dangerous permission and no server: the inviter's seed travels inside the link. Only for
+ * installs attributed through Google Play; a sideloaded install carries no referrer and nothing
+ * happens.
  */
 
 private const val PREF_REFERRER_CHECKED = "mtc_install_referrer_checked"
 const val PREF_PENDING_INVITE_SEED = "mtc_pending_invite_seed"
 
 /**
- * Reads the Play Install Referrer once and, if it carries an invite, stashes the
- * inviter's profile for later consumption. Self-guarded: safe to call on every
- * launch — it does real work only until it has succeeded once.
+ * Reads the Play Install Referrer once and, if it carries an invite, stashes the inviter's
+ * profile for later. Self guarded, safe to call on every launch: it does real work only until
+ * it has succeeded once.
  */
 fun captureInstallReferrerOnce(context: Context) {
     // The referrer is a one-shot, install-time signal; only ever look once.
@@ -76,8 +74,8 @@ fun captureInstallReferrerOnce(context: Context) {
                     }
 
                     else -> {
-                        // SERVICE_UNAVAILABLE / DEVELOPER_ERROR: transient — leave the
-                        // flag unset so a later launch retries.
+                        // SERVICE_UNAVAILABLE / DEVELOPER_ERROR are transient: leave the flag
+                        // unset so a later launch retries.
                         debugLine("InstallReferrer", "Setup finished with code $responseCode; will retry.")
                     }
                 }
@@ -94,9 +92,9 @@ fun captureInstallReferrerOnce(context: Context) {
 }
 
 /**
- * Normalises a Play `referrer` value to the canonical
- * "mtc;name;userId;bio;fingerprint" payload, or returns null if it carries no
- * MindTheClub invite (e.g. an organic install's "utm_source=google-play...").
+ * Normalises a Play `referrer` value to the canonical "mtc;name;userId;bio;fingerprint"
+ * payload, or null when it carries no MindTheClub invite (an organic install's
+ * "utm_source=google-play...").
  */
 fun parseInviteReferrer(referrer: String?): String? {
     if (referrer.isNullOrBlank()) return null

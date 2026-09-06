@@ -9,13 +9,12 @@ class AccessibleImageButton @JvmOverloads constructor(
 ) : androidx.appcompat.widget.AppCompatImageButton(context, attrs) {
 
     override fun performClick(): Boolean {
-        // Call the super method to handle the click action
+        // Super handles the click action
         super.performClick()
 
-        // Your custom click action (if any)
-        // For example, show a Toast or handle accessibility feedback
+        // Custom click action here, if any
 
-        // Return true to indicate the click was handled
+        // true = click handled
         return true
     }
 }

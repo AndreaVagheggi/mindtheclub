@@ -27,11 +27,11 @@ import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
 /**
- * Runs every 15 minutes. For each tracked pending message whose backoff delay
- * has elapsed, re-sends the `pending` FCM to the receiver.
+ * Runs every 15 minutes. For each tracked pending message whose backoff has elapsed, re-sends
+ * the `pending` FCM to the receiver.
  *
- * Entries are pruned automatically after 14 days, and as soon as the contact
- * they were addressed to is deleted from the address book.
+ * Entries are pruned after 14 days, and as soon as the contact they were addressed to is
+ * deleted from the address book.
  */
 class PendingRetryWorker(
     context: Context,
@@ -44,19 +44,17 @@ class PendingRetryWorker(
         private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
 
         /**
-         * A one-to-one entry whose peer is no longer in the address book: the
-         * user deleted the contact, so its queue must go with it. The queue
-         * lives in its own preferences file, not in the Peer table, so nothing
-         * else would ever remove it — the only other cleanup is the not-found
-         * answer from the FCM callable, which never comes when the identity is
-         * dead but its token is still alive (a restored backup on the peer's
-         * phone keeps the installation, and therefore the token, working).
+         * A one to one entry whose peer is no longer in the address book: the user deleted the
+         * contact, so its queue must go with it. The queue lives in its own preferences file,
+         * not in the Peer table, so nothing else would ever remove it. The only other cleanup
+         * is the not-found answer from the FCM callable, which never comes when the identity is
+         * dead but its token is still alive (a restored backup on the peer's phone keeps the
+         * installation, and so the token, working).
          *
-         * Group entries are deliberately exempt: a group member is a legitimate
-         * recipient even when they are not a contact (they show as "Member"),
-         * and dropping their queue would silently break group delivery. The two
-         * cases are told apart by chatGroupId, which the group dispatch path
-         * always records (DispatchWorker) and the one-to-one path never does.
+         * Group entries are exempt apposta: a group member is a legitimate recipient even when
+         * they are not a contact (they show as "Member"), and dropping their queue would
+         * silently break group delivery. The two are told apart by chatGroupId, which the group
+         * dispatch path always records (DispatchWorker) and the one to one path never does.
          *
          * Fails safe: a database error leaves the entry alone.
          */
@@ -142,11 +140,10 @@ class PendingRetryWorker(
     }
 
     /**
-     * GROUP_SEEN notifications still waiting for the sender's ack: re-send them.
-     * A group seen used to be one fire and forget FCM with no second chance
-     * (16 Aug: two messages stuck at Delivered because Raoul's seens died in
-     * the 13 Aug notification flood). Entries are cleared by GROUP_SEEN_ACK;
-     * against older senders that never ack, the cap drains them quietly.
+     * GROUP_SEEN notifications still waiting for the sender's ack: re-send them. A group seen
+     * used to be one fire and forget FCM with no second chance (16 Aug: two messages stuck at
+     * Delivered because Raoul's seens died in the 13 Aug notification flood). Cleared by
+     * GROUP_SEEN_ACK; against older senders that never ack, the cap drains them quietly.
      */
     private suspend fun retryGroupSeen() {
         val entries = GroupSeenTracker.getAll(applicationContext)
@@ -232,15 +229,14 @@ class PendingRetryWorker(
     /**
      * Messages a peer owes US: re-issue the sendMe.
      *
-     * The PENDING handler answers a `pending` FCM with one sendMe. If that single
-     * round fails, and it does (a dropped signalling socket is enough), nothing
-     * used to survive it on this side and the message waited for the sender's own
-     * ladder, up to 13 hours.
+     * The PENDING handler answers a `pending` FCM with one sendMe. If that single round fails,
+     * and it does (a dropped signalling socket is enough), nothing used to survive it on this
+     * side and the message waited for the sender's own ladder, up to 13 hours.
      *
-     * Arrival is detected here, by looking the message up, rather than by hooking
-     * the receive path: one query per pass leaves the hot path untouched and an
-     * entry can never outlive the message it waits for. Worst case it lingers one
-     * extra pass, costing nothing, because the check runs before any FCM is sent.
+     * Arrival is detected here by looking the message up, not by hooking the receive path: one
+     * query per pass leaves the hot path untouched and an entry can never outlive the message
+     * it waits for. Worst case it lingers one extra pass, che non costa nulla, because the
+     * check runs before any FCM is sent.
      */
     private suspend fun retryIncoming() {
         val entries = IncomingPendingTracker.getAll(applicationContext)
@@ -251,14 +247,14 @@ class PendingRetryWorker(
         val messageDao = getMessageDao(applicationContext)
         val inboxDao = getInboxDao(applicationContext)
         val now = System.currentTimeMillis()
-        // Same bound as InboxRecoveryWorker: informed choices are welcome, a
-        // Firestore read per entry in a loop is not (the 15 Aug lesson).
+        // Same bound as InboxRecoveryWorker: informed choices are welcome, a Firestore read
+        // per entry in a loop is not (lezione del 15 Aug).
         var seederLookups = 0
 
         for (entry in entries) {
-            // Every other recovery path consults the registry, this one never did:
-            // after refusing a transfer it went on asking the sender for the very
-            // chunks the user had just thrown away, resurrecting it.
+            // Every other recovery path consults the registry, this one never did: after
+            // refusing a transfer it went on asking the sender for the very chunks the user
+            // had just thrown away, resurrecting it.
             if (CancelledTransferRegistry.isCancelled(applicationContext, entry.messageId)) {
                 IncomingPendingTracker.remove(
                     applicationContext, entry.messageId, entry.fromUserId, "cancelled"
@@ -298,8 +294,8 @@ class PendingRetryWorker(
                 continue
             }
 
-            // Same resume-aware logic as the PENDING handler: ask only for what is
-            // actually missing, and ask for nothing when every chunk is already here.
+            // Same resume aware logic as the PENDING handler: ask only for what is actually
+            // missing, and ask for nothing when every chunk is already here.
             val missing = try {
                 val contentKey = if (message != null) {
                     contentKeyOf(
@@ -327,8 +323,8 @@ class PendingRetryWorker(
             val missingRange =
                 if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
 
-            // Ask a registered complete member when one is known; the announcer
-            // stays the fallback, it declared it holds the content.
+            // Ask a registered complete member when one is known; the announcer stays the
+            // fallback, it declared it holds the content.
             val askTarget = if (message != null && !message.chatGroupId.isNullOrEmpty()
                 && seederLookups < MAX_SEEDER_LOOKUPS_PER_PASS
             ) {

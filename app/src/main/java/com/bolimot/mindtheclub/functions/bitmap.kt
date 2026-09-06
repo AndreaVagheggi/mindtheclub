@@ -41,35 +41,30 @@ import kotlin.math.roundToInt
 /**
  * JPEG quality for photos leaving this device.
  *
- * Was 100, i.e. visually lossless and several times heavier than it needs to be:
- * at 2048px a quality 100 frame is 2 to 4 MB, the same frame at 80 is under one,
- * with a difference nobody sees on a phone. On a mobile uplink that ratio is the
- * difference between a photo arriving in a minute and in ten, and unlike the
- * transport level ideas it changes nothing on the wire: same chunks, same
- * protocol, same database. A receiver on an older build simply gets a lighter
- * file.
+ * Was 100, visually lossless and several times heavier than it needs to be: at 2048px a
+ * quality 100 frame is 2 to 4 MB, the same frame at 80 is under one, with a difference nobody
+ * sees on a phone. On a mobile uplink that ratio is a photo arriving in a minute instead of
+ * ten, and it changes nothing on the wire: same chunks, same protocol, same database. A
+ * receiver on an older build simply gets a lighter file.
  */
 const val SENT_IMAGE_QUALITY = 80
 
 /**
- * What [uriList] will actually weigh on the wire, i.e. AFTER the same
- * recompression [mergeImages] applies.
+ * What [uriList] will actually weigh on the wire, cioe' AFTER the same recompression
+ * [mergeImages] applies.
  *
- * The group size cap used to be checked against the files as the gallery holds
- * them. Those are full resolution camera originals, 4 to 5 MB each on a current
- * phone, while what leaves the device is 2048px at quality 80, well under 1 MB.
- * So eleven perfectly ordinary photos, about 6 MB once packed, were refused for
- * exceeding a 50 MB limit they were nowhere near. The video path had already been
- * moved to measuring after transcoding for exactly this reason; the image path
- * never was.
+ * The group size cap used to be checked against the files as the gallery holds them: full
+ * resolution camera originals, 4 to 5 MB each on a current phone, while what leaves the device
+ * is 2048px at quality 80, well under 1 MB. So eleven perfectly ordinary photos, about 6 MB
+ * once packed, were refused for exceeding a 50 MB limit they were nowhere near. The video path
+ * had already moved to measuring after transcoding; the image path never did.
  *
- * Deliberately not an estimate: it runs the real encoder over the real files, so
- * the number cannot drift from what mergeImages produces later. It also mirrors
- * that function's fallback, counting the original bytes whenever compression is
- * unavailable, because those are the bytes that would then be sent.
+ * Not an estimate apposta: it runs the real encoder over the real files, so the number cannot
+ * drift from what mergeImages produces later. It mirrors that function's fallback too,
+ * counting the original bytes whenever compression is unavailable.
  *
- * Costs one decode plus one encode per image, on Dispatchers.IO. Call it off the
- * main thread and only where the answer matters, i.e. on the group path.
+ * Costs one decode plus one encode per image, on Dispatchers.IO. Off the main thread, and only
+ * where the answer matters, cioe' on the group path.
  */
 suspend fun compressedSizeOfImages(uriList: List<Uri>): Long = withContext(Dispatchers.IO) {
     val context = App.context()
@@ -123,15 +118,14 @@ fun mergeImages(uriStringList: String, messageId: String): String? {
 
         FileOutputStream(mergedFile).use { fileOutputStream ->
             for ((index, uri) in uriList.withIndex()) {
-                // Recompress before concatenating. This path used to copy the
-                // gallery originals byte for byte, so a handful of full
-                // resolution photos became tens of megabytes: on 13 Aug an album
-                // reached 870 chunks, roughly 35 MB, and took half an hour to
-                // reach two peers over a mobile uplink. The single image path
-                // already went through saveBitmapFromUri, this one never did.
+                // Recompress before concatenating. This path used to copy the gallery
+                // originals byte for byte, so a handful of full resolution photos became tens
+                // of megabytes: on 13 Aug an album reached 870 chunks, about 35 MB, and took
+                // half an hour to reach two peers over mobile. The single image path already
+                // went through saveBitmapFromUri, questo mai.
                 //
-                // The separator framing is untouched, so extractImages and every
-                // already deployed receiver keep working exactly as before.
+                // The separator framing is untouched, so extractImages and every already
+                // deployed receiver keep working exactly as before.
                 val tempName = "mergesrc_${messageId}_$index.jpg"
                 val tempFile = File(context.filesDir, tempName)
                 val compressed = saveBitmapFromUri(uri, tempName, SENT_IMAGE_QUALITY)
@@ -140,9 +134,8 @@ fun mergeImages(uriStringList: String, messageId: String): String? {
                     tempFile.inputStream().use { it.copyTo(fileOutputStream) }
                     tempFile.delete()
                 } else {
-                    // Anything unexpected (undecodable file, out of memory, an
-                    // exotic format) falls back to the original bytes, i.e. to
-                    // exactly the behaviour this function had before.
+                    // Anything unexpected (undecodable file, out of memory, an exotic format)
+                    // falls back to the original bytes, cioe' to what this did before.
                     debugLine("mergeImages", "Compression unavailable for $uri, sending original bytes")
                     tempFile.delete()
                     context.contentResolver.openInputStream(uri).use { inputStream ->
@@ -421,9 +414,9 @@ suspend fun saveClubBitmap(qrBitmap: Bitmap?, picturePath: String?, name: String
 }
 
 
-// Longest side of any bitmap saveBitmapFromUri holds in memory when no explicit
-// resize is requested. Keeps a full-resolution camera photo (50+ MP on modern
-// phones) from ever being decoded whole, which freezes/kills low-RAM devices.
+// Longest side of any bitmap saveBitmapFromUri holds in memory when no explicit resize is
+// asked for. Keeps a full resolution camera photo (50+ MP on modern phones) from ever being
+// decoded whole, which freezes or kills low RAM devices.
 private const val MAX_SAVED_IMAGE_DIMENSION = 2048
 
 fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int = 0): Uri? {
@@ -459,9 +452,9 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
                 )
             } ?: androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
 
-            // NOTE: decodeStream() intentionally returns null when inJustDecodeBounds
-            // is set — it only fills [bounds]. The stream-null check must therefore
-            // be separate; an elvis on the whole expression would always bail out.
+            // NOTE: decodeStream() returns null on purpose when inJustDecodeBounds is set,
+            // it only fills [bounds]. So the stream null check has to be separate; an elvis on
+            // the whole expression would always bail out.
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             val boundsStream = context.contentResolver.openInputStream(uri)
             if (boundsStream == null) {
@@ -494,8 +487,8 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
             bitmap = applyExifOrientation(bitmap, orientation)
         }
 
-        // Exact-size pass: the decode above only guarantees an upper bound
-        // (inSampleSize halves in powers of two). Never upscales.
+        // Exact size pass: the decode above only guarantees an upper bound (inSampleSize
+        // halves in powers of two). Never upscales.
         if (max(bitmap.width, bitmap.height) > targetSize) {
             bitmap = resizeBitmap(bitmap, targetSize)
         }
@@ -508,8 +501,8 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
         val authority = "${context.packageName}.provider"
         FileProvider.getUriForFile(context, authority, file)
     } catch (e: Exception) {
-        // Broad on purpose: SecurityException / IllegalArgumentException etc. must
-        // surface as a logged failure, never as a silent one (or a crash).
+        // Largo apposta: SecurityException / IllegalArgumentException and friends must
+        // surface as a logged failure, never silently and never as a crash.
         debugLine("saveBitmapFromUri", "Error saving image: ${e.javaClass.simpleName}: ${e.message}")
         null
     } catch (e: OutOfMemoryError) {
@@ -518,8 +511,8 @@ fun saveBitmapFromUri(uri: Uri?, fileName: String, compression: Int, resize: Int
     }
 }
 
-// Largest power-of-two sample size that still decodes at or above [target] on the
-// longest side, so the exact-size pass afterwards only ever scales down.
+// Largest power of two sample size that still decodes at or above [target] on the longest
+// side, so the exact size pass afterwards only ever scales down.
 private fun calculateInSampleSize(largestDimension: Int, target: Int): Int {
     var inSampleSize = 1
     while (largestDimension / (inSampleSize * 2) >= target) {
@@ -555,7 +548,7 @@ fun loadBitmap(uri: Uri, context: Context): Bitmap? {
         debugLine("readBitmap", "Skipping invalid URI: '$uriString'")
         return null
     }
-    // For file:// URIs, check the file exists before attempting decode
+    // file:// URIs: check the file exists prima di decodificare
     if (uri.scheme == "file") {
         val file = uri.path?.let { File(it) }
         if (file == null || !file.exists()) {
@@ -798,22 +791,22 @@ suspend fun saveFirebaseImageToDisk(imageUrl: Uri?, fileName: String, compressio
                 val drawable = ContextCompat.getDrawable(context, R.drawable.peer)
                     ?: throw IllegalArgumentException("R.drawable.peer not found")
 
-                // Create a blank bitmap. Using 1080x1080 to match your Glide load.
+                // Blank bitmap, 1080x1080 to match the Glide load.
                 val bmp = createBitmap(1080, 1080)
 
-                // Create a canvas to draw on
+                // Canvas su cui disegnare
                 val canvas = Canvas(bmp)
 
-                // Set the bounds for the drawable to fill the entire bitmap
+                // Bounds so the drawable fills the whole bitmap
                 drawable.setBounds(0, 0, canvas.width, canvas.height)
 
-                // Draw the vector onto the bitmap's canvas
+                // Il vector sul canvas
                 drawable.draw(canvas)
 
                 bmp // Return the newly created bitmap
             }
 
-            // 2. Compress and save the bitmap to the local file
+            // 2. Compress and save to the local file
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, compression, out)
                 out.flush()
@@ -821,7 +814,7 @@ suspend fun saveFirebaseImageToDisk(imageUrl: Uri?, fileName: String, compressio
 
             debugLine("saveFirebaseImageToDisk", "Image saved to: ${file.absolutePath}")
 
-            // 3. Return the content Uri for the new file
+            // 3. Content Uri del nuovo file
             val authority = "${context.packageName}.provider"
             FileProvider.getUriForFile(context, authority, file)
 

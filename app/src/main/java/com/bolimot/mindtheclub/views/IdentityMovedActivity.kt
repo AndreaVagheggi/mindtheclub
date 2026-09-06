@@ -19,21 +19,17 @@ import com.bolimot.mindtheclub.tools.MySelf
 import kotlinx.coroutines.launch
 
 /**
- * Shown when this installation detected that the identity now lives on another
- * phone (see InstallationIdentity). The device stays paused so the two installs
- * cannot fight over message delivery.
+ * Shown when this installation detected that the identity now lives on another phone (see
+ * InstallationIdentity). The device stays paused so the two installs cannot fight over delivery.
  *
- * "Check again" is the safety valve against any false positive: it re-reads the
- * remote installation id and lifts the pause when this install owns the
- * identity again (or the field is gone).
+ * "Check again" is the safety valve against a false positive: it re-reads the remote installation
+ * id and lifts the pause when this install owns the identity again, or the field is gone.
  *
- * Moving the identity BACK to this phone has exactly one route: make a backup
- * on the phone that currently holds it and restore that backup here. The old
- * one-tap "use this phone again" button was removed (17 Aug 2026): it brought
- * delivery back without bringing the DATA back, so a user returning to their
- * previous handset after exchanging messages elsewhere landed in an interface
- * missing everything said in between. A restore is one step longer and always
- * leaves the two phones consistent.
+ * Moving the identity BACK here has exactly one route: make a backup on the phone that currently
+ * holds it and restore that backup here. The old one tap "use this phone again" button went away
+ * (17 Aug 2026): it brought delivery back without bringing the DATA back, so a user returning to
+ * their previous handset landed in an interface missing everything said in between. A restore is
+ * one step longer and always leaves the two phones consistent.
  */
 class IdentityMovedActivity : AppCompatActivity() {
 
@@ -63,10 +59,9 @@ class IdentityMovedActivity : AppCompatActivity() {
             setPadding(0, dp(24), 0, dp(32))
         })
 
-        // The message tells the user to restore a backup here, so the restore
-        // screen must be reachable FROM here: MainActivity gates everything
-        // behind the deactivation check, so Options (and with it Backup and
-        // restore) cannot be opened while this screen is up.
+        // The message tells the user to restore a backup here, so the restore screen has to be
+        // reachable FROM here: MainActivity gates everything behind the deactivation check, so
+        // Options, and with it Backup and restore, cannot be opened while this screen is up.
         root.addView(Button(this).apply {
             text = getString(R.string.identity_moved_restore)
             setOnClickListener {
@@ -88,9 +83,9 @@ class IdentityMovedActivity : AppCompatActivity() {
     }
 
     /**
-     * Coming back from the restore screen: a restore that carried the identity
-     * clears the deactivation itself (BackupManager), so this local check is
-     * enough to let the user straight back into the app, with no network call.
+     * Coming back from the restore screen: a restore that carried the identity clears the
+     * deactivation itself (BackupManager), so this local check is enough to let the user straight
+     * back in, senza chiamate di rete.
      */
     override fun onResume() {
         super.onResume()

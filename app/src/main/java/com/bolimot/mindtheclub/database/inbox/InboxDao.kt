@@ -59,16 +59,15 @@ interface InboxDao{
     suspend fun getMessageChunksBatch(messageId: String, limit: Int, offset: Int): List<Inbox>
 
     /**
-     * The FIRST chunk of a content set, which is the one carrying the fields that
-     * only exist once (text, replyId), hence the ORDER BY. [getFirstMessage] takes
-     * whichever row the engine hands back and is not a substitute.
+     * The FIRST chunk of a content set, the one carrying the fields that exist only once (text,
+     * replyId), hence the ORDER BY. [getFirstMessage] takes whichever row the engine hands back
+     * and is not a substitute.
      *
-     * Nullable since 23 Aug. It was declared non-null, so Room threw
-     * IllegalStateException when the set had been deleted between the caller's
-     * completeness check and this read, and the crash killed the process
-     * (DefaultDispatcher-worker-4, 10:52:16). Deletion happens on other coroutines
-     * (chat purge, blocked sender, orphan expiry in InboxRecovery), so the window
-     * cannot be closed by the callers: they have to be able to see the absence.
+     * Nullable since 23 Aug. It was declared non-null, so Room threw IllegalStateException when
+     * the set had been deleted between the caller's completeness check and this read, and the
+     * crash killed the process (DefaultDispatcher-worker-4, 10:52:16). Deletion happens on other
+     * coroutines (chat purge, blocked sender, orphan expiry in InboxRecovery), so the callers
+     * cannot close the window: they have to be able to see the absence.
      */
     @Query("SELECT * FROM Inbox WHERE messageId = :messageId ORDER BY sequenceNo ASC LIMIT 1")
     suspend fun getMessage(messageId: String): Inbox?
@@ -142,15 +141,14 @@ interface InboxDao{
     suspend fun deleteByContent(contentKey: String): Int
 
     /**
-     * Every id under which leftover chunks of [chatId] are filed: the hop
-     * messageId AND the groupId (the original message id), because the pending
-     * trackers are keyed on the latter while the Inbox rows carry both.
+     * Every id under which leftover chunks of [chatId] are filed: the hop messageId AND the
+     * groupId (the original message id), because the pending trackers are keyed on the latter
+     * while the Inbox rows carry both.
      *
-     * The chat predicate is deliberately narrow. Matching a group by its
-     * chatGroupId is exact. Matching a one to one peer by fromUserId is only
-     * done when chatGroupId is empty, or deleting a contact would take with it
-     * the partial group content that same contact happened to be relaying for a
-     * group still on this phone.
+     * The chat predicate is narrow apposta. Matching a group by its chatGroupId is exact.
+     * Matching a one to one peer by fromUserId is only done when chatGroupId is empty, or
+     * deleting a contact would take with it the partial group content that same contact happened
+     * to be relaying for a group still on this phone.
      */
     @Query(
         "SELECT DISTINCT messageId FROM Inbox " +
@@ -164,9 +162,9 @@ interface InboxDao{
     suspend fun getMessageIdsForChat(chatId: String): List<String>
 
     /**
-     * Content identities of everything [chatId] has half received. Deleting the
-     * chat marks these as refused, and receiveData drops any further chunk that
-     * carries them whatever messageId the relay minted for it.
+     * Content identities of everything [chatId] has half received. Deleting the chat marks these
+     * as refused, and receiveData drops any further chunk carrying them whatever messageId the
+     * relay minted for it.
      */
     @Query(
         "SELECT DISTINCT contentKey FROM Inbox " +

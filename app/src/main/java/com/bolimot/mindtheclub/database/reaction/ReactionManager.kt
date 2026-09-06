@@ -14,8 +14,8 @@ import kotlinx.coroutines.withContext
  *
  * Reactions live one row per member in the Reaction table. `Message.reaction` is kept alongside as
  * a denormalised caption of those rows, so the chat list can draw a bubble's pill without a second
- * query per row while scrolling. Everything that changes a reaction goes through [apply], which is
- * what keeps the two in step.
+ * query per row while scrolling. Everything that changes a reaction goes through [apply], che e'
+ * quello che tiene i due allineati.
  */
 object ReactionManager {
 

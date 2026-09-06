@@ -7,16 +7,14 @@ import java.util.concurrent.TimeUnit
 /**
  * Decides when to remind the user that their identity has no recent backup.
  *
- * Since automatic copies were switched off (17 Aug 2026: no Google Drive backup,
- * no device-to-device transfer), the manual encrypted backup is the ONLY way an
- * identity survives a lost or replaced phone. It has to be, because the keyset
- * is sealed by a master key that lives in this phone's Keystore and can never
- * leave it: without a backup file there is nothing to recover from, for anybody,
- * including us.
+ * Since automatic copies were switched off (17 Aug 2026: no Google Drive backup, no device to
+ * device transfer), the manual encrypted backup is the ONLY way an identity survives a lost or
+ * replaced phone. It has to be, because the keyset is sealed by a master key that lives in this
+ * phone's Keystore and can never leave it: without a backup file there is nothing to recover
+ * from, per nessuno, noi compresi.
  *
- * Deliberately quiet, same spirit as [DeliveryHealth]. It never nags a new user:
- * the clock only starts once the person has actually used the app for real, and
- * a dismissal buys a full month of silence.
+ * Deliberately quiet, same spirit as [DeliveryHealth]. It never nags a new user: the clock only
+ * starts once the person has really used the app, and a dismissal buys a full month of silence.
  */
 object BackupHealth {
 
@@ -41,15 +39,13 @@ object BackupHealth {
     }
 
     /**
-     * True when this identity is worth protecting and its last backup (or, for
-     * someone who never made one, their first real use of the app) is older than
-     * [STALE_MS].
+     * True when this identity is worth protecting and its last backup (or, for someone who never
+     * made one, their first real use of the app) is older than [STALE_MS].
      *
-     * The fallback anchor is the trial start, which is stamped on the first
-     * message the user ever sends. Using it means a freshly installed app stays
-     * silent for a month, and someone who only ever looked around is never
-     * nagged at all, while a real user who has been chatting for a month without
-     * a backup is told once, politely.
+     * The fallback anchor is the trial start, stamped on the first message the user ever sends.
+     * So a freshly installed app stays silent for a month, someone who only ever looked around is
+     * never nagged at all, and a real user who has been chatting for a month without a backup is
+     * told once, politely.
      */
     fun shouldWarn(context: Context): Boolean {
         val snoozeUntil = getPreference(PREF_SNOOZE_UNTIL, context)?.toLongOrNull() ?: 0L

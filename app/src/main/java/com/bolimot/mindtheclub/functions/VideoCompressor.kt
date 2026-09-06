@@ -27,19 +27,18 @@ import java.io.File
 import kotlin.coroutines.resume
 
 /**
- * Re-encodes a video down to a size that can realistically cross a phone to
- * phone link, before it is sent.
+ * Re-encodes a video down to a size that can realistically cross a phone to phone link, before
+ * it is sent.
  *
- * Photos have always been resized to 2048px and recompressed at quality 80 on
- * their way out (see saveBitmapFromUri), which is why a two photo album weighs
- * about 1.5 MB. Videos went out exactly as the camera wrote them, so a short
- * clip is 35 MB, twenty five times an album. On 18 Aug one such video spent
- * hours crossing a holiday network and never arrived; at 720p it would have
- * been roughly 8 MB.
+ * Photos have always been resized to 2048px and recompressed at quality 80 on their way out
+ * (see saveBitmapFromUri), which is why a two photo album weighs about 1.5 MB. Videos went out
+ * exactly as the camera wrote them, so a short clip is 35 MB, venticinque volte un album. On
+ * 18 Aug one such video spent hours crossing a holiday network and never arrived; at 720p it
+ * would have been roughly 8 MB.
  *
- * This is transcoding, not packing: the output is an ordinary MP4 that every
- * receiver plays without knowing anything happened, so no receiving code
- * changes. It is lossy and one way, exactly like the photo path.
+ * This is transcoding, not packing: the output is an ordinary MP4 that every receiver plays
+ * without knowing anything happened, so no receiving code changes. Lossy and one way, like the
+ * photo path.
  */
 @UnstableApi
 object VideoCompressor {
@@ -52,10 +51,9 @@ object VideoCompressor {
     /**
      * Bitrate of the output, roughly 15 MB per minute of footage.
      *
-     * Set EXPLICITLY, and this is the crux of the whole file: left to its
-     * defaults the encoder keeps, or even raises, the source bitrate. That is
-     * the most reported surprise with this library, and without this setting a
-     * 35 MB clip can come out at 35 MB and the feature silently does nothing.
+     * Set EXPLICITLY, and this is the crux of the whole file: left to its defaults the encoder
+     * keeps, or even raises, the source bitrate. That is the most reported surprise with this
+     * library, and without it a 35 MB clip comes out at 35 MB and the feature does nothing.
      */
     private const val TARGET_BITRATE = 2_000_000
 
@@ -63,17 +61,17 @@ object VideoCompressor {
     const val SKIP_BELOW_BYTES = 8L * 1024 * 1024
 
     /**
-     * True when [uri] is worth transcoding: big enough to matter, and taller
-     * than the target. A clip already at 720p or below is left alone whatever
-     * its size, because the saving would come entirely out of its quality.
+     * True when [uri] is worth transcoding: big enough to matter, and taller than the target. A
+     * clip already at 720p or below is left alone whatever its size, perche' the saving would
+     * come entirely out of its quality.
      */
     fun isWorthCompressing(context: Context, uri: Uri, sizeBytes: Long): Boolean {
         if (sizeBytes <= SKIP_BELOW_BYTES) {
             debugLine(TAG, "Skipping: ${sizeBytes / 1024 / 1024} MB is already small")
             return false
         }
-        // NOT MediaMetadataRetriever.use: it only became AutoCloseable in API 29
-        // and this app supports 26, where that would blow up at runtime.
+        // NOT MediaMetadataRetriever.use: it only became AutoCloseable in API 29 and this app
+        // supports 26, where that would blow up at runtime.
         val retriever = MediaMetadataRetriever()
         val longestEdge = try {
             retriever.setDataSource(context, uri)
@@ -98,9 +96,9 @@ object VideoCompressor {
     /**
      * Transcodes [sourceUri] and returns the new file, or null on any failure.
      *
-     * Null is not an error the caller has to explain to the user: it means
-     * "send the original", which is exactly today's behaviour. Compression is
-     * an optimisation and must never be the reason a message fails to go out.
+     * Null is not an error the caller has to explain to the user: it means "send the original",
+     * which is exactly today's behaviour. Compression is an optimisation and must never be the
+     * reason a message fails to go out.
      *
      * [onProgress] reports 0..100 on the main thread.
      */
@@ -190,9 +188,9 @@ object VideoCompressor {
             "Transcoded ${sourceBytes / 1024} KB -> ${newBytes / 1024} KB (${percentOf(newBytes, sourceBytes)}% of original)"
         )
 
-        // A transcode that produced a BIGGER file is a loss twice over, in size
-        // and in quality. It happens with clips the encoder cannot improve on,
-        // and the honest answer is to keep the original.
+        // A transcode that produced a BIGGER file is a loss twice over, in size and in
+        // quality. It happens with clips the encoder cannot improve on, and the honest answer
+        // is to keep the original.
         if (sourceBytes in 1..newBytes) {
             debugLine(TAG, "Transcode produced a larger file, keeping the original")
             produced.delete()

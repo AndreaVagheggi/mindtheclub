@@ -191,15 +191,14 @@ class GroupTextViewHolder(itemView: View, private val listener: MessagesAdapter.
                 val replyContainer = itemView.findViewById<View>(R.id.reply_container)
                 replyContainer.visibility = View.VISIBLE
 
-                // Always MATCH_PARENT: the wrap_content vertical LinearLayout first
-                // measures every child at its natural width, sizes the bubble to the
-                // widest one, then stretches match_parent children to that width
-                // (LinearLayout.forceUniformWidth). Whichever is wider — preview or
-                // reply text — both end up flush. No width prediction needed; the
-                // old measureText() heuristic could not account for min-widths,
-                // paddings, text sizes and wrapping, which caused the mismatches.
-                // Set explicitly (not only in XML) so recycled views from older
-                // binds can never keep a stale WRAP_CONTENT.
+                // Always MATCH_PARENT: the wrap_content vertical LinearLayout first measures
+                // every child at its natural width, sizes the bubble to the widest, then stretches
+                // match_parent children to that width (LinearLayout.forceUniformWidth). Whichever
+                // is wider, preview or reply text, both end up flush. Niente previsioni di
+                // larghezza: the old measureText() heuristic could not account for min widths,
+                // paddings, text sizes and wrapping, and that is what caused the mismatches. Set
+                // explicitly, not only in XML, so a recycled view cannot keep a stale
+                // WRAP_CONTENT.
                 val params = replyContainer.layoutParams
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
                 replyContainer.minimumWidth = 0

@@ -10,20 +10,19 @@ import com.bolimot.mindtheclub.webrtc.RelayUsageTracker
 import java.util.Calendar
 
 /**
- * Monthly group-video allowance, metered on this device for this device.
+ * Monthly group video allowance, metered on this device for this device.
  *
- * Every byte counted here is also added to [RelayUsageTracker], deliberately:
- * video draws from the same 15 GB relay meter that TURN already draws from, so
- * the absolute worst case per user stays exactly what it is today instead of
- * being stacked on top of it.
+ * Every byte counted here is also added to [RelayUsageTracker], apposta: video draws from the
+ * same 15 GB relay meter that TURN already draws from, so the absolute worst case per user stays
+ * exactly what it is today instead of being stacked on top of it.
  *
- * On the trial the 500 MB allowance below is the tighter of the two and is the
- * one the user actually meets. With a subscription there is no video allowance
- * at all, and the relay meter is the only limit left.
+ * On the trial the 500 MB allowance below is the tighter of the two and the one the user actually
+ * meets. With a subscription there is no video allowance at all, and the relay meter is the only
+ * limit left.
  *
- * There is no server behind this, consistent with the rest of the app's
- * convenience model: the counter lives in preferences, and what really bounds
- * the spend is DAILY_SFU_BUDGET in the mtc-sfu worker.
+ * No server behind this, consistent with the rest of the app's convenience model: the counter
+ * lives in preferences, and what really bounds the spend is DAILY_SFU_BUDGET in the mtc-sfu
+ * worker.
  */
 object VideoUsageTracker {
 
@@ -63,9 +62,8 @@ object VideoUsageTracker {
     fun isAudioOnly(): Boolean = fractionUsed() >= GroupCallConfig.AUDIO_ONLY_AT
 
     /**
-     * True once, the first time the month's usage crosses the warning line. The
-     * flag resets with the month, so the user is told once per period rather
-     * than on every poll of a long call.
+     * True once, the first time the month's usage crosses the warning line. The flag resets with
+     * the month, so the user is told once per period and not on every poll of a long call.
      */
     @Synchronized
     fun consumeWarning(): Boolean {
@@ -92,8 +90,8 @@ object VideoUsageTracker {
         val updated = base + bytes
         setPreference(PREF_BYTES, updated.toString(), ctx)
 
-        // Same bytes, second meter: the relay cap is the money guarantee and it
-        // must see everything that leaves through a relay, TURN or SFU alike.
+        // Same bytes, second meter: the relay cap is the money guarantee and it must see
+        // everything that leaves through a relay, TURN or SFU alike.
         RelayUsageTracker.addRelayBytes(bytes)
 
         val cap = allowanceBytes(ctx)

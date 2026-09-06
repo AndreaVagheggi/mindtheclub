@@ -147,11 +147,7 @@ class SendGif : BaseActivity() {
     }
 
     /**
-     * Handles action bar item clicks.
-     *
-     * @param item The menu item that was selected.
-     * @return boolean Return false to allow normal menu processing to proceed,
-     *         true to consume it here.
+     * Action bar item clicks. Returns false to let normal menu processing continue.
      */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
@@ -163,12 +159,7 @@ class SendGif : BaseActivity() {
         }
     }
 
-    /**
-     * Checks if the keyboard is open.
-     *
-     * @param rootView The root view of the layout.
-     * @return True if the keyboard is open, false otherwise.
-     */
+    /** True when the soft keyboard is open, measured on [rootView]. */
     private fun keypadOpen(rootView: View): Boolean{
         val rect = Rect()
         rootView.getWindowVisibleDisplayFrame(rect)

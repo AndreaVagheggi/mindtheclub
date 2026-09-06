@@ -3,11 +3,10 @@ package com.bolimot.mindtheclub.webrtc.group
 /**
  * Every number that decides what a group call costs, in one place.
  *
- * The economics behind them: one participant sends one stream and receives N-1,
- * so an eight-person call moves about 12 GB/hour in total and roughly 1.5 GB/hour
- * per phone. Metering is therefore per device — each phone counts its own SFU
- * bytes against its own allowance — which is what makes the feature impossible
- * to abuse by dragging cost onto somebody else's meter.
+ * The economics behind them: one participant sends one stream and receives N-1, so an eight
+ * person call moves about 12 GB/hour in total and roughly 1.5 GB/hour per phone. Metering is
+ * therefore per device, each phone counting its own SFU bytes against its own allowance, which
+ * is what makes the feature impossible to abuse by dragging cost onto somebody else's meter.
  */
 object GroupCallConfig {
 
@@ -15,12 +14,11 @@ object GroupCallConfig {
     const val MAX_PARTICIPANTS = 8
 
     /**
-     * Monthly video allowance for an active subscription (mtc_standard): none.
+     * Monthly video allowance for an active subscription (mtc_standard): nessuna.
      *
-     * Somebody who is paying for the app is never told to stop talking. What
-     * still bounds the spend for them is RELAY_CAP_BYTES in RelayUsageTracker,
-     * which every video byte is also counted against, and DAILY_SFU_BUDGET in
-     * the mtc-sfu worker.
+     * Somebody who is paying for the app is never told to stop talking. What still bounds the
+     * spend is RELAY_CAP_BYTES in RelayUsageTracker, which every video byte also counts against,
+     * and DAILY_SFU_BUDGET in the mtc-sfu worker.
      */
     const val ALLOWANCE_SUBSCRIBED_BYTES = Long.MAX_VALUE
 
@@ -31,9 +29,9 @@ object GroupCallConfig {
     const val WARN_AT = 0.80
 
     /**
-     * Fraction at which video is dropped and the call carries on in audio, which
-     * is around thirty times cheaper. The call is never cut mid-sentence: running
-     * out of allowance degrades the picture, it does not hang up.
+     * Fraction at which video is dropped and the call carries on in audio, about thirty times
+     * cheaper. La chiamata non si taglia mai a meta' frase: running out of allowance degrades
+     * the picture, it does not hang up.
      */
     const val AUDIO_ONLY_AT = 0.90
 
@@ -44,13 +42,13 @@ object GroupCallConfig {
     const val USAGE_POLL_MS = 15_000L
 
     /**
-     * Frame-level encryption of the media. The SFU terminates the transport
-     * encryption on each leg, so without this Cloudflare could see the picture;
-     * with it the relay forwards sealed frames exactly as TURN forwards sealed
-     * packets today, which is the property the whole app is sold on.
+     * Frame level encryption of the media. The SFU terminates the transport encryption on each
+     * leg, so without this Cloudflare could see the picture; with it the relay forwards sealed
+     * frames exactly as TURN forwards sealed packets today, which is the property the whole app
+     * is sold on.
      *
-     * Kept as a flag because media plumbing and crypto must never be debugged at
-     * the same time: turn it off to isolate a connectivity problem, never to ship.
+     * A flag because media plumbing and crypto must never be debugged at the same time: turn it
+     * off to isolate a connectivity problem, mai per spedire.
      */
     const val E2EE_ENABLED = true
 

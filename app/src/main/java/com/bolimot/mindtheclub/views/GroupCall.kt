@@ -28,18 +28,17 @@ import kotlin.math.ceil
 /**
  * The group call screen.
  *
- * It renders state and nothing else: every flow it reads is owned by
- * [GroupCallManager], so rotating the phone, backgrounding the app or reopening
- * the screen from the notification all land on the same call rather than on a
- * second one. Hanging up goes through the service, which is what actually holds
- * the call alive when this activity is gone.
+ * It renders state and nothing else: every flow it reads is owned by [GroupCallManager], so
+ * rotating the phone, backgrounding the app or reopening the screen from the notification all
+ * land on the same call rather than on a second one. Hanging up goes through the service, which
+ * is what actually holds the call alive when this activity is gone.
  */
 class GroupCall : BaseActivity() {
 
     /**
-     * A call already in progress is never interrupted by the paywall. Whoever is
-     * on this screen either started a call that was allowed, or answered one:
-     * both were checked before a single byte was spent.
+     * A call already in progress is never interrupted by the paywall. Whoever is on this screen
+     * either started a call that was allowed or answered one: both were checked before a single
+     * byte was spent.
      */
     override fun isSubscriptionGateExempt(): Boolean = true
 
@@ -124,9 +123,9 @@ class GroupCall : BaseActivity() {
             }
 
             val intent = Intent(this, SelectPeersForGroup::class.java).apply {
-                // Anyone in the contacts can be pulled in, exactly as in a 1:1
-                // call that grows: the room is not tied to the group it started
-                // from. People already here are filtered out.
+                // Anyone in the contacts can be pulled in, exactly as in a 1:1 call that
+                // grows: the room is not tied to the group it started from. People already
+                // here are filtered out.
                 putStringArrayListExtra(
                     "excludedUserIds",
                     ArrayList(GroupCallManager.presentUserIds())
@@ -231,8 +230,8 @@ class GroupCall : BaseActivity() {
                 }
 
                 launch {
-                    // Pinning changes what the grid shows, so it travels the same
-                    // path as any other change to the participants.
+                    // Pinning changes what the grid shows, so it travels the same path as any
+                    // other change to the participants.
                     GroupCallManager.pinned.collect {
                         renderMembers(GroupCallManager.members.value)
                     }
@@ -255,12 +254,11 @@ class GroupCall : BaseActivity() {
     /**
      * Draws the call.
      *
-     * Pinning is a state of this grid, not a second view stacked on top of it.
-     * It used to be an overlaid SurfaceViewRenderer, and two SurfaceViews in one
-     * window each cut their own hole through it: hiding the overlay left the
-     * tiles beneath with dead surfaces, so coming back from full screen froze
-     * every picture at once. With a single set of renderers that cannot happen,
-     * and the pinned participant is simply the only tile, at full height.
+     * Pinning is a state of this grid, not a second view stacked on top of it. It used to be an
+     * overlaid SurfaceViewRenderer, and two SurfaceViews in one window each cut their own hole
+     * through it: hiding the overlay left the tiles beneath with dead surfaces, so coming back
+     * from full screen froze every picture at once. With a single set of renderers that cannot
+     * happen, and the pinned participant is simply the only tile, at full height.
      */
     private fun renderMembers(members: List<GroupCallManager.Member>) {
         title.text = getString(R.string.group_call_participants, members.size)
@@ -269,8 +267,8 @@ class GroupCall : BaseActivity() {
         addParticipantButton.visibility =
             if (GroupCallManager.freeSeats() > 0) View.VISIBLE else View.GONE
 
-        // A pinned participant who has left releases the pin rather than leaving
-        // the screen stuck on a tile with nobody behind it.
+        // A pinned participant who has left releases the pin, invece di lasciare lo schermo
+        // stuck on a tile with nobody behind it.
         val requested = GroupCallManager.pinned.value
         if (requested != null && members.none { it.pid == requested }) {
             GroupCallManager.pin(null)
@@ -281,16 +279,16 @@ class GroupCall : BaseActivity() {
         val modeChanged = adapter.pinnedMode != (requested != null)
         adapter.pinnedMode = requested != null
 
-        // Tiles are sized to fill the screen rather than scroll: a call is
-        // something you look at, not something you browse.
+        // Tiles are sized to fill the screen rather than scroll: a call is something you look
+        // at, not something you browse.
         val columns = if (shown.size <= 1) 1 else if (shown.size <= 6) 2 else 3
         (grid.layoutManager as GridLayoutManager).spanCount = columns
 
         val rows = ceil(shown.size / columns.toDouble()).toInt().coerceAtLeast(1)
         val available = grid.height - grid.paddingTop - grid.paddingBottom
         if (available <= 0) {
-            // First pass, before the grid has been measured. One post is enough:
-            // by the time it runs the layout has happened.
+            // First pass, before the grid has been measured. One post is enough: by the time
+            // it runs the layout has happened.
             grid.post { if (!isFinishing) renderMembers(members) }
             return
         }
@@ -300,9 +298,9 @@ class GroupCall : BaseActivity() {
         adapter.tileHeight = height
 
         adapter.submitList(shown.toList()) {
-            // A tile whose content did not change is not rebound, so a grid that
-            // went from four faces to six would keep the old, taller tiles, and
-            // a tile that survived a pin would keep the grid's cropping.
+            // A tile whose content did not change is not rebound, so a grid that went from
+            // four faces to six would keep the old, taller tiles, and a tile that survived a
+            // pin would keep the grid's cropping.
             if (heightChanged || modeChanged) {
                 adapter.notifyItemRangeChanged(0, adapter.itemCount)
             }
@@ -334,8 +332,8 @@ class GroupCall : BaseActivity() {
     // ────────────────────────────────────────────────────────────────── lifecycle
 
     override fun onDestroy() {
-        // Tiles still on screen were never recycled, so their renderers still
-        // hold a GPU surface and a sink on a live track.
+        // Tiles still on screen were never recycled, so their renderers still hold a GPU
+        // surface and a sink on a live track.
         adapter.releaseAll(grid)
         grid.adapter = null
         super.onDestroy()

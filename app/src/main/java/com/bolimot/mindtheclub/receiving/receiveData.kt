@@ -42,9 +42,9 @@ suspend fun receiveData(remoteUserId: String,
         return
     }
 
-    // Content-level check on top of the messageId one: a refused group transfer
-    // comes back under a different messageId at every relay hop, and only the
-    // contentKey recognises it as the same file.
+    // Content level check on top of the messageId one: a refused group transfer comes back under
+    // a different messageId at every relay hop, and only the contentKey recognises it as the
+    // same file.
     val incomingContentKey = contentKeyOf(message)
     if (CancelledTransferRegistry.isContentCancelled(App.context(), incomingContentKey)) {
         debugLine("receiveData", "Content $incomingContentKey was refused, dropping chunk ${message.sequenceNo}")
@@ -86,29 +86,25 @@ suspend fun receiveData(remoteUserId: String,
         debugLine("receiveData", "Received messageId: ${newMessage.messageId} Sequence No.: ${newMessage.sequenceNo}")
     }
 
-    // Chunks are matched by (contentKey, sequenceNo) alone, so a transfer that
-    // gets re-split with a different chunk size would keep the already stored
-    // chunks of the old split and mix the two, producing a silently corrupt
-    // file. A totalNo that no longer matches is the signal that this happened:
-    // the partial set is worthless, drop it and rebuild from this chunk on.
+    // Chunks are matched by (contentKey, sequenceNo) alone, so a transfer re-split with a
+    // different chunk size would keep the already stored chunks of the old split and mix the
+    // two, producing a silently corrupt file. A totalNo that no longer matches is the signal
+    // that this happened: the partial set is worthless, drop it and rebuild from this chunk on.
     val storedTotal = inboxDao.getTotalChunksByContent(newMessage.contentKey)
 
-    // A chunk for something already assembled starts a NEW partial set that
-    // nothing will ever clear, and that set then lies to every check that counts
-    // chunks instead of looking at the message.
+    // A chunk for something already assembled starts a NEW partial set that nothing will ever
+    // clear, and that set then lies to every check that counts chunks instead of looking at the
+    // message.
     //
-    // deleteByContent runs once, when the message is assembled. Senders keep
-    // streaming until they get the ack, so the tail lands just after and settles
-    // in. On 20 Aug an album of 68 chunks was received in full at 10:36:46,
-    // assembled at 10:36:48, cleaned at 10:36:50, and by 10:36:52 it was back up
-    // to 41 chunks out of 68. Those 41 never moved again: at 17:06, six and a
-    // half hours later, the phone was still asking for the missing 27, round 45,
-    // while the DATA_CALL gate four seconds away answered "already complete" on
-    // the very same contentKey.
+    // deleteByContent runs once, when the message is assembled. Senders keep streaming until
+    // they get the ack, so the tail lands just after and settles in. On 20 Aug an album of 68
+    // chunks was received in full at 10:36:46, assembled at 10:36:48, cleaned at 10:36:50, and
+    // by 10:36:52 it was back up to 41 chunks out of 68. Those 41 never moved again: at 17:06,
+    // six and a half hours later, the phone was still asking for the missing 27, round 45, while
+    // the DATA_CALL gate four seconds away answered "already complete" on the same contentKey.
     //
-    // Only checked when the set is EMPTY, which is the only way a residue can
-    // start, so a transfer in flight pays nothing: storedTotal is non zero from
-    // its second chunk onwards.
+    // Only checked when the set is EMPTY, which is the only way a residue can start, so a
+    // transfer in flight pays nothing: storedTotal is non zero from its second chunk onwards.
     if (storedTotal == 0) {
         val anchorId = newMessage.groupId.ifEmpty { newMessage.messageId }
         val assembled = getMessageDao(App.context()).getMessage(anchorId)
@@ -204,8 +200,8 @@ suspend fun checkIfMessageIsCompleted(messageId: String): List<Int>? {
  *  - empty list -> nothing received locally (a full send is needed)
  *  - list       -> partial: exactly these sequence numbers are missing
  *
- * Used to enrich sendMe requests so the sender can re-send only what is
- * actually missing instead of the whole message.
+ * Used to enrich sendMe requests so the sender re-sends only what is actually missing instead
+ * of the whole message.
  */
 suspend fun missingChunksByContent(inboxDao: InboxDao, contentKey: String): List<Int>? {
     val current = inboxDao.countChunksByContent(contentKey)
@@ -228,9 +224,9 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
     val expectedChunksNo = inboxDao.getTotalChunksByContent(contentKey)
 
     if (currentChunkNo == expectedChunksNo) {
-        // The count above and this read are two separate queries: a set deleted in
-        // between leaves the count stale and this row missing. See allReceivedEvent
-        // for the crash that taught us the DAO must not promise a row here.
+        // The count above and this read are two separate queries: a set deleted in between
+        // leaves the count stale and this row missing. See allReceivedEvent for the crash that
+        // taught us the DAO must not promise a row here.
         val firstChunk = inboxDao.getMessage(messageId)
         if (firstChunk == null) {
             debugLine("inboxCheckMessageComplete", "Inbox rows for $messageId are gone, nothing to assemble")
@@ -239,12 +235,12 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
         val type = firstChunk.type
         debugLine("inboxCheckMessageComplete","Message is complete, received $currentChunkNo chunks out of $expectedChunksNo, type=$type")
         if (expectedChunksNo > 1) {
-            // Multi-chunk (media) assembly takes seconds and must survive doze:
-            // run it under WorkManager, like every other part of the send path.
+            // Multi chunk (media) assembly takes seconds and must survive doze: run it under
+            // WorkManager, like every other part of the send path.
             AssembleMessageWorker.enqueue(App.context(), messageId)
         } else {
-            // Single-chunk messages (text, reactions, …) assemble instantly:
-            // keep the original inline path untouched.
+            // Single chunk messages (text, reactions) assemble instantly: keep the original
+            // inline path untouched.
             fullMessageReceivedEvent(messageId)
         }
     }

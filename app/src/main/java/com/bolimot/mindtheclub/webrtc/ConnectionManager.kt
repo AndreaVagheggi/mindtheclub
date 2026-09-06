@@ -31,26 +31,23 @@ class ConnectionManager {
 
     private val lastConnectFailure = ConcurrentHashMap<String, Long>()
 
-    // Newest wins among queued data connections. Every dataCall carries a fresh
-    // signalling room id and the other side abandons that room after
-    // PEER_TIMEOUT_MS, so a request overtaken while waiting on the mutex can only
-    // join a room nobody is in any more. The mutex is FIFO, which without this
-    // made us always process the OLDEST, and therefore the deadest, room id: on
-    // 3 Aug it left the two phones one or more rooms apart for ten minutes.
+    // Newest wins among queued data connections. Every dataCall carries a fresh signalling
+    // room id and the other side abandons that room after PEER_TIMEOUT_MS, so a request
+    // overtaken while waiting on the mutex can only join a room nobody is in any more. The
+    // mutex is FIFO, which without this made us always process the OLDEST, and so the
+    // deadest, room id: on 3 Aug it left the two phones rooms apart for ten minutes.
     private val latestDataChannelId = ConcurrentHashMap<String, String>()
 
     /**
      * Records [channelId] as the newest data request for [remoteUserId].
      *
-     * Callers MUST do this, and check [isSupersededDataChannel], BEFORE tearing
-     * anything down. The superseded check used to live only inside
-     * webRTCConnect, i.e. after DataSyncService had already run webRTCCleanUp:
-     * every incoming dataCall therefore destroyed whatever was running and only
-     * then discovered its own request was stale. With two media transfers in
-     * flight from the same peer the two dispatch workers kept demolishing each
-     * other, and a 165 chunk photo crawled at a handful of chunks per reconnect
-     * (12 Aug, Raoul's group photos: 101 chunks in 19 minutes, while 7 chunks
-     * arrived in the two seconds right after each reconnect).
+     * Callers MUST do this, and check [isSupersededDataChannel], BEFORE tearing anything down.
+     * The superseded check used to live only inside webRTCConnect, cioe' after DataSyncService
+     * had already run webRTCCleanUp: every incoming dataCall destroyed whatever was running
+     * and only then discovered its own request was stale. With two media transfers in flight
+     * from the same peer the two dispatch workers kept demolishing each other, and a 165 chunk
+     * photo crawled a handful of chunks per reconnect (12 Aug, Raoul's group photos: 101
+     * chunks in 19 minutes, 7 of them in the two seconds after each reconnect).
      */
     fun claimLatestDataChannel(remoteUserId: String, channelId: String) {
         latestDataChannelId[remoteUserId] = channelId
@@ -61,17 +58,16 @@ class ConnectionManager {
         latestDataChannelId[remoteUserId] != channelId
 
     /**
-     * True when a data connection to [remoteUserId] is usable RIGHT NOW, i.e.
-     * peer connection up and data channel actually open.
+     * True when a data connection to [remoteUserId] is usable RIGHT NOW: peer connection up
+     * and data channel actually open.
      *
-     * The open data channel is required on purpose. An earlier draft accepted a
-     * merely CONNECTED peer connection, reasoning that a still-negotiating one
-     * was about to become useful. That would have been a deadlock: isConnected()
-     * only reads PeerConnectionState, so a connection whose data channel died or
-     * never opened would report "live" for ever and make every later dataCall
-     * refuse to rebuild it. Being strict here costs nothing: a request that
-     * finds no usable connection falls through to the superseded check, which is
-     * what actually prevents the storm.
+     * The open data channel is required apposta. An earlier draft accepted a merely CONNECTED
+     * peer connection, reasoning that a still negotiating one was about to become useful. That
+     * would have been a deadlock: isConnected() only reads PeerConnectionState, so a
+     * connection whose data channel died or never opened would report "live" for ever and make
+     * every later dataCall refuse to rebuild it. Being strict costs nothing: a request that
+     * finds no usable connection falls through to the superseded check, which is what actually
+     * prevents the storm.
      */
     fun hasLiveConnection(remoteUserId: String): Boolean {
         val client = rtcClientsRepository[remoteUserId]?.rtcClient ?: return false
@@ -103,11 +99,10 @@ class ConnectionManager {
     }
 
     /**
-     * Snapshot of the senders currently admitted for [contentKey]. Used when the
-     * content completes: every admitted sender beyond the one that finished is
-     * mid way through a transmission of bytes nobody needs any more, and an
-     * early allReceived stops it at the next batch boundary (the handler deletes
-     * its batch tables) instead of letting it run to the end.
+     * Snapshot of the senders currently admitted for [contentKey]. Used when the content
+     * completes: every admitted sender beyond the one that finished is halfway through sending
+     * bytes nobody needs any more, and an early allReceived stops it at the next batch
+     * boundary (the handler drops its batch tables) instead of letting it run to the end.
      */
     fun admittedSendersFor(contentKey: String): List<String> {
         if (contentKey.isEmpty()) return emptyList()
@@ -134,13 +129,12 @@ class ConnectionManager {
     var activeMediaRtcClient: RTCClient? = null
 
     /**
-     * The media client of a call being placed, published the moment its pipeline
-     * exists instead of when the other phone answers.
+     * The media client of a call being placed, published the moment its pipeline exists
+     * instead of when the other phone answers.
      *
-     * [rtcClient] and [activeMediaRtcClient] are assigned only once the
-     * connection is open. That is the right moment for everything that needs a
-     * working channel and the wrong one for the local camera: the capturer is
-     * already running seconds earlier, and a caller should see themselves while
+     * [rtcClient] and [activeMediaRtcClient] are assigned only once the connection is open.
+     * Right for everything that needs a working channel, sbagliato for the local camera: the
+     * capturer is already running seconds earlier, and a caller should see themselves while
      * the other phone is still ringing rather than stare at a placeholder.
      */
     private val _dialingMedia = MutableStateFlow<RTCClient?>(null)
@@ -159,8 +153,8 @@ class ConnectionManager {
     private val _remoteVideoState = MutableSharedFlow<Boolean>()
     val remoteVideoState = _remoteVideoState.asSharedFlow()
 
-    // Audio to video upgrade handshake, carried as CallEvent values. Buffered because
-    // the peer's answer can land while the call screen is being swapped.
+    // Audio to video upgrade handshake, carried as CallEvent values. Buffered because the
+    // peer's answer can land while the call screen is being swapped.
     private val _videoUpgradeEvents = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val videoUpgradeEvents = _videoUpgradeEvents.asSharedFlow()
 
@@ -207,10 +201,10 @@ class ConnectionManager {
         val mutex = webRTConnectMutexes.computeIfAbsent(remoteUserId) { Mutex() }
         this.remoteUserId = remoteUserId
 
-        // Registered before queueing on the mutex, so a request arriving later
-        // supersedes the ones already waiting. Calls are deliberately excluded:
-        // they carry ManagedTelecom state that an early return would leave stuck
-        // in PENDING, and they never produce the burst of room ids this guards.
+        // Registered before queueing on the mutex, so a request arriving later supersedes the
+        // ones already waiting. Calls are excluded apposta: they carry ManagedTelecom state
+        // that an early return would leave stuck in PENDING, and they never produce the burst
+        // of room ids this guards against.
         if (dataOnly) latestDataChannelId[remoteUserId] = channelId
 
         return mutex.withLock {
@@ -220,10 +214,10 @@ class ConnectionManager {
                 return@withLock RTCClientResult.RTCClientGeneralFailure
             }
 
-            // The cooldown throttles OUR attempts to reach a peer that looks offline.
-            // It must never gate an answer: initiator = false means the peer contacted
-            // us and is already waiting in the signalling room, so it is demonstrably
-            // reachable — refusing there just drops the incoming message or call.
+            // The cooldown throttles OUR attempts to reach a peer that looks offline. It must
+            // never gate an answer: initiator = false means the peer contacted us and is
+            // already waiting in the signalling room, quindi e' raggiungibile, and refusing
+            // there just drops the incoming message or call.
             val lastFail = lastConnectFailure[remoteUserId] ?: 0L
             if (initiator && System.currentTimeMillis() - lastFail < CONNECT_COOLDOWN_MS) {
                 debugLine(tag, "Skipping connection attempt — recent failure for $remoteUserId")
@@ -324,10 +318,10 @@ class ConnectionManager {
                     }
                 }
             } catch(e: Exception) {
-                // A cancellation (shutdownRTC tearing the client down while it is still
-                // being created) says nothing about whether the peer is reachable.
-                // Arming the cooldown here poisoned the peer for 15s and made us refuse
-                // its own incoming connection moments later.
+                // A cancellation (shutdownRTC tearing the client down while it is still being
+                // created) says nothing about whether the peer is reachable. Arming the
+                // cooldown here poisoned the peer for 15s and made us refuse its own incoming
+                // connection moments later.
                 if (e is CancellationException) {
                     debugLine(tag, "RTCClient creation cancelled, not arming cooldown: ${e.message}")
                 } else {

@@ -4,12 +4,11 @@ import android.content.Context
 import com.bolimot.mindtheclub.R
 
 /**
- * Shared user-facing wording for trial and subscription state.
+ * Shared user facing wording for trial and subscription state.
  *
- * Prices are never hard-coded: they come from Google's own `formattedPrice`,
- * already localized to the user's Play country and currency (€0,99 / R$ 1,99 /
- * Rp 6.900 / ₦500 …). Because ProductDetails may not have loaded yet (first
- * launch, no network), every price-bearing string has a price-less fallback.
+ * Prices are never hard coded: they come from Google's own `formattedPrice`, already localized to
+ * the user's Play country and currency. ProductDetails may not have loaded yet (first launch, no
+ * network), so every price bearing string has a price-less fallback.
  */
 object SubscriptionCopy {
 
@@ -32,8 +31,8 @@ object SubscriptionCopy {
     }
 
     /**
-     * "Free trial: N days left" as a plural resource — languages inflect the
-     * day count differently (and English itself must not say "1 days left").
+     * "Free trial: N days left" as a plural resource: languages inflect the day count differently,
+     * and English itself must not say "1 days left".
      */
     fun daysLeftText(context: Context): String {
         val days = TrialManager.daysLeft(context)

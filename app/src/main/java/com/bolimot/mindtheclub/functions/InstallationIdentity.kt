@@ -8,23 +8,20 @@ import java.util.UUID
 /**
  * One identity, one installation at a time.
  *
- * Every install generates its own random id at first use; the id is written to
- * the user's Firestore document together with the FCM token, and each start
- * compares the remote id with the local one. A different remote id means
- * another installation (a restored backup on a new phone) took the identity
- * over: this device then deactivates itself instead of fighting for delivery.
- * Without this, two phones sharing one identity are a split brain: the FCM
- * token points at whichever wrote last, messages land on one device or the
- * other, and the old phone silently steals delivery back whenever its token
- * rotates.
+ * Every install generates its own random id at first use; the id is written to the user's
+ * Firestore document together with the FCM token, and each start compares the remote id with the
+ * local one. A different remote id means another installation (a restored backup on a new phone)
+ * took the identity over: this device then deactivates itself instead of fighting for delivery.
+ * Without it, two phones sharing one identity are a split brain: the FCM token points at
+ * whichever wrote last, messages land on one device or the other, and the old phone silently
+ * steals delivery back whenever its token rotates.
  *
- * The id deliberately lives in its OWN preferences file and is NEVER part of
- * the backup: a restored backup must not carry the old installation's id, or
- * the takeover could not be detected.
+ * The id lives in its OWN preferences file and is NEVER part of the backup: a restored backup
+ * must not carry the old installation's id, or the takeover could not be detected.
  *
- * Fails safe by design: the id is only ever written through updateMyFcmToken,
- * whose cloud function checks token ownership, and deactivation only triggers
- * on a successfully READ remote id that differs. Network errors change nothing.
+ * Fails safe by design: the id is only ever written through updateMyFcmToken, whose cloud
+ * function checks token ownership, and deactivation only triggers on a successfully READ remote
+ * id that differs. Network errors change nothing.
  */
 object InstallationIdentity {
 
@@ -49,9 +46,9 @@ object InstallationIdentity {
         prefs(context).getBoolean(KEY_MOVED, false)
 
     /**
-     * Another installation owns the identity: quiet this one. The periodic
-     * workers are cancelled so a phone left in a drawer stops sending seen
-     * receipts, retries and soak traffic under an identity it no longer owns.
+     * Another installation owns the identity: quiet this one. The periodic workers are cancelled
+     * so a phone left in a drawer stops sending seen receipts, retries and soak traffic under an
+     * identity it no longer owns.
      */
     fun markDeactivated(context: Context) {
         if (isDeactivated(context)) return
@@ -68,7 +65,7 @@ object InstallationIdentity {
         debugLine(TAG, "Deactivated: identity moved to another installation")
     }
 
-    /** A backup was restored here, or the ownership check found nobody else: this installation owns the identity again. */
+    /** Backup restored here, or nobody else claimed it: this installation owns the identity again. */
     fun clearDeactivated(context: Context) {
         if (prefs(context).contains(KEY_MOVED)) {
             prefs(context).edit { remove(KEY_MOVED) }

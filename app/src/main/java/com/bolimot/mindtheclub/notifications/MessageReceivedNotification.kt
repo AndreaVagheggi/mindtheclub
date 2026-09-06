@@ -40,14 +40,14 @@ class MessageReceivedNotification {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            // We increment the version and append it to the ID to enforce a brand-new channel creation
+            // Version bumped and appended to the ID, so a brand new channel gets created
             val channelVersion = 9
             val channelId = "message_received_v$channelVersion"
 
             debugLine("MessageNotification", "show() for ${message.messageId} type=${message.type}")
 
             // ── messageId dedup: skip if already shown. The mark is written AFTER a
-            // successful notify() (see below), so a failed/dropped attempt can retry. ──
+            // successful notify() (see below), so a failed attempt can retry. ──
             val shownPrefs = context.getSharedPreferences(PREFS_SHOWN_MSG, Context.MODE_PRIVATE)
             if (shownPrefs.contains(message.messageId)) {
                 debugLine("MessageNotification", "Skip: already shown ${message.messageId}")
@@ -69,7 +69,7 @@ class MessageReceivedNotification {
             val lastVersion = prefs.getInt("message_channel_version", 0)
 
             if (lastVersion < channelVersion) {
-                // Safely delete the previous channel so it doesn't clutter the user's OS Notification Settings
+                // Drop the previous channel, altrimenti clutters the OS notification settings
                 val oldChannelId = if (lastVersion > 0) "message_received_v$lastVersion" else "message_received"
                 notificationManager.deleteNotificationChannel(oldChannelId)
                 notificationManager.deleteNotificationChannel("message_received") // Fallback cleanup
@@ -79,8 +79,8 @@ class MessageReceivedNotification {
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build()
 
-                // Name-based URI: numeric R.raw IDs shift between builds, and the channel
-                // stores the URI permanently at creation time.
+                // Name based URI: numeric R.raw ids shift between builds, and the channel stores
+                // the URI permanently at creation time.
                 val soundUri =
                     ("android.resource://" + context.packageName + "/raw/notification_sound").toUri()
 
@@ -190,10 +190,9 @@ class MessageReceivedNotification {
                     notifIdPrefs.edit { putInt(message.fromUserId, notificationId) }
                     notificationManager.notify(notificationId, builder.build())
 
-                    // Mark as shown only after notify() was actually reached — if any
-                    // earlier step failed, a later retry must not be dedup-blocked.
-                    // Both triggers use the same notificationId, so a rare double-post
-                    // just replaces the same notification (no duplicates).
+                    // Marked as shown only after notify() was actually reached: if an earlier step
+                    // failed, a later retry must not be dedup blocked. Both triggers use the same
+                    // notificationId, so a rare double post just replaces it.
                     shownPrefs.edit { putBoolean(message.messageId, true) }
 
                     debugLine(
@@ -208,12 +207,10 @@ class MessageReceivedNotification {
         /**
          * Records that [messageId] must never be notified, without posting anything.
          *
-         * Called when an incoming message is handled while its chat is in the
-         * foreground: the user is looking at it, so it is consumed without a
-         * notification. Without this mark the dedup registry above only knows
-         * about messages that were actually posted, and a later group relay echo
-         * or sendMe resend of the same message would raise a notification for
-         * something the user already read.
+         * Called when an incoming message is handled while its chat is in the foreground: the user
+         * is looking at it, so it is consumed senza notifica. Without this mark the dedup registry
+         * only knows about messages that were actually posted, and a later group relay echo or
+         * sendMe resend would raise a notification for something the user already read.
          */
         fun markShown(messageId: String) {
             App.context()
@@ -230,8 +227,8 @@ class MessageReceivedNotification {
             val unreadPrefs = context.getSharedPreferences(PREFS_UNREAD, Context.MODE_PRIVATE)
             unreadPrefs.edit { remove(userId) }
 
-            // ── clear shown messageIds for this user (prefix-based cleanup is optional,
-            //    but the dedup prefs are small booleans — fine to leave) ──
+            // ── clear shown messageIds for this user (prefix cleanup is optional, the dedup
+            //    prefs are small booleans) ──
 
             // ── cancel the system notification using persisted ID ──
             val notifIdPrefs = context.getSharedPreferences(PREFS_NOTIF_IDS, Context.MODE_PRIVATE)

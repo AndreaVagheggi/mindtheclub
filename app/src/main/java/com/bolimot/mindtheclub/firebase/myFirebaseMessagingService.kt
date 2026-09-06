@@ -160,8 +160,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         debugLine(tag, "FCM received, Type: $type, CallId: $callId")
 
-        // Anything reaching us proves the app is alive and being delivered to,
-        // which is exactly what a phone suppressing it prevents.
+        // Se arriva, l'app e' viva. Which is exactly what a phone suppressing it prevents.
         DeliveryHealth.recordHeartbeat(applicationContext)
 
         appScope.launch {
@@ -174,10 +173,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     return@launch
                 }
 
-                // CONTACT_REQUEST is by definition from a not-yet-recognised peer.
-                // Safe to let through: the handler acts only on a request document
-                // present in OUR OWN Firestore, with full fingerprint verification —
-                // a spoofed nudge with no matching request is a no-op.
+                // CONTACT_REQUEST comes from an unknown peer by definition. Safe:
+                // the handler only acts on a request doc in OUR own Firestore, with
+                // fingerprint check. A spoofed nudge with no matching request is a no-op.
                 if (type != Notify.CONTACT_REQUEST && !isRecognisedPeer(remoteUserId)) {
                     debugLine(tag, "Ignoring FCM from unrecognised peer: $remoteUserId")
                     return@launch
@@ -201,23 +199,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    // Identity of the original group message for a relayed copy. Receivers archive a
-    // copy under groupId.ifEmpty { messageId }, so a relay that leaves groupId empty
-    // makes every copy land under a fresh key: the same photo saved as two bubbles
-    // (Black, 15 Aug) and an orphan RECEIVING placeholder begging the sender forever
-    // (Gio, 15 Aug). A forwarded copy already carries the original id in groupId; the
-    // original sender's own row has groupId empty by construction, so there the
-    // identity is its messageId. One to one messages keep groupId as is: empty is
-    // correct outside groups. Same rule fromMessage() already applies to albums.
+    // Identity of the original group message for a relayed copy. Receivers file under
+    // groupId.ifEmpty { messageId }, so a relay leaving groupId empty scatters copies
+    // under fresh keys: the same photo as two bubbles, plus an orphan RECEIVING
+    // placeholder begging forever (Black e Gio, 15 Aug). A forwarded copy already carries
+    // the original id; the sender's own row has groupId empty, so there identity is the
+    // messageId. One to one keeps groupId as is, empty is correct outside groups.
     private fun originalIdOf(message: Message): String =
         if (message.chatGroupId.isNullOrEmpty()) message.groupId
         else message.groupId.ifEmpty { message.messageId }
 
     /**
-     * @param data the whole decrypted payload. Most types need only the four
-     * fields above, but a group call invitation also carries the call key, and
-     * that key must never be widened into its own parameter and forgotten in a
-     * log line: it stays inside the payload map it arrived in.
+     * @param data the whole decrypted payload. A group call invitation also carries the
+     * call key: it stays inside the map it arrived in, mai promosso a parametro suo, or
+     * sooner or later it ends up in a log line.
      */
     private fun handleMessage(
         fromUserId: String,
@@ -279,9 +274,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
 
             Notify.GROUP_CALL_REKEY -> {
-                // Somebody left, so the call moved to a new key. Only participants
-                // still in the room are sent one, which is what actually removes
-                // the person who left rather than trusting them to stop watching.
+                // Somebody left, so the call moved to a new key. Only who is still in
+                // the room gets one, and that is what actually removes them.
                 val key = data["gcKey"].orEmpty()
                 val epoch = data["gcEpoch"]?.toIntOrNull() ?: 0
                 if (key.isNotEmpty() && callId != null && callId == GroupCallManager.roomId) {
@@ -349,58 +343,40 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                 channelId?.let {
                     appScope.launch {
-                        // Nothing is torn down here. A pending is an ANNOUNCEMENT:
-                        // it never builds the connection it used to destroy, so
-                        // every teardown it performed was a pure loss.
+                        // Niente teardown qui. A pending is an ANNOUNCEMENT: it never
+                        // builds the connection it used to destroy, so every teardown it
+                        // did was pure loss.
                         //
-                        // This called shutdownRTC, a broadcast that makes every
-                        // RTCClient for the peer destroy itself. A guard was added
-                        // on 21 Aug to spare a live connection, but it asks
-                        // rtcClientsRepository, and a connection still being built
-                        // is not in that map yet: webRTCConnect only files it after
-                        // it is up ("Repository empty, I need to create a new
-                        // RTCClient" precedes the insertion by seconds). So the
-                        // guard protected the finished case and left the fragile
-                        // one, which is the only one that ever gets hit, because a
-                        // burst of announcements lands precisely while a transfer
-                        // is negotiating.
+                        // It called shutdownRTC, which makes every RTCClient for the peer
+                        // destroy itself. The 21 Aug guard asks rtcClientsRepository, but
+                        // a connection still being built is not in that map yet
+                        // (webRTCConnect files it only once it is up), so the guard
+                        // protected the finished case and left the fragile one, which is
+                        // the only one ever hit: bursts of announcements land exactly
+                        // while a transfer is negotiating. Romy, 21 Aug 16:04:07, a
+                        // dataCall from Raoul building a channel, an unrelated pending one
+                        // second later, "Requested RTC shutdown", zero chunks moved. Same
+                        // phone lost 8 connections that day and 229 on 12-13 Aug.
                         //
-                        // Measured on Romy, 21 Aug 16:04:07: a dataCall from Raoul
-                        // started building a channel, a pending for an UNRELATED
-                        // content arrived one second later, the broadcast fired and
-                        // the log reads "Incoming connection failed, Result = :
-                        // Requested RTC shutdown". The photo moved zero chunks. The
-                        // same phone lost 8 connections that way on 21 Aug and 229
-                        // on 12-13 Aug; no other device in any log lost a single
-                        // one, because no other device received announcements while
-                        // negotiating.
-                        //
-                        // A stale client cannot survive this removal: the DATA_CALL
-                        // path runs webRTCCleanUp before it connects (visible as
-                        // "Cleaning up all WebRTC resources for user" one second
-                        // after every wake-up), and webRTCConnect itself deletes a
-                        // client it finds dead. The cleanup already happens where a
-                        // replacement is actually about to be built.
+                        // No stale client survives anyway: DATA_CALL runs webRTCCleanUp
+                        // before it connects, and webRTCConnect deletes a dead client
+                        // itself. Cleanup already happens where a replacement is built.
 
                         val parts = channelId.split("#", limit = 2)
                         val msgId = parts[0]
                         val chatGroupId = parts.getOrNull(1)
 
-                        // Second door onto the same defect the Inbox purge closes
-                        // (see MessageRepository.purgeChatLeftovers): an
-                        // announcement for a group this device no longer has.
-                        // On 19 Aug the handler logged "Group ... not found" and
-                        // then solicited the content anyway through its fallback,
-                        // pulling a 923 chunk video into a deleted chat. That
-                        // fallback exists for a TRANSIENT Firestore miss and is
-                        // right to stay; the peer row is the local, authoritative
-                        // fact and a network hiccup cannot fake it.
+                        // Second door onto the defect the Inbox purge closes (see
+                        // MessageRepository.purgeChatLeftovers): an announcement for a
+                        // group this device no longer has. On 19 Aug the handler logged
+                        // "Group ... not found" and then solicited it anyway through the
+                        // fallback, pulling a 923 chunk video into a deleted chat. That
+                        // fallback is there for a transient Firestore miss and stays; the
+                        // peer row is the local authoritative fact.
                         //
-                        // The trade: an announcement that overtakes the group
-                        // invitation for a genuinely new member is dropped too.
-                        // That costs one sender retry cycle and heals itself,
-                        // whereas the other direction re-downloads whole videos
-                        // into a chat that cannot even display them.
+                        // Il prezzo: an announcement overtaking the invitation for a
+                        // genuinely new member is dropped too. One sender retry cycle, and
+                        // it heals itself. The other direction re-downloads whole videos.
                         if (!chatGroupId.isNullOrEmpty() &&
                             !getPeerDao(applicationContext).exist(chatGroupId)
                         ) {
@@ -413,21 +389,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             return@launch
                         }
 
-                        // Resolved the way the DATA_CALL gate resolves it, and for the
-                        // same reason: the id in an announcement is the ANNOUNCER's
-                        // relay id, while our copy of the message is filed under the
-                        // original sender's id. Looking it up directly finds nothing,
-                        // and the code below then concludes we have never seen this
-                        // content, falls back to counting inbox chunks, and asks for
-                        // whatever residue says is missing.
+                        // Resolved the way the DATA_CALL gate resolves it, same reason:
+                        // the id in an announcement is the ANNOUNCER's relay id, while our
+                        // copy is filed under the original sender. A direct lookup finds
+                        // nothing, and the code below then decides we have never seen the
+                        // content and asks for whatever the residue says is missing.
                         //
                         // On 20 Aug the two checks contradicted each other four seconds
-                        // apart on the same contentKey: the gate answered "already
-                        // complete", this one announced "41 chunks out of 68". Six and
-                        // a half hours and forty five rounds later it was still asking
-                        // for the same 27 chunks of an album sitting complete in the
+                        // apart on the same contentKey: "already complete" against "41 of
+                        // 68". Six and a half hours and forty five rounds later it was
+                        // still asking for 27 chunks of an album sitting complete in the
                         // chat. Answering allReceived here also lets the announcer drop
-                        // its pending entry, so both halves of the loop stop.
+                        // its pending, so both halves of the loop stop.
                         val directMessage = getMessageRepository(App.context()).getMessage(msgId)
                         val existingMessage = directMessage ?: run {
                             val inboxDao = getInboxDao(applicationContext)
@@ -445,9 +418,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             return@launch
                         }
 
-                        // Resume-aware sendMe: report which chunks are still missing so
-                        // the sender can re-send only those (big-transfer bandwidth saver).
-                        // No local chunks -> plain sendMe (full send, original behavior).
+                        // Resume aware sendMe: report which chunks are still missing so
+                        // the sender re-sends only those. No local chunks means a plain
+                        // sendMe, full send, original behaviour.
                         val pendingContentKey = if (existingMessage != null) {
                             contentKeyOf(msgId, existingMessage.chatGroupId, existingMessage.originalSenderId, existingMessage.date)
                         } else {
@@ -455,8 +428,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         }
                         val missing = missingChunksByContent(getInboxDao(applicationContext), pendingContentKey)
                         if (missing == null) {
-                            // Every chunk is already here: requesting a re-send would be
-                            // pure waste. Assembly (worker/recovery) finishes the job.
+                            // Tutto gia' qui: asking for a re-send would be pure waste,
+                            // assembly finishes the job.
                             debugLine(tag, "All chunks already present for $msgId — skipping sendMe, awaiting assembly")
                             RecoveryProgress.clear(applicationContext, msgId)
                             return@launch
@@ -466,22 +439,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             debugLine(tag, "Partial state for $msgId: requesting chunks $missingRange (${missing.size} missing)")
                         }
 
-                        // Answer only if the previous answers achieved something.
-                        // Measured on chunks actually held, so a slow transfer that
-                        // keeps gaining ground is never interrupted, a transfer that
-                        // has produced nothing at all is never braked, and only one
-                        // standing still with part of the content here waits, for
-                        // half an hour.
-                        // See RecoveryProgress for why this is not a cap on attempts.
+                        // Answer only if the previous answers achieved something,
+                        // measured on chunks actually held: a slow transfer that keeps
+                        // gaining ground is never interrupted, one that produced nothing
+                        // is never braked, and only a partial standing still waits half an
+                        // hour. See RecoveryProgress, non e' un cap sui tentativi.
                         val heldChunks = getInboxDao(applicationContext).countChunksByContent(pendingContentKey)
                         if (!RecoveryProgress.shouldAsk(applicationContext, msgId, heldChunks)) {
                             return@launch
                         }
 
-                        // Remember that this message is owed to us, so PendingRetryWorker
-                        // can ask again. The sendMe below can fail silently (a dropped
-                        // signalling socket is enough) and until now nothing on this side
-                        // survived that failure: recovery depended entirely on the sender.
+                        // Remember this message is owed to us, so PendingRetryWorker can
+                        // ask again. The sendMe below can fail in silenzio, a dropped
+                        // signalling socket is enough, and until now nothing on this side
+                        // survived that: recovery depended entirely on the sender.
                         IncomingPendingTracker.record(applicationContext, msgId, fromUserId)
 
                         if (!chatGroupId.isNullOrEmpty()) {
@@ -502,18 +473,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     if (targets.isEmpty()) {
                                         notifyRemotePeer(fromUserId, msgId, "sendMe", missingRange)
                                     } else {
-                                        // ONE member per round instead of all of them at once.
-                                        // Every member answers a sendMe with a FULL redispatch,
+                                        // ONE member per round, not all at once. Every
+                                        // member answers a sendMe with a FULL redispatch,
                                         // so the old fan out turned each stall into triple
-                                        // traffic on the same pipe (13 Aug: a 78 chunk photo
-                                        // transmitted 4.5 times over, 11 fan outs in 15
-                                        // minutes). Round 0 asks whoever announced the pending,
-                                        // it certainly holds the content. Later rounds used to
-                                        // walk the member list blindly, soliciting members that
-                                        // provably held nothing (15 Aug: allMissing floods);
-                                        // now they ask a member with a REGISTERED complete
-                                        // copy, and only fall back to the announcer when the
-                                        // delivery doc knows of none.
+                                        // traffic on the same pipe (13 Aug: a 78 chunk
+                                        // photo transmitted 4.5 times over, 11 fan outs in
+                                        // 15 minutes). Round 0 asks whoever announced the
+                                        // pending, sicuro che ce l'ha. Later rounds used
+                                        // to walk the member list blindly, soliciting
+                                        // members that held nothing (15 Aug: allMissing
+                                        // floods); now they ask a member with a REGISTERED
+                                        // complete copy, falling back to the announcer.
                                         val rotationPrefs = applicationContext.getSharedPreferences("SendMeRotation", MODE_PRIVATE)
                                         val round = rotationPrefs.getInt(msgId, 0)
                                         val target = if (round == 0 && fromUserId in targets) fromUserId
@@ -545,15 +515,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             Notify.SEND_ME -> {
                 debugLine(tag, "I am sending a message: $channelId to requester $fromUserId")
-                // The requester is demonstrably awake, it just asked us for this
-                // message. A cooldown armed moments ago by a failed attempt would
-                // otherwise make the dispatch below defer against a peer that is
-                // sitting there waiting.
+                // The requester is demonstrably awake, it just asked us for this. A
+                // cooldown armed moments ago by a failed attempt would otherwise make the
+                // dispatch below defer against a peer che sta li' ad aspettare.
                 DispatchWorker.markPeerAlive(applicationContext, fromUserId)
                 channelId?.let { payload ->
                     appScope.launch {
-                        // Optional "#low,high" suffix (same format as someMissing): the
-                        // requester already holds everything outside that range.
+                        // Optional "#low,high" suffix, come someMissing: the requester
+                        // already holds everything outside that range.
                         val sendMeParts = payload.split("#", limit = 2)
                         val msgId = sendMeParts[0]
                         val missingItems: List<Int>? = sendMeParts.getOrNull(1)?.let { range ->
@@ -571,17 +540,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             return@launch
                         }
                         if (batchTablesExists(msgId)) {
-                            // Same-content guard, the one the relay branch below has
-                            // had all along. It was missing exactly here, on the
-                            // ORIGINAL sender's path, and that is what let one photo
-                            // be transmitted four times over: submitDispatchWorker
-                            // keys its unique work on the messageId, group gossip
-                            // mints a new messageId at every hop, so four requests
-                            // for one file became four unique names and four
-                            // concurrent workers, all streaming from chunk 1 (14 Aug:
-                            // 648 useful chunks against 1234 discarded as already
-                            // present, four streams live in the same minute for an
-                            // hour).
+                            // Same content guard the relay branch below has always had.
+                            // It was missing exactly here, on the ORIGINAL sender's path,
+                            // and that is how one photo went out four times:
+                            // submitDispatchWorker keys its unique work on the messageId,
+                            // group gossip mints a new messageId at every hop, so four
+                            // requests for one file became four unique names and four
+                            // concurrent workers, all streaming from chunk 1 (14 Aug: 648
+                            // useful chunks against 1234 buttati via, four live streams in
+                            // the same minute for an hour).
                             val coords = batchContentCoordinates(msgId)
                             if (coords != null) {
                                 val contentTag = contentTag(
@@ -591,12 +558,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     originalSenderId = coords.originalSenderId,
                                     messageDate = coords.messageDate
                                 )
-                                // RUNNING only, deliberately not "unfinished": an ENQUEUED
-                                // retry sitting in WorkManager backoff is doing nothing for
-                                // this peer, and a fresh sendMe proves the peer awake right
-                                // now (15 Aug: White abandoned by a stalled retry and then
-                                // refused by this very guard). A truly running transfer is
-                                // still protected; a dormant one gets REPLACEd below.
+                                // RUNNING only, deliberately not "unfinished": an
+                                // ENQUEUED retry sitting in backoff does nothing for this
+                                // peer, and a fresh sendMe proves the peer awake right now
+                                // (15 Aug: White abandoned by a stalled retry, then
+                                // refused by this very guard). A dormant one gets
+                                // REPLACEd below.
                                 val active = try {
                                     WorkManager.getInstance(applicationContext)
                                         .getWorkInfosByTag(contentTag).await()
@@ -610,10 +577,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     return@launch
                                 }
 
-                                // One transfer per content at a time. A second requester is
-                                // queued, not served in parallel: parallel uploads sliced
-                                // the sender's bandwidth so that nobody ever completed
-                                // (15 Aug). It will be invited back with a pending FCM the
+                                // One transfer per content at a time. A second requester
+                                // is queued, not served in parallel: parallel uploads
+                                // sliced the uplink so that nobody ever completed
+                                // (15 Aug). It gets invited back with a pending FCM the
                                 // moment the current transfer ends.
                                 val serveContentId = ContentServeQueue.contentIdOf(
                                     coords.chatGroupId, coords.originalSenderId, coords.messageDate
@@ -628,23 +595,23 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                             if (missingItems != null) {
                                 debugLine(tag, "Partial sendMe: re-sending chunks ${missingItems.first()}..${missingItems.last()} of $msgId to $fromUserId")
-                                // The requester holds everything outside this range, but —
-                                // unlike the someMissing flow — the batch rows here may
-                                // still be sent=0 (post-freeze rebuild or interrupted
-                                // dispatch). Normalize first: mark all as delivered, then
-                                // re-enable only the missing range, or dispatch would
-                                // re-stream the whole remainder as duplicates.
+                                // The requester holds everything outside this range, ma
+                                // unlike the someMissing flow the batch rows here may
+                                // still be sent=0 (post freeze rebuild or interrupted
+                                // dispatch). Normalize first: mark all delivered, then
+                                // re-enable only the missing range, or dispatch re-streams
+                                // the whole remainder as duplicates.
                                 restrictBatchToMissing(msgId, missingItems, applicationContext)
                                 reSendMessage(fromUserId, msgId, missingItems, applicationContext)
                             } else {
                                 debugLine(tag, "Batch tables exist for $msgId, dispatching to $fromUserId")
                                 // Coordinates passed for the same reason as in
-                                // reSendMessage: they make the worker tagged by
-                                // content, which is what the guard above matches on.
+                                // reSendMessage: they tag the worker by content, which is
+                                // what the guard above matches on.
                                 submitDispatchWorker(
                                     msgId, fromUserId, applicationContext,
-                                    // See send.kt: omitting this leaves the worker
-                                    // naming the message by the hop id.
+                                    // See send.kt: without this the worker names the
+                                    // message by the hop id.
                                     groupId = coords?.groupId ?: "",
                                     chatGroupId = coords?.chatGroupId ?: "",
                                     originalSenderId = coords?.originalSenderId ?: "",
@@ -676,7 +643,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                         debugLine(tag, "WorkManager query failed, proceeding: ${e.message}")
                                         emptyList()
                                     }
-                                    // RUNNING only, same reasoning as the batch path above.
+                                    // RUNNING only, come sopra.
                                     val hasActive = existing.any { it.state == androidx.work.WorkInfo.State.RUNNING }
                                     if (hasActive) {
                                         debugLine(tag, "Skip sendMe for $msgId: dispatch already in flight to $fromUserId (same content)")
@@ -684,7 +651,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     }
 
                                     // Same serving discipline as the batch path: one
-                                    // transfer per content, later requesters get queued.
+                                    // transfer per content, later requesters queued.
                                     val serveContentId = ContentServeQueue.contentIdOf(
                                         message.chatGroupId, message.originalSenderId, message.date
                                     )
@@ -695,32 +662,26 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                         return@launch
                                     }
 
-                                    // Serve group content under the SAME id the push
-                                    // path uses towards this same peer, not under the
-                                    // original message id.
+                                    // Serve group content under the SAME id the push path
+                                    // uses towards this same peer, not the original one.
                                     //
-                                    // Both routes name their batch tables and their
-                                    // unique work after the messageId, so two different
-                                    // ids meant two independent pipelines to one peer,
-                                    // running at the same time over one uplink. On
-                                    // 20 Aug an album reached a member as
-                                    //   bf63d0ba seq 1 / c89aabef seq 1 / bf63d0ba seq 2 ...
-                                    // interleaved: 137 chunks on the wire for 71 useful
-                                    // ones, 48% thrown away, and each stream at half the
-                                    // bandwidth. The RUNNING-only guard above cannot
-                                    // catch it, by design: between two attempts the work
-                                    // is ENQUEUED, and widening that check is what
-                                    // stranded White on 15 Aug.
+                                    // Both routes name their batch tables and their unique
+                                    // work after the messageId, so two ids meant two
+                                    // independent pipelines to one phone over one uplink.
+                                    // On 20 Aug an album reached a member interleaved,
+                                    //   bf63d0ba seq 1 / c89aabef seq 1 / bf63d0ba seq 2
+                                    // 137 chunks on the wire for 71 useful ones, 48%
+                                    // buttato via, each stream at half bandwidth. The
+                                    // RUNNING only guard cannot catch it by design:
+                                    // between attempts the work is ENQUEUED, and widening
+                                    // that check is what stranded White on 15 Aug.
                                     //
-                                    // With one id the two routes share one set of batch
-                                    // tables and one unique name, so WorkManager
-                                    // serialises them instead of racing them, and the
-                                    // sent flags are common: whatever the push already
-                                    // delivered is not sent again.
-                                    // The guard mirrors groupHopId's own preconditions on
-                                    // purpose: given incomplete coordinates it falls back
-                                    // to guid(), and a fresh random id here would rebuild
-                                    // the tables from chunk 1 on every single request.
+                                    // One id means one set of tables, one unique name and
+                                    // common sent flags, so WorkManager serialises instead
+                                    // of racing. The guard mirrors groupHopId's own
+                                    // preconditions on purpose: given incomplete
+                                    // coordinates it falls back to guid(), and a fresh
+                                    // random id would rebuild from chunk 1 every time.
                                     val canDeriveHopId = !message.chatGroupId.isNullOrEmpty()
                                             && !message.originalSenderId.isNullOrEmpty()
                                             && message.date > 0L
@@ -846,7 +807,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                     notifyRemotePeer(fromUserId, cid, Notify.CONNECTION_BUSY)
                                     return@launch
                                 }
-                                // Admitted. Proceed to open the connection (foreground path or DataSyncService).
+                                // Admitted. Open the connection, foreground path or DataSyncService.
                                 dispatchDataCallToConnectionPath(cid, fromUserId)
                             } catch (e: Exception) {
                                 debugLine(tag, "DATA_CALL gate error: ${e.message}")
@@ -886,10 +847,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 LocalBroadcastManager.getInstance(App.context()).sendBroadcast(intent)
             }
 
-            // Somebody is about to send us something heavy and is asking, before
-            // committing, whether we are actually here. Answering costs one small
-            // FCM and saves the asker the eleven minutes of WebRTC timeouts it
-            // otherwise spends discovering a switched off phone. See PeerProbe.
+            // Somebody is about to send us something heavy and asks, prima di
+            // impegnarsi, whether we are actually here. One small FCM saves the asker the
+            // eleven minutes of WebRTC timeouts it spends discovering a dead phone. See
+            // PeerProbe.
             Notify.PING -> {
                 debugLine(tag, "Ping from $fromUserId, answering pong")
                 appScope.launch {
@@ -897,10 +858,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 }
             }
 
-            // The answer. Recorded for the probe that is waiting on it, and also
-            // fed to the ordinary liveness bookkeeping: an answer that arrives
-            // after the asker has already moved on still proves this peer awake,
-            // and the next hop can spend one probe fewer.
+            // The answer. Recorded for the probe waiting on it, and fed to the ordinary
+            // liveness bookkeeping too: even arriving late it proves this peer awake, so
+            // the next hop spends one probe fewer.
             Notify.PONG -> {
                 debugLine(tag, "Pong from $fromUserId")
                 PeerProbe.onPong(fromUserId)
@@ -919,15 +879,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         val messageViewModel = getMessageViewModel(MySelf.userId()!!, fromUserId)
 
                         val delivered = ContextCompat.getString(App.context(), R.string.delivered)
-                        // For a GROUP message the bubble is an aggregate: it may say
-                        // Delivered only when EVERY member has the message. This update
-                        // used to be unconditional and flipped the bubble on the FIRST
-                        // member's ack (16 Aug: Gio showed Delivered while Black,
-                        // correctly "sent" in the detail view, had received nothing).
-                        // The per member truth lives in GroupMessageStatus, and
-                        // promoteGroupAggregate raises the bubble once no member is
-                        // left at "sent". One to one messages keep the immediate
-                        // update: one recipient, one ack, delivered.
+                        // For a GROUP message the bubble is an aggregate: Delivered only
+                        // when EVERY member has it. Unconditional, this flipped on the
+                        // FIRST ack (16 Aug: Gio showed Delivered while Black, correctly
+                        // "sent" in the detail view, had received nothing). Per member
+                        // truth lives in GroupMessageStatus and promoteGroupAggregate
+                        // raises the bubble. One to one stays immediate: one ack, done.
                         val ackedMessage = getMessageRepository(App.context()).getMessage(messageId)
                         if (ackedMessage?.chatGroupId.isNullOrEmpty()) {
                             messageViewModel.updateStatus(messageId, delivered)
@@ -979,11 +936,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             }
                             promoteGroupAggregate(messageId)
                         } else if (deliveryDocId != null && deliveryDocId.startsWith("refused:")) {
-                            // The member swiped our transfer away. Same handling as a
-                            // real delivery (it drops out of the member map, so nobody
-                            // relays to it again) except that it must not count towards
-                            // the fanout, or the message would stop spreading to the
-                            // members still waiting for it.
+                            // The member swiped our transfer away. Handled like a real
+                            // delivery, it drops out of the member map so nobody relays to
+                            // it again, except that it must not count towards the fanout
+                            // or the message stops spreading a chi sta ancora aspettando.
                             debugLine(tag, "$fromUserId refused $messageId, dropping it from the recipients")
                             handleGroupDeliveryConfirmation(
                                 deliveryDocId.removePrefix("refused:"),
@@ -999,26 +955,23 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         // Same acknowledgement, matched by CONTENT as well as by id.
                         //
                         // The line above only finds an entry filed under the exact
-                        // messageId the peer quoted, and there are two different ids
-                        // in play. A peer that actually received our chunks echoes
-                        // back the id it saw on them (allReceivedEvent), which is the
-                        // one we filed the entry under, so that case matches. But a
-                        // peer answering the DATA_CALL gate — "I already have this
-                        // content, do not connect" — replies with firstRow.groupId,
-                        // the ORIGINAL message id, while our entry is filed under our
-                        // own relay id. Nothing matched, and the piggyback block right
+                        // messageId the peer quoted, and there are two ids in play. A peer
+                        // that actually received our chunks echoes back the id it saw, so
+                        // that case matches. But a peer answering the DATA_CALL gate, "I
+                        // already have this content, do not connect", replies with
+                        // firstRow.groupId, the ORIGINAL id, while our entry is filed
+                        // under our own relay id. Nothing matched, and the piggyback block
                         // below then re-dispatched that very entry back at them.
                         //
                         // So the acknowledgement was DRIVING the loop it was meant to
                         // stop: on 20 Aug a member answered "already complete" fifteen
-                        // times to an album it had held for three hours, and was woken
-                        // again every five minutes, with zero PendingTracker;Cleared
-                        // in the whole log. Only reachable in a group, where content
-                        // arrives by one route while another peer is still offering
-                        // it — which is exactly what the cascade is for.
+                        // times for an album it had held for three hours, woken again
+                        // every five minutes, zero PendingTracker;Cleared in the whole
+                        // log. Only reachable in a group, dove il contenuto arrives by one
+                        // route while another peer is still offering it.
                         //
-                        // Group content only: the coordinates are what makes the match
-                        // exact, and a one to one entry has none and needs none.
+                        // Group content only: the coordinates make the match exact, and a
+                        // one to one entry has none and needs none.
                         val acked = ackedMessage
                         val ackedGroupId = acked?.chatGroupId
                         if (acked != null && !ackedGroupId.isNullOrEmpty()) {
@@ -1037,24 +990,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                         // One at a time, oldest first, not the whole backlog at once.
                         //
-                        // The idea is sound: an allReceived proves this peer is awake,
-                        // so it is the right moment to clear what is owed to it. What
-                        // was wrong was the quantity. Every entry became its own
-                        // dispatch, launched in the same instant, all competing for
-                        // the one link to the same phone; on 20 Aug four went out
-                        // together and all four came back "Job was cancelled", each
-                        // then firing its own pending FCM. Six stale messages meant a
-                        // burst of six announcements, and on 21 Aug the receiver of
-                        // such bursts took two hours to collect a one line text.
+                        // The idea is sound: an allReceived proves this peer awake, so it
+                        // is the right moment to clear what is owed to it. Sbagliata era
+                        // la quantita'. Every entry became its own dispatch launched in
+                        // the same instant, all competing for the one link to the same
+                        // phone; on 20 Aug four went out together and all four came back
+                        // "Job was cancelled", each firing its own pending FCM. Six stale
+                        // messages meant six announcements, and on 21 Aug the receiver of
+                        // such a burst took two hours to collect a one line text.
                         //
-                        // Serialising costs nothing, because this very handler is
-                        // what runs next: the one dispatch completes, its allReceived
-                        // comes back here, and the following entry goes out. The
-                        // backlog still drains, in a queue instead of a heap, and a
-                        // link carrying one transfer finishes it sooner than a link
-                        // carrying six. If the chain breaks because a dispatch fails,
-                        // nothing is lost either: PendingRetryWorker keeps its own
-                        // ladder over the same entries.
+                        // Serialising costs nothing, because this very handler runs next:
+                        // the dispatch completes, its allReceived comes back here, the
+                        // following entry goes out. The backlog drains in a queue instead
+                        // of a heap. If the chain breaks nothing is lost either,
+                        // PendingRetryWorker keeps its own ladder over the same entries.
                         val stalePending = PendingMessageTracker.getPendingForPeer(applicationContext, fromUserId)
                         val nextPending = stalePending.minByOrNull { it.createdAt }
                         if (nextPending != null) {
@@ -1064,8 +1013,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                 messageId = nextPending.messageId,
                                 toUserId = fromUserId,
                                 context = applicationContext,
-                                // messageKey is stored as "id#chatGroupId" for
-                                // group content, so the suffix comes off here.
+                                // messageKey is stored as "id#chatGroupId" for group
+                                // content, so the suffix comes off here.
                                 groupId = nextPending.messageKey.substringBefore("#"),
                                 chatGroupId = nextPending.chatGroupId ?: "",
                                 originalSenderId = nextPending.originalSenderId ?: "",
@@ -1107,10 +1056,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         statusDao.updateStatus(messageId, fromUserId, Notify.SEEN)
                         debugLine(tag, "Updated GroupMessageStatus: $fromUserId → Seen for $messageId")
 
-                        // Ack AFTER the status write, so it means "processed", and
-                        // the member can stop its retry ladder: without this ack a
-                        // lost GROUP_SEEN was lost forever. Duplicate GROUP_SEENs
-                        // from retries are harmless, the write is idempotent.
+                        // Ack AFTER the status write, so it means "processed" and the
+                        // member can stop its retry ladder: without it a lost GROUP_SEEN
+                        // was lost forever. Duplicates from retries are harmless, the
+                        // write is idempotent.
                         notifyRemotePeer(fromUserId, messageId, Notify.GROUP_SEEN_ACK)
 
                         val allStatuses = statusDao.getStatusesForMessage(messageId)
@@ -1131,9 +1080,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
 
             Notify.GROUP_SEEN_ACK -> {
-                // The original sender confirmed it processed our GROUP_SEEN:
-                // stop the retry ladder for it. Senders on older versions never
-                // send this; their entries die at the retry cap instead.
+                // The original sender confirmed it processed our GROUP_SEEN: stop the
+                // ladder. Senders on older versions never send this, their entries die at
+                // the retry cap instead.
                 debugLine(tag, "Group seen acked by $fromUserId: $channelId")
                 channelId?.let { messageId ->
                     GroupSeenTracker.remove(applicationContext, messageId, fromUserId, "acked")
@@ -1169,12 +1118,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                         autoAcceptRequestDocument(doc, applicationContext)
                     } catch (e: Exception) {
-                        // A process cold-started by this very nudge often has no
-                        // usable network yet: App Check cannot attest and the
-                        // Firestore read dies with PERMISSION_DENIED (seen on
-                        // Raoul's log, 7 Aug: the give-up here cost six hours).
-                        // Hand the job to a network-constrained retry worker
-                        // instead of dropping it.
+                        // A process cold started by this very nudge often has no usable
+                        // network yet: App Check cannot attest and the Firestore read dies
+                        // with PERMISSION_DENIED (Raoul, 7 Aug: sei ore perse). Hand the
+                        // job to a network constrained retry worker instead of dropping.
                         debugLine(tag, "Contact request handling failed: ${e.message}. Scheduling retry.")
                         ContactRequestRetryWorker.enqueue(applicationContext)
                     }
@@ -1299,10 +1246,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         if (appIsForeground()) {
             appScope.launch {
                 try {
-                    // Claim before destroying anything, exactly as DataSyncService does.
-                    // Without the superseded check the second of two dataCalls arriving
-                    // together tears down the connection the first one just built, and
-                    // a chunked transfer restarts from scratch every few seconds.
+                    // Claim before destroying anything, come fa DataSyncService. Without
+                    // the superseded check the second of two dataCalls arriving together
+                    // tears down the connection the first just built, and a chunked
+                    // transfer restarts from scratch every few seconds.
                     ConnectionManager.instance.claimLatestDataChannel(fromUserId, cid)
 
                     if (ConnectionManager.instance.hasLiveConnection(fromUserId)) {
@@ -1345,7 +1292,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    // TODO This function is not used yet, but it should be in a future
+            // TODO non usata ancora, but it should be
 //    private suspend fun isMyContact(userId: String): Boolean {
 //        return peersRepository.getPeer(userId) != null
 //    }
@@ -1363,7 +1310,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             val oldToken = MySelf.fcmTokenGet()
 
-            // Only update if it's actually different or we want to be sure
+            // Solo se e' davvero diverso, or if we just want to be sure
             if (token != oldToken) {
                 val result = updateMyFcmToken(myUserId, token, oldToken)
                 if(result) {
@@ -1408,15 +1355,15 @@ fun showIncomingDataNotification(remoteUserId: String) {
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setOngoing(false)
         .setAutoCancel(true)
-        // System-side expiry. The cancel below runs on an app coroutine, which does
-        // not tick while the process is frozen — a doze window would otherwise leave
-        // this notice on screen for as long as the freeze lasts.
+        // System side expiry. The cancel below runs on an app coroutine, which does not
+        // tick while the process is frozen, so a doze window would otherwise leave this
+        // notice on screen for as long as the freeze lasts.
         .setTimeoutAfter(NOTICE_TIMEOUT_MS)
         .setContentIntent(pendingIntent)
 
-    // Per-peer id. 9999 belongs to DataSyncService/DataSyncWorker: sharing it meant
-    // their stopForeground(STOP_FOREGROUND_REMOVE) cancelled this notice, and made
-    // the matching cancel in MessageReceivedNotification.show() a no-op.
+    // Per peer id. 9999 belongs to DataSyncService/DataSyncWorker: sharing it meant
+    // their stopForeground(STOP_FOREGROUND_REMOVE) cancelled this notice, and made the
+    // matching cancel in MessageReceivedNotification.show() a no-op.
     val notificationId = "sync_$remoteUserId".hashCode()
 
     try {

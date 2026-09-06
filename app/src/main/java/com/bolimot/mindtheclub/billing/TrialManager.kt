@@ -10,13 +10,12 @@ import com.bolimot.mindtheclub.tools.Type
 import java.util.concurrent.TimeUnit
 
 /**
- * Activation-based 30-day free trial.
+ * Activation based 30 day free trial.
  *
- * The clock does NOT start at install: it starts the first time the user sends
- * a message of their own to a real person (see sendMessage in sending/send.kt).
- * Someone who downloads the app and never engages costs nothing and is never
- * nagged, and neither chatting with Clubby nor merely adding a contact counts
- * as engaging: see [startsTrial].
+ * The clock does NOT start at install: it starts the first time the user sends a message of
+ * their own to a real person (see sendMessage in sending/send.kt). Chi scarica l'app e non la
+ * usa costs nothing and is never nagged, and neither chatting with Clubby nor merely adding a
+ * contact counts as engaging: see [startsTrial].
  */
 object TrialManager {
 
@@ -30,11 +29,10 @@ object TrialManager {
     enum class State { NOT_STARTED, ACTIVE, EXPIRED }
 
     /**
-     * Message types the user actually authored. Deliberately an allow-list: contact
-     * acquisition and profile updates exchange Type.PROFILE messages under the hood,
-     * and that housekeeping traffic must never start the clock. Anything not listed
-     * here (PROFILE, REACTION, and the locally generated MISSED_CALL / GROUP entries)
-     * is system traffic as far as the trial is concerned.
+     * Message types the user actually authored. An allow-list apposta: contact acquisition and
+     * profile updates exchange Type.PROFILE messages under the hood, and that housekeeping must
+     * never start the clock. Anything not listed here is system traffic as far as the trial is
+     * concerned.
      */
     private val ACTIVATING_TYPES = setOf(
         Type.TEXT,
@@ -52,13 +50,11 @@ object TrialManager {
     /**
      * True when sending this message counts as the user engaging with the app.
      *
-     * Two conditions, both required: the message has to be one the user actually
-     * authored, and it has to be addressed to a REAL person. Clubby (the AI
-     * assistant) and Note to self are not people: a new user who tries the
-     * assistant out, or writes a note to themselves, would rightly feel cheated
-     * to find their 30 days already running. sendMessage() diverts both before
-     * this is ever reached; the check is repeated here so the rule survives any
-     * future reordering of that function.
+     * Two conditions, both required: the message has to be one the user actually authored, and
+     * it has to be addressed to a REAL person. Clubby and Note to self are not people: a new
+     * user who tries the assistant out, or writes a note to themselves, would rightly feel
+     * cheated to find their 30 days already running. sendMessage() diverts both before this is
+     * reached; ripetuto qui so the rule survives any future reordering of that function.
      */
     fun startsTrial(toUserId: String?, messageType: String?): Boolean {
         if (AiAssistant.isAssistant(toUserId)) return false
@@ -73,16 +69,15 @@ object TrialManager {
     /**
      * Anchors the trial to the earliest known start, never the latest.
      *
-     * Two sources feed this: a restored backup and the copy published on the
-     * user's Firestore document. Both travel with the IDENTITY, so changing
-     * phone carries the clock along instead of resetting it, which is what used
-     * to grant an endless free ride through backup, restore, repeat.
+     * Two sources feed it: a restored backup and the copy published on the user's Firestore
+     * document. Both travel with the IDENTITY, so changing phone carries the clock along
+     * instead of resetting it, which is what used to grant an endless free ride through backup,
+     * restore, repeat.
      *
-     * Only earlier values are accepted, so a stale or hostile source can never
-     * shorten someone's trial by claiming a later start; values in the future
-     * are rejected outright, so a corrupt timestamp cannot expire a legitimate
-     * user on the spot. Never sets the pending start notice: that belongs to the
-     * real activation, not to a sync.
+     * Only earlier values are accepted, so a stale or hostile source can never shorten a trial
+     * by claiming a later start; values in the future are rejected outright, so a corrupt
+     * timestamp cannot expire a legitimate user on the spot. Never sets the pending start
+     * notice: quello appartiene alla vera attivazione, not to a sync.
      */
     fun adoptStartedAt(context: Context, candidate: Long?) {
         if (candidate == null || candidate <= 0L) return
@@ -101,9 +96,8 @@ object TrialManager {
     fun markActivated(context: Context) {
         if (getPreference(PREF_TRIAL_STARTED_AT, context) == null) {
             setPreference(PREF_TRIAL_STARTED_AT, System.currentTimeMillis().toString(), context)
-            // The clock starts on a background thread (message send), so the
-            // "your trial started" dialog is queued here and shown by the next
-            // resumed screen instead.
+            // The clock starts on a background thread (message send), so the "your trial
+            // started" dialog is queued here and shown by the next resumed screen instead.
             setPreference(PREF_START_NOTICE_PENDING, "true", context)
             debugLine("TrialManager", "30-day trial clock started")
         }

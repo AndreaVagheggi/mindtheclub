@@ -30,10 +30,10 @@ import com.google.android.material.imageview.ShapeableImageView
 import kotlin.math.abs
 
 /**
- * The full-screen ring for an arriving group call.
+ * The full screen ring for an arriving group call.
  *
- * It reuses the 1:1 incoming screen's layout on purpose: a call arriving should
- * look like a call arriving, whether it comes from one person or from six.
+ * It reuses the 1:1 incoming layout apposta: a call arriving should look like a call arriving,
+ * whether it comes from one person or from six.
  */
 class IncomingGroupCall : BaseActivity() {
 
@@ -42,9 +42,9 @@ class IncomingGroupCall : BaseActivity() {
         const val EXTRA_AUTO_ANSWER = "autoAnswer"
 
         /**
-         * The ringing screen, while one is up. The service closes it when the
-         * caller gives up or hangs up before anyone answers: an invitation that
-         * is no longer live must not stay on screen offering to be accepted.
+         * The ringing screen, while one is up. The service closes it when the caller gives up
+         * or hangs up before anyone answers: an invitation that is no longer live must not sit
+         * on screen offering to be accepted.
          */
         @Volatile
         private var current: IncomingGroupCall? = null
@@ -57,8 +57,8 @@ class IncomingGroupCall : BaseActivity() {
     }
 
     /**
-     * A ringing call is never replaced by the paywall. The allowance is checked
-     * when the call is actually joined, which is the moment bytes start moving.
+     * A ringing call is never replaced by the paywall. The allowance is checked when the call is
+     * actually joined, cioe' when bytes start moving.
      */
     override fun isSubscriptionGateExempt(): Boolean = true
 
@@ -132,9 +132,9 @@ class IncomingGroupCall : BaseActivity() {
         findViewById<TextView>(R.id.decline_text).visibility = View.VISIBLE
         findViewById<CardView>(R.id.oval_card).visibility = View.VISIBLE
 
-        // Swipe up to answer, exactly like the 1:1 screen. This screen borrows
-        // that layout, so it has to borrow the gesture too: a call that looks
-        // identical and answers differently is a call nobody manages to answer.
+        // Swipe up to answer, exactly like the 1:1 screen. This screen borrows that layout, so
+        // it has to borrow the gesture too: a call that looks identical and answers differently
+        // is a call nobody manages to answer.
         setupSwipeToAccept(accept)
         startAcceptButtonAnimation(accept)
 
@@ -143,8 +143,8 @@ class IncomingGroupCall : BaseActivity() {
         current = this
 
         if (intent.getBooleanExtra(EXTRA_AUTO_ANSWER, false)) {
-            // Came from the notification's answer button: the choice is already
-            // made, this screen exists only to give the call a foreground start.
+            // Came from the notification's answer button: the choice is already made, this
+            // screen only gives the call a foreground start.
             answer()
         }
     }
@@ -222,15 +222,13 @@ class IncomingGroupCall : BaseActivity() {
     private fun answer() {
         if (answered) return
 
-        // The allowance is checked HERE, on a screen that is already on top,
-        // and not inside the call screen.
+        // The allowance is checked HERE, on a screen already on top, not inside the call screen.
         //
-        // GroupCallManager.joinCall refuses by setting NO_ALLOWANCE, and the
-        // service's watchCall resets the manager to IDLE in the same breath.
-        // status is a conflated StateFlow, so the call screen can start
-        // collecting after both writes and see only IDLE, which it treats as
-        // "call over" and closes without a word. That is what happened on
-        // 30 Aug 2026: the tester answered and the app simply vanished.
+        // GroupCallManager.joinCall refuses by setting NO_ALLOWANCE, and the service's watchCall
+        // resets the manager to IDLE in the same breath. status is a conflated StateFlow, so the
+        // call screen can start collecting after both writes and see only IDLE, which it reads
+        // as "call over" and closes senza dire niente. That is 30 Aug 2026: the tester answered
+        // and the app simply vanished.
         if (VideoUsageTracker.isExhausted()) {
             debugLine(tag, "No video allowance, cannot answer $roomId")
             showNoAllowance()
@@ -248,19 +246,17 @@ class IncomingGroupCall : BaseActivity() {
         }
         ContextCompat.startForegroundService(applicationContext, intent)
 
-        // The call screen is opened from HERE, not from the service. Android
-        // blocks an activity started by a background service, which is why the
-        // app appeared to vanish after answering: the call was running with no
-        // window, and with no window the camera is denied too.
+        // The call screen is opened from HERE, not from the service. Android blocks an activity
+        // started by a background service, which is why the app appeared to vanish after
+        // answering: the call ran with no window, and with no window the camera is denied too.
         startActivity(Intent(this, GroupCall::class.java))
         finish()
     }
 
     /**
-     * Says why the call cannot be answered, and hangs up only when the user has
-     * read it. Being unable to enter is a refusal like any other, so [decline]
-     * is what closes this: the host is told at once instead of ringing an empty
-     * room until its own timeout.
+     * Says why the call cannot be answered, and hangs up only once the user has read it. Being
+     * unable to enter is a refusal like any other, so [decline] is what closes this: the host is
+     * told at once instead of ringing an empty room until its own timeout.
      */
     private fun showNoAllowance() {
         if (isFinishing || noAllowanceDialog != null) return

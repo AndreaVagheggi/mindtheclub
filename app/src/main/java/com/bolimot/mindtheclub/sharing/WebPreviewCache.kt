@@ -12,12 +12,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Singleton that pre-fetches website metadata while the user
- * is picking a contact in SelectPeersForForward.
+ * Singleton that pre-fetches website metadata while the user picks a contact in
+ * SelectPeersForForward.
  *
  * Usage:
- *   WebPreviewCache.prefetch(url)          // fire-and-forget from AppTab
- *   val info = WebPreviewCache.consume(url) // in ChatScreen, returns null if not ready
+ *   WebPreviewCache.prefetch(url)          // fire and forget from AppTab
+ *   val info = WebPreviewCache.consume(url) // in ChatScreen, null if not ready
  */
 object WebPreviewCache {
 
@@ -27,7 +27,7 @@ object WebPreviewCache {
     private var fetchJob: Job? = null
     private var isReady = false
 
-    /** Kick off a background fetch. Safe to call multiple times — deduplicates. */
+    /** Kick off a background fetch. Safe to call several times, si deduplica. */
     fun prefetch(url: String, scope: CoroutineScope) {
         if (url == cachedUrl && (isReady || fetchJob?.isActive == true)) {
             debugLine("WebPreviewCache", "Already prefetching/cached: $url")
@@ -61,9 +61,9 @@ object WebPreviewCache {
     }
 
     /**
-     * Returns the pre-fetched [WebsiteInfo] if the URL matches and the fetch
-     * has completed, then clears the cache.  Returns null if not ready or
-     * URL doesn't match — caller should fall back to its normal fetch path.
+     * Returns the pre-fetched [WebsiteInfo] if the URL matches and the fetch has completed, then
+     * clears the cache. Null when not ready or the URL does not match, and the caller falls back
+     * to its normal fetch path.
      */
     suspend fun consume(url: String): WebsiteInfo? {
         // Wait briefly for an in-flight fetch to finish (up to 0 ms if already done)

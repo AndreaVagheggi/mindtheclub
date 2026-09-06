@@ -11,19 +11,17 @@ object DatabaseProvider {
     @Volatile
     private var INSTANCE: AppDatabase? = null
 
-    // This database (device protected storage) holds ALL user data: Peer,
-    // Message, Inbox, Club, everything the user sees. Two rules keep it safe:
+    // This database (device protected storage) holds ALL user data: Peer, Message, Inbox, Club,
+    // everything the user sees. Two rules keep it safe:
     //
-    // 1. Migrations come exclusively from AppDatabase.ALL_MIGRATIONS. This file
-    //    used to carry its own hand-copied list, which silently stopped at
-    //    1061_1062 while the class version moved on: the first in-place upgrade
-    //    after that found no migration path and the destructive fallback erased
-    //    every table (12 Aug: all contacts and messages wiped).
+    // 1. Migrations come exclusively from AppDatabase.ALL_MIGRATIONS. This file used to carry its
+    //    own hand copied list, which silently stopped at 1061_1062 while the class version moved
+    //    on: the first in-place upgrade after that found no migration path and the destructive
+    //    fallback erased every table (12 Aug: all contacts and messages wiped).
     //
-    // 2. The destructive fallback is allowed ONLY for downgrades (installing an
-    //    older build over a newer database, a development-only scenario). A
-    //    missing forward migration must CRASH, loudly, in testing: for user
-    //    data a crash is recoverable, a silent wipe is not.
+    // 2. The destructive fallback is allowed ONLY for downgrades (an older build over a newer
+    //    database, roba da sviluppo). A missing forward migration must CRASH, loudly, in testing:
+    //    for user data a crash is recoverable, a silent wipe is not.
     fun provideDatabase(context: Context): AppDatabase {
         val deviceProtectedContext = context.createDeviceProtectedStorageContext()
         return INSTANCE ?: synchronized(this) {

@@ -177,7 +177,7 @@ class OptionsActivity : BaseActivity() {
         if (requestCode == BluetoothToggle.PERMISSIONS_REQUEST_CODE) {
             val granted = BluetoothToggle.onPermissionsResult(requestCode, grantResults)
             if (granted) {
-                // Permissions granted — now check the adapter and prompt/start as needed.
+                // Permissions granted, now check the adapter and prompt or start as needed.
                 when (BluetoothToggle.enable(this)) {
                     BluetoothToggle.EnableStep.NEEDS_ADAPTER ->
                         enableBtResult.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))

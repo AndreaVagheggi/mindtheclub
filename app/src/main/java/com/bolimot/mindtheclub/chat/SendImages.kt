@@ -177,15 +177,13 @@ class SendImages : BaseActivity() {
             }
 
             if (selectedPeerUserIds.any { it.startsWith("group") }) {
-                // Measured on the recompressed bytes, not on the gallery originals.
-                // Summing the originals refused an ordinary eleven photo album for
-                // exceeding 50 MB when what actually leaves the phone is about six:
-                // mergeImages puts every image through saveBitmapFromUri at 2048px
-                // and quality 80 (see compressedSizeOfImages).
+                // Measured on the recompressed bytes, not on the gallery originals. Summing the
+                // originals refused an ordinary eleven photo album for exceeding 50 MB when what
+                // actually leaves the phone is about six: mergeImages puts every image through
+                // saveBitmapFromUri at 2048px and quality 80 (see compressedSizeOfImages).
                 //
-                // It costs a decode and an encode per image, so it runs off the main
-                // thread. The button was disabled at the top of this handler, which
-                // is what keeps a second tap out during the probe.
+                // A decode and an encode per image, so it runs off the main thread. The button
+                // was disabled at the top of this handler, which keeps a second tap out.
                 lifecycleScope.launch {
                     val wireSize = compressedSizeOfImages(uriList)
                     if (wireSize > com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES) {

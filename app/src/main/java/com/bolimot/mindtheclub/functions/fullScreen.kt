@@ -9,32 +9,29 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * Puts a screen into sticky immersive mode: no status bar, no navigation bar,
- * and a swipe brings them back only for a moment.
+ * Puts a screen into sticky immersive mode: no status bar, no navigation bar, and a swipe brings
+ * them back only for a moment.
  *
- * Two paths, because below Android 11 there is no real WindowInsetsController
- * and the compatibility layer falls back to the old systemUiVisibility bitmask.
- * That fallback writes the bitmask once per call, so laying out edge to edge,
- * setting the behaviour and hiding the bars are three separate writes, with
- * BaseActivity setting the bar colours in between. The documented requirement
- * for the legacy flags is the opposite: they go in together or the combination
+ * Two paths, because below Android 11 there is no real WindowInsetsController and the
+ * compatibility layer falls back to the old systemUiVisibility bitmask. That fallback writes the
+ * bitmask once per call, so laying out edge to edge, setting the behaviour and hiding the bars
+ * are three separate writes, with BaseActivity setting the bar colours in between. The
+ * documented requirement for the legacy flags is the opposite: vanno insieme or the combination
  * does not take.
  *
- * The legacy path therefore does three things rather than one:
+ * So the legacy path does three things rather than one:
  *
- *  - FLAG_FULLSCREEN on the window. This is the blunt, old way to remove the
- *    status bar and, unlike the visibility flags, nothing clears it on touch.
- *    ImageGallery has used exactly this on old devices for as long as it has
- *    existed and has never been reported showing a status bar, which is the
- *    best evidence available that it works on these phones.
- *  - the whole visibility bitmask in a single assignment, which is what the
- *    navigation bar and the sticky behaviour need.
- *  - a listener that puts the bitmask back whenever the system clears it. The
- *    system clears it on its own schedule, and on a call screen the moments it
- *    picks are exactly the wrong ones.
+ *  - FLAG_FULLSCREEN on the window. The blunt old way to remove the status bar and, unlike the
+ *    visibility flags, nothing clears it on touch. ImageGallery has used exactly this on old
+ *    devices for as long as it has existed and has never been reported showing a status bar,
+ *    which is the best evidence available that it works on these phones.
+ *  - the whole visibility bitmask in a single assignment, which is what the navigation bar and
+ *    the sticky behaviour need.
+ *  - a listener that puts the bitmask back whenever the system clears it. The system clears it
+ *    on its own schedule, and on a call screen it picks exactly the wrong moments.
  *
- * The system also drops these flags when the window loses focus, so callers
- * re-apply from onWindowFocusChanged. Every caller does.
+ * The system also drops these flags when the window loses focus, so callers re-apply from
+ * onWindowFocusChanged. Every caller does.
  */
 fun Activity.applyImmersiveFullScreen() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -63,9 +60,8 @@ fun Activity.applyImmersiveFullScreen() {
     @Suppress("DEPRECATION")
     decor.systemUiVisibility = wanted
 
-    // Registered once per screen. Re-registering would replace the previous
-    // listener rather than stack them, so this is safe to call repeatedly, but
-    // the tag keeps it to one anyway.
+    // Registered once per screen. Re-registering would replace the previous listener rather than
+    // stack them, so this is safe to call repeatedly, but the tag keeps it to one anyway.
     if (decor.getTag(R_TAG_IMMERSIVE) == null) {
         decor.setTag(R_TAG_IMMERSIVE, true)
         @Suppress("DEPRECATION")
@@ -90,7 +86,7 @@ fun Activity.applyImmersiveFullScreen() {
 }
 
 /**
- * A tag id for the decor view, so the visibility listener is attached once.
- * Any unique resource id works; this one exists for no other purpose.
+ * A tag id for the decor view, so the visibility listener is attached once. Any unique resource
+ * id works; this one exists for nothing else.
  */
 private val R_TAG_IMMERSIVE = com.bolimot.mindtheclub.R.id.tag_immersive_fullscreen

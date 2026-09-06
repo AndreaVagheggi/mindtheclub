@@ -172,8 +172,8 @@ class IncomingCall : BaseActivity() {
             }
         }
 
-        // Observer 2: Pre-answer phase — close when pending call is cleared
-        // by timeout or remote cancel (but NOT when the user pressed Accept)
+        // Observer 2: pre-answer phase, close when the pending call is cleared by timeout or
+        // remote cancel (but NOT when the user pressed Accept)
         lifecycleScope.launch {
             ManagedTelecom.pendingCallFlow.collect { pending ->
                 if (pending == null && !isAccepting && ManagedTelecom.currentCall.value == null) {

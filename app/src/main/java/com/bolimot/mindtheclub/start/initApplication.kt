@@ -51,18 +51,17 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
 
         debugLine("initFirebase", "Sync Check: Fresh=$freshToken, Stored=$storedToken, InFirestore=$isDocInFirestore, HasPublicKey=$hasPublicKey")
 
-        // One installation per identity. A remote id that exists and is not
-        // ours means another install (a restored backup on a new phone) took
-        // this identity over: deactivate instead of fighting for delivery.
-        // Only a successfully READ different id triggers this; null (doc from
-        // an older app version) means unclaimed, and errors change nothing.
-        // One read serves both checks: the ownership marker and the trial anchor.
+        // One installation per identity. A remote id that exists and is not ours means another
+        // install (a restored backup on a new phone) took this identity over: deactivate instead
+        // of fighting for delivery. Only a successfully READ different id triggers it; null (doc
+        // from an older app version) means unclaimed, and errors change nothing. One read serves
+        // both checks, the ownership marker and the trial anchor.
         val userDoc = if (isDocInFirestore) fetchUserDoc(myUserId) else null
         val remoteInstallation = userDoc?.getString("installationId")?.takeIf { it.isNotEmpty() }
 
-        // The trial belongs to the identity, so a phone that starts up with a
-        // later start date than the one published adopts the earlier one. This
-        // is what stops "uninstall, restore, 30 more days" from working.
+        // The trial belongs to the identity, so a phone that starts up with a later start date
+        // than the one published adopts the earlier one. This is what stops "uninstall, restore,
+        // 30 more days" from working.
         TrialManager.adoptStartedAt(context, userDoc?.getLong("trialStartedAt"))
 
         val myInstallation = InstallationIdentity.get(context)
@@ -80,18 +79,16 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
             freshToken != storedToken -> true
             !isDocInFirestore -> true
             !hasPublicKey -> true
-            // Unclaimed doc (pre installationId app version): claim it, the
-            // update below writes our id alongside the token.
+            // Unclaimed doc (pre installationId app version): claim it, the update below writes
+            // our id alongside the token.
             remoteInstallation == null && isDocInFirestore -> true
-            // The trial anchor is only ever written by updateMyFcmToken, and on a
-            // fresh install that call happens BEFORE the clock starts (it starts on
-            // the first outgoing message), so it published null. Without this
-            // condition nothing wrote it again while the token stayed put, the
-            // anchor stayed empty for ever, and uninstall-reinstall handed out a
-            // brand new 30 days: the very abuse it exists to stop. adoptStartedAt
-            // ran above and already took the EARLIER of local and remote, so the
-            // local value is the minimum of the two and publishing it can never
-            // shorten anybody's trial.
+            // The trial anchor is only ever written by updateMyFcmToken, and on a fresh install
+            // that call happens BEFORE the clock starts (it starts on the first outgoing
+            // message), so it published null. Without this condition nothing wrote it again while
+            // the token stayed put, the anchor stayed empty for ever, and uninstall-reinstall
+            // handed out a brand new 30 days: proprio l'abuso che deve fermare. adoptStartedAt
+            // ran above and already took the EARLIER of local and remote, so publishing the local
+            // value can never shorten anybody's trial.
             TrialManager.startedAt(context)
                 ?.let { it != userDoc?.getLong("trialStartedAt") } == true -> true
             else -> false
@@ -123,9 +120,9 @@ suspend fun forceTokenSyncAfterRestore(userId: String) {
         if (freshToken == firestoreToken) {
             MySelf.fcmTokenSet(freshToken)
             debugLine("initFirebase", "Restore sync: tokens already match")
-            // Do NOT return: a restore may have replaced the local identity
-            // (same phone reinstall keeps the same token), so publicKey and
-            // installationId in Firestore still have to be refreshed below.
+            // Do NOT return: a restore may have replaced the local identity (same phone
+            // reinstall keeps the same token), so publicKey and installationId in Firestore still
+            // have to be refreshed below.
         }
 
         // Pass the actual Firestore token as oldToken so the Cloud Function accepts it

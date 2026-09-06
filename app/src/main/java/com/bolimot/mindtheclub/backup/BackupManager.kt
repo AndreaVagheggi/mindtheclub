@@ -34,9 +34,9 @@ object BackupManager {
     private const val TAG = "BackupManager"
 
     /**
-     * Returned by [restoreBackup] when the backup carries a DIFFERENT identity
-     * than the one this installation already holds. Not a message: a marker the
-     * calling activity turns into its own explanation.
+     * Returned by [restoreBackup] when the backup carries a DIFFERENT identity from the one
+     * this installation already holds. Not a message, a marker the calling activity turns
+     * into its own explanation.
      */
     const val RESTORE_IDENTITY_CONFLICT = "mtc_restore_identity_conflict"
 
@@ -146,27 +146,23 @@ object BackupManager {
             val jsonString = decryptedBytes.toString(Charsets.UTF_8)
             val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
 
-            // Captured before anything is written: it decides below whether this
-            // restore CHANGES the phone's identity, so it must reflect who the
-            // phone WAS, not who the backup says it becomes.
+            // Captured before anything is written: it decides below whether this restore
+            // CHANGES the phone's identity, so it must say who the phone WAS.
             val previousUserId = MySelf.userId()
 
-            // Taking over ANOTHER identity on a phone that already has one is
-            // refused, and the user is told to uninstall first. Reason: the FCM
-            // token belongs to the installation, not to the identity, so a
-            // restore in place leaves the abandoned identity's Firestore
-            // document holding a token that is still alive. Peers keep waking a
-            // user that no longer exists, and the only signal they know how to
-            // read (the callable answering not-found on a missing or
-            // unregistered token) never fires. Uninstalling kills the token,
-            // which is exactly that signal, so the supported path produces a
-            // clean handover with no server-side bookkeeping.
+            // Taking over ANOTHER identity on a phone that already has one is refused, and
+            // the user is told to uninstall first. The FCM token belongs to the
+            // installation, not to the identity, so a restore in place leaves the abandoned
+            // identity's Firestore document holding a token that is still alive. Peers keep
+            // waking a user that no longer exists, and the only signal they can read (the
+            // callable answering not-found on a dead token) never fires. Uninstalling kills
+            // the token, quindi that IS the signal, and the supported path gives a clean
+            // handover with no server side bookkeeping.
             //
-            // Deliberately decided on local state alone, with no Firestore
-            // lookup: a restore often runs on a phone that has just been set up
-            // and may well be offline, and a check that needs the network would
-            // fail open precisely when it matters. Same identity over itself and
-            // a fresh install with no identity yet are NOT affected.
+            // Decided on local state alone, nessuna lettura Firestore: a restore often runs
+            // on a phone just set up and quite possibly offline, and a check that needs the
+            // network would fail open precisely when it matters. Same identity over itself
+            // and a fresh install with no identity yet are NOT affected.
             if (!previousUserId.isNullOrEmpty() &&
                 backupData.userId.isNotEmpty() &&
                 previousUserId != backupData.userId
@@ -178,20 +174,17 @@ object BackupManager {
                 return RESTORE_IDENTITY_CONFLICT
             }
 
-            // Keyset FIRST, identity preferences second. The old order overwrote
-            // the preferences before knowing whether the keyset import would
-            // succeed: a failed import left a hybrid (the backup's userId over
-            // this phone's own keys) that no contact could talk to. Now a failed
-            // import leaves the phone exactly as it was.
+            // Keyset FIRST, identity preferences second. The old order overwrote the
+            // preferences before knowing whether the keyset import would succeed: a failed
+            // import left a hybrid (the backup's userId over this phone's own keys) that no
+            // contact could talk to. Now a failed import leaves the phone as it was.
             //
-            // Restoring the keyset makes this phone BE the old one. The
-            // Firestore side (publicKey, FCM token and the installationId
-            // ownership marker) is claimed right after by
-            // forceTokenSyncAfterRestore in the calling activity, which reads
-            // the CURRENT Firestore token and presents it as ownership proof;
-            // publishing from here with this install's own token would be
-            // rejected by the cloud function's oldToken check. Backups from
-            // older app versions carry no keyset: data restores as before.
+            // Restoring the keyset makes this phone BE the old one. The Firestore side
+            // (publicKey, FCM token, installationId ownership marker) is claimed right after
+            // by forceTokenSyncAfterRestore in the calling activity, which reads the CURRENT
+            // Firestore token as ownership proof; publishing from here with this install's
+            // own token would be rejected by the cloud function's oldToken check. Backups
+            // from older app versions carry no keyset: data restores as before.
             var identityRestored = false
             backupData.identityKeyset?.let { keyset ->
                 identityRestored = KeyManager.importIdentityKeyset(keyset, context)
@@ -204,9 +197,8 @@ object BackupManager {
                 }
             }
 
-            // Adopt the backup's identity preferences when the keyset came in,
-            // or when the backup predates keysets entirely (legacy behaviour,
-            // unchanged for old backups).
+            // Adopt the backup's identity preferences when the keyset came in, or when the
+            // backup predates keysets entirely (legacy, unchanged for old backups).
             val adoptIdentity = identityRestored || backupData.identityKeyset == null
             if (adoptIdentity) {
                 if (backupData.userId.isNotEmpty()) {
@@ -216,9 +208,9 @@ object BackupManager {
                 backupData.name?.let { setPreference(MySelf.NAME_KEY, it, context) }
                 backupData.bio?.let { setPreference("myBio", it, context) }
 
-                // The trial clock belongs to the identity, not to the handset: a
-                // restore must carry it over, or changing phone (or just
-                // uninstalling and restoring) would grant a fresh 30 days for ever.
+                // The trial clock belongs to the identity, not to the handset: a restore
+                // carries it over, or changing phone (or just uninstall and restore) would
+                // grant a fresh 30 days per sempre.
                 TrialManager.adoptStartedAt(context, backupData.trialStartedAt)
 
                 val restoredPicUri = saveBase64ToFile(context, backupData.selfPictureBase64, "restored_pic.jpg")
@@ -233,16 +225,14 @@ object BackupManager {
 
             val db = DatabaseProvider.provideDatabase(context)
 
-            // Restoring ANOTHER identity's backup means becoming that phone: the
-            // previous identity's contacts and chats are somebody else's data
-            // and must go first, or its rubrica row for the restored identity
-            // survives as a contact of oneself (16 Aug: Black restored over
-            // Dooge, "Black" appeared in Black's own contact list, seen
-            // notifications to self included) and the old chats stay mixed in.
-            // Wiped only when the identity really changed hands: same identity,
-            // fresh install (no previous id) and legacy keyset-less backups
-            // merge exactly as before, and a failed keyset import never gets
-            // here because identityRestored is false.
+            // Restoring ANOTHER identity's backup means becoming that phone: the previous
+            // identity's contacts and chats are somebody else's data and must go first, or
+            // its rubrica row for the restored identity survives as a contact of oneself
+            // (16 Aug: Black restored over Dooge, "Black" appeared in Black's own contact
+            // list, seen notifications to self included) and the old chats stay mixed in.
+            // Wiped only when the identity really changed hands: same identity, fresh
+            // install and legacy keyset-less backups merge exactly as before, and a failed
+            // keyset import never gets here because identityRestored is false.
             val changingIdentity = identityRestored &&
                 !previousUserId.isNullOrEmpty() &&
                 backupData.userId.isNotEmpty() &&
@@ -275,10 +265,10 @@ object BackupManager {
             for (message in backupData.messages) {
                 try {
                     if (!db.messageDao().messageExists(message.messageId)) {
-                        // Re-attach the media before inserting: the uri from the
-                        // old phone points at a MediaStore row that does not
-                        // exist here, while the file itself is in the public
-                        // folders under the same name (see mediaFileNames).
+                        // Re-attach the media before inserting: the uri from the old phone
+                        // points at a MediaStore row that does not exist here, while the
+                        // file itself sits in the public folders under the same name (see
+                        // mediaFileNames).
                         val rebuilt = reattachMedia(context, message, backupData.mediaFileNames)
                         if (rebuilt != message.uri) mediaReattached++
                         db.messageDao().insert(message.copy(uid = 0, uri = rebuilt))
@@ -292,8 +282,8 @@ object BackupManager {
             }
 
             for (reaction in backupData.reactions) {
-                // Backups written before reactions became per-member carry no reactor, so the
-                // row cannot be attributed to anybody and would read as an anonymous member.
+                // Backups written before reactions became per member carry no reactor, so
+                // the row cannot be attributed and would read as an anonymous member.
                 if (reaction.reactorUserId.isEmpty()) continue
                 try {
                     db.reactionDao().insert(reaction.copy(uid = 0))
@@ -320,10 +310,9 @@ object BackupManager {
                 }
             }
 
-            // The identity outcome is spelled out, not implied: a restore that
-            // silently kept the phone's own identity is the failure that breaks
-            // every contact, and it must be visible on screen without reading
-            // a log. Three distinct states, never ambiguous.
+            // The identity outcome is spelled out, not implied: a restore that silently
+            // kept the phone's own identity is the failure that breaks every contact, and it
+            // must be visible on screen without reading a log. Tre stati, mai ambigui.
             val identityNote = when {
                 identityRestored -> "IDENTITY RESTORED (${KeyManager.getMyPublicKeyFingerprint()})"
                 backupData.identityKeyset != null -> "IDENTITY RESTORE FAILED"
@@ -344,13 +333,12 @@ object BackupManager {
     }
 
     /**
-     * Returns the uri [message] should carry on THIS device, looking each of its
-     * media files up by name in the public folders.
+     * Returns the uri [message] should carry on THIS device, looking each of its media files
+     * up by name in the public folders.
      *
-     * Falls back to the original uri whenever the name is unknown or the file did
-     * not travel: a bubble that still points at nothing is no worse than before,
-     * while a wrong rewrite would be. Same-phone restores keep working because
-     * the lookup then finds the very same file.
+     * Falls back to the original uri when the name is unknown or the file did not travel: a
+     * bubble that still points at nothing is no worse than before, a wrong rewrite would be.
+     * Same phone restores keep working because the lookup finds the very same file.
      */
     private fun reattachMedia(
         context: Context,

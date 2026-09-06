@@ -24,18 +24,16 @@ data class DispatchResult(
 /**
  * At most this many MEDIA dispatches on the wire at once; the rest wait here.
  *
- * Without the gate the sender pushes every transfer in parallel: on 13 Aug
- * Raoul's phone ran 3 contents x 4 receivers together, the shared uplink
- * saturated, every data channel buffer filled (20.804 backpressure waits,
- * chunks abandoned after 15s of delay), dispatches died in bulk (1.520
- * GENERAL_FAILURE against 16 successes) and the receivers' recovery requests
- * multiplied the load further. Serialised, each transfer takes the full
- * uplink and completes quickly, so buffers never fill and the recovery
- * machinery stays quiet. Two permits rather than one so a stalled transfer
+ * Without the gate the sender pushes every transfer in parallel: on 13 Aug Raoul's phone ran 3
+ * contents by 4 receivers together, the shared uplink saturated, every data channel buffer filled
+ * (20.804 backpressure waits, chunks abandoned after 15s of delay), dispatches died in bulk (1.520
+ * GENERAL_FAILURE against 16 successes) and the receivers' recovery requests multiplied the load
+ * further. Serialised, each transfer takes the full uplink and finishes quickly, so buffers never
+ * fill and the recovery machinery stays quiet. Two permits and not one, so a stalled transfer
  * cannot freeze the queue while its timeouts run.
  *
- * Small messages (texts, reactions, profiles) bypass the gate entirely: they
- * must never wait behind a thousand-chunk album.
+ * Small messages (texts, reactions, profiles) skip the gate entirely: they must never wait behind
+ * a thousand chunk album.
  */
 private val mediaDispatchGate = kotlinx.coroutines.sync.Semaphore(2)
 private const val MEDIA_GATE_MIN_CHUNKS = 5
@@ -82,10 +80,10 @@ suspend fun dispatchMessage(
 
         val senderContentKey = contentKeyOf(messageId, chatGroupId, originalSenderId, messageDate)
 
-        // The permit is taken BEFORE connecting: a queued transfer must not
-        // hold a signalling room open while it waits, the peer would time out
-        // in it. If the acquire itself is cancelled we have taken nothing, so
-        // only a successful acquire is paired with the release in finally.
+        // The permit is taken BEFORE connecting: a queued transfer must not hold a signalling
+        // room open while it waits, the peer would time out in it. If the acquire itself is
+        // cancelled we have taken nothing, so only a successful acquire is paired with the
+        // release in finally.
         val gated = totalChunksOf(db, messageId) >= MEDIA_GATE_MIN_CHUNKS
         if (gated) {
             val queuedAt = System.currentTimeMillis()
@@ -170,9 +168,9 @@ private suspend fun dispatchBatch(tableName: String, transport: Transport, conte
                     success = false
                     break
                 } else {
-                    // Direct proof that this phone is transmitting, read by
-                    // DataSyncService so it does not release the wake lock in the
-                    // middle of an upload. See OutgoingActivity.
+                    // Direct proof that this phone is transmitting, read by DataSyncService so it
+                    // does not release the wake lock in the middle of an upload. See
+                    // OutgoingActivity.
                     OutgoingActivity.touch()
                     debugLine("dispatchBatch", "Sent message: ${outbox.sequenceNo}")
                     successfulUids.add(outbox.uid)

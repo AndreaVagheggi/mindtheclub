@@ -66,30 +66,28 @@ class StalePlaceholderCheckWorker(
 
             val originalSender = message.originalSenderId
             if (!originalSender.isNullOrEmpty()) {
-                // Prefer a member with a registered complete copy over the
-                // origin; single lookup, hard timeout, falls back untouched.
+                // Prefer a member with a registered complete copy over the origin; single
+                // lookup, hard timeout, falls back untouched.
                 val target = pickRecoverySource(message.chatGroupId, originalSender, message.date, originalSender)
 
-                // Say WHICH chunks are missing. This was the only one of the four
-                // recovery paths that asked blind, and asking blind is not merely
-                // wasteful here, it loses the race against the paths that do say.
+                // Say WHICH chunks are missing. This was the only one of the four recovery
+                // paths that asked blind, and blind here is not merely wasteful, it loses the
+                // race against the paths that do say.
                 //
-                // 22 Aug, a 444 chunk video. Dooge lost the channel at 442/444 and
-                // two mechanisms asked Gio for the rest inside three seconds: the
-                // PENDING handler with "#443,444", and this worker with nothing.
-                // The blind one arrived first, so the sender started a full
-                // re-dispatch, found every batch row already flagged sent, and
-                // logged "No messages to dispatch" five times followed by ALL SENT
-                // with chunksSent: 0. The informed request was then refused by the
-                // "dispatch already in flight" guard, which is right to exist and
-                // is deliberately left alone. Eighteen minutes later the same pair
-                // raced again, the informed one won, and the two chunks crossed in
-                // three seconds. Thirty one minutes decided by arrival order.
+                // 22 Aug, a 444 chunk video. Dooge lost the channel at 442/444 and two
+                // mechanisms asked Gio for the rest inside three seconds: the PENDING handler
+                // with "#443,444", and this worker with nothing. The blind one arrived first,
+                // so the sender started a full re-dispatch, found every batch row already
+                // flagged sent, and logged "No messages to dispatch" five times followed by ALL
+                // SENT with chunksSent: 0. The informed request was then refused by the
+                // "dispatch already in flight" guard, which is right to exist and stays.
+                // Eighteen minutes later the same pair raced again, the informed one won, and
+                // the two chunks crossed in three seconds. Trentuno minuti decisi dall'ordine
+                // di arrivo.
                 //
-                // The range is min..max of the gaps, so it is a superset of what is
-                // actually missing: it can ask for more than needed, never less.
-                // An empty list means nothing has arrived at all, and then a null
-                // range is correct and is exactly today's behaviour.
+                // The range is min..max of the gaps, so it is a superset of what is actually
+                // missing: it can ask for more than needed, never less. An empty list means
+                // nothing has arrived at all, and a null range is then correct.
                 val missing = missingChunksByContent(inboxDao, contentKey)
                 val missingRange = if (!missing.isNullOrEmpty()) {
                     "${missing.min()},${missing.max()}"

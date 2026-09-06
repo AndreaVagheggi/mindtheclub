@@ -21,12 +21,11 @@ suspend fun getIceServers(): List<PeerConnection.IceServer>? {
         return getAlternativeIceServers()
     }
 
-    // Budget for the whole fetch: an App Check token plus one HTTP round trip.
-    // It has to be generous because a cold Play Integrity attestation, which is
-    // what a phone waking from Doze needs, routinely takes several seconds. With
-    // a tighter budget the credentials still arrived but landed after the
-    // deadline and were thrown away, leaving the device on STUN with no relay
-    // and unable to connect from a mobile network.
+    // Budget for the whole fetch: an App Check token plus one HTTP round trip. Generous because a
+    // cold Play Integrity attestation, which is what a phone waking from doze needs, routinely
+    // takes several seconds. With a tighter budget the credentials still arrived but landed after
+    // the deadline and were thrown away, leaving the device on STUN with no relay and unable to
+    // connect from a mobile network.
     val iceServers = try {
         withTimeout(ICE_FETCH_BUDGET_MS) { getCloudflareIceServers() }
     } catch (e: Exception) {
@@ -54,13 +53,11 @@ private val iceClient: OkHttpClient by lazy {
 }
 
 /**
- * The comment that used to sit here said the worker only serves requests
- * carrying a valid App Check token. It does not, and never did: mtc-ice reads
- * no token at all, it takes the request and calls the Cloudflare TURN API with
- * its own key. So every WebRTC negotiation was paying for a Play Integrity
- * attestation, and giving up on it when it failed, to satisfy a check that does
- * not exist anywhere. What actually guards the TURN spend is DAILY_ICE_BUDGET
- * in that worker, which is untouched by any of this.
+ * The comment that used to sit here said the worker only serves requests carrying a valid App
+ * Check token. It does not, and never did: mtc-ice reads no token at all, it takes the request and
+ * calls the Cloudflare TURN API with its own key. So every WebRTC negotiation was paying for a
+ * Play Integrity attestation, and giving up on it when it failed, to satisfy a check that does not
+ * exist anywhere. What actually guards the TURN spend is DAILY_ICE_BUDGET in that worker.
  */
 private suspend fun appCheckToken(): String? {
     return try {
@@ -77,10 +74,9 @@ private suspend fun appCheckToken(): String? {
 
 private suspend fun getCloudflareIceServers(): List<PeerConnection.IceServer>? = withContext(Dispatchers.IO) {
     try {
-        // Never give up the negotiation over a token nobody reads: with App Check
-        // off there is no fetch at all, and even with it on a missing token is no
-        // longer a reason to return null and leave the transfer without any ICE
-        // servers.
+        // Never give up the negotiation over a token nobody reads: with App Check off there is no
+        // fetch at all, and even with it on a missing token is no longer a reason to return null
+        // and leave the transfer without any ICE servers.
         val token = if (APP_CHECK_ENABLED) appCheckToken() else null
 
         val request = Request.Builder()

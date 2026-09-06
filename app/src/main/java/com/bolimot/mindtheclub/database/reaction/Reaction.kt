@@ -9,13 +9,13 @@ import kotlinx.serialization.Serializable
 /**
  * One member's reaction to one message.
  *
- * The pair (messageId, reactorUserId) is unique: a member holds at most one emoji per message,
- * and picking a different one replaces only their own row, never anybody else's. [date] is the
- * moment the reactor tapped, and it is what settles ordering when the same reaction is gossiped
- * back around the group out of order.
+ * The pair (messageId, reactorUserId) is unique: a member holds at most one emoji per message, and
+ * picking a different one replaces only their own row, mai quella di un altro. [date] is the
+ * moment the reactor tapped, and it settles ordering when the same reaction is gossiped back
+ * around the group out of order.
  *
- * [reactorUserId] and [date] carry defaults so backups written before reactions became
- * per-member still deserialize.
+ * [reactorUserId] and [date] carry defaults so backups written before reactions became per member
+ * still deserialize.
  */
 @Entity(
     tableName = "Reaction",

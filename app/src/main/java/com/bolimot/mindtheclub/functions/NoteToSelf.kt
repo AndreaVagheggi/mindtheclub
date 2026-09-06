@@ -15,10 +15,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * "Note to myself" — a purely local pseudo-peer where the user is both sender
- * and recipient. Messages never leave the device: sendMessage() diverts here,
- * the message is simply marked as read, and everything else (chat UI, media,
- * search, forwarding) works because it is a normal conversation to the app.
+ * "Note to myself", a purely local pseudo peer where the user is both sender and recipient.
+ * Messages never leave the device: sendMessage() diverts here, the message is simply marked as
+ * read, and everything else (chat UI, media, search, forwarding) works because to the app it is a
+ * normal conversation.
  */
 object NoteToSelf {
 
@@ -28,16 +28,15 @@ object NoteToSelf {
 
     fun isNoteToSelf(userId: String?): Boolean = userId == USER_ID
 
-    /** "Note to myself" option (OptionsActivity), on by default. Hides the pinned
-     *  row, forward selection and search entries — the notes stay intact. */
+    /** "Note to myself" option (OptionsActivity), on by default. Hides the pinned row, forward
+     *  selection and search entries; the notes stay intact. */
     fun isVisible(context: Context): Boolean =
         getPreference(SHOW_NOTE_TO_SELF_KEY, context) != "false"
 
     /**
-     * Creates the pinned peer once, and keeps its name (locale changes) and
-     * avatar (profile picture changes) in sync on every launch. Blocking the
-     * peer is respected: getPeer() also returns blocked peers, so it is not
-     * re-created against the user's choice.
+     * Creates the pinned peer once, and keeps its name (locale changes) and avatar (profile
+     * picture changes) in sync on every launch. Blocking is respected: getPeer() returns blocked
+     * peers too, so it is not re-created against the user's choice.
      */
     suspend fun ensureSeeded(context: Context) {
         try {
@@ -72,8 +71,8 @@ object NoteToSelf {
     }
 
     /**
-     * Replaces the whole outbound path: the message is already stored and
-     * visible, nothing travels, so it is immediately "read".
+     * Replaces the whole outbound path: the message is already stored and visible, nothing
+     * travels, so it is immediately "read".
      */
     fun handleOutgoing(data: MessageData) {
         CoroutineScope(Dispatchers.IO).launch {

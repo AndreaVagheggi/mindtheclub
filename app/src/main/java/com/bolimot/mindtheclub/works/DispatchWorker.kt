@@ -58,26 +58,23 @@ class DispatchWorker(
 
         /**
          * Cooldown override window after a peer proves it is alive, see [markPeerAlive].
-         * Long enough to cover the first retry ladder steps (10s, 20s), short enough
-         * that a peer that answered once and went back to sleep is not hammered.
+         * Long enough for the first retry rungs (10s, 20s), short enough that a peer that
+         * answered once and went back to sleep is not hammered.
          */
         private const val PROOF_OF_LIFE_MS = 60_000L
 
         /**
-         * Records that [peerId] just proved it is awake (it sent us an FCM asking
-         * for a message), so the unreachable cooldown must not block dispatches
-         * towards it.
+         * Records that [peerId] just proved it is awake (it sent us an FCM asking for a
+         * message), so the unreachable cooldown must not block dispatches towards it.
          *
-         * This is deliberately a timestamp CHECKED at cooldown time, not a removal
-         * of the cooldown keys. The first version only removed the keys, and lost
-         * a race observed on Noemi's 7 Aug log: the incoming sendMe replaces the
-         * in-flight DispatchWorker for the same message, the replaced attempt dies
-         * with GENERAL_FAILURE a moment later and re-arms the cooldown AFTER the
-         * clear, and the fresh dispatch then sat on "recently unreachable" for
-         * 23 minutes. A proof-of-life timestamp wins regardless of arrival order.
+         * Deliberately a timestamp CHECKED at cooldown time, not a removal of the keys.
+         * The first version only removed them and lost a race seen on Noemi's 7 Aug log:
+         * the incoming sendMe replaces the in flight DispatchWorker, the replaced attempt
+         * dies with GENERAL_FAILURE a moment later and re-arms the cooldown AFTER the
+         * clear, and the fresh dispatch then sat on "recently unreachable" for 23 minutes.
+         * A proof of life timestamp wins whatever the arrival order.
          *
-         * The keys are still removed as immediate relief; the timestamp is the
-         * authoritative guard.
+         * The keys are still removed as immediate relief; the timestamp is the guard.
          */
         fun markPeerAlive(context: Context, peerId: String) {
             if (peerId.isEmpty()) return
@@ -124,18 +121,16 @@ class DispatchWorker(
 
         val messageDate = inputData.getLong("messageDate", 0L)
 
-        // Stamped on every dispatch so a transfer that goes wrong can be read
-        // against what the system was doing to us at that moment, instead of
-        // guessing between doze, standby bucket and expedited quota after the
-        // fact. See AndroidState.
+        // Stamped on every dispatch so a transfer that goes wrong can be read against
+        // what the system was doing to us at that moment, invece di indovinare between
+        // doze, standby bucket and expedited quota after the fact. See AndroidState.
         debugLine2("doWork", "Android state: ${AndroidState.describe(applicationContext)} attempt=$runAttemptCount")
 
-        // Serving discipline (group content only): claim the content for this
-        // target if nobody holds it, refresh the claim if we already do. Claimed
-        // here, not only in the sendMe handler, so transfers submitted by the
-        // initial group dispatch are visible to the queue too. A claim held by
-        // ANOTHER live target is never stolen: this run simply proceeds, the
-        // overlap is at most the old fanout.
+        // Serving discipline (group content only): claim the content for this target if
+        // nobody holds it, refresh the claim if we already do. Claimed here, not only in
+        // the sendMe handler, so transfers submitted by the initial group dispatch are
+        // visible to the queue too. A claim held by ANOTHER live target is never stolen:
+        // this run simply proceeds, the overlap is at most the old fanout.
         val serveContentId = ContentServeQueue.contentIdOf(chatGroupId, originalSenderId, messageDate)
         serveContentId?.let { ContentServeQueue.claimIfFree(it, toUserId) }
 
@@ -171,9 +166,9 @@ class DispatchWorker(
         val cooldownMs = sharedPreferences.getLong("cooldown_$toUserId", TARGET_COOLDOWN_MS)
 
         if (lastFailure > 0 && System.currentTimeMillis() - lastFailure < cooldownMs) {
-            // A peer that just asked us for a message is awake by definition: its
-            // proof of life outranks any cooldown, even one armed a moment later
-            // by an attempt this very request cancelled (see markPeerAlive).
+            // A peer that just asked us for a message is awake by definition: its proof
+            // of life outranks any cooldown, even one armed a moment later by an attempt
+            // this very request cancelled (see markPeerAlive).
             val provedAliveAt = sharedPreferences.getLong("alive_$toUserId", 0L)
             if (System.currentTimeMillis() - provedAliveAt < PROOF_OF_LIFE_MS) {
                 debugLine2("doWork", "Cooldown overridden for $toUserId, peer proved alive ${(System.currentTimeMillis() - provedAliveAt) / 1000}s ago")
@@ -202,10 +197,10 @@ class DispatchWorker(
         debugLine2("doWork", "internalState: $internalState, attemptCount: $attemptCount")
 
         // dispatchMessage carries @RequiresPermission(BLUETOOTH_CONNECT) because its
-        // transport may route via Bluetooth, but it must run regardless: without the
-        // permission TransportRouter falls back to WebRTC and the Bluetooth layer
-        // guards its own calls. Handling SecurityException here satisfies the
-        // permission contract without gating the dispatch.
+        // transport may route via Bluetooth, but it must run anyway: without the
+        // permission TransportRouter falls back to WebRTC and the Bluetooth layer guards
+        // its own calls. Catching SecurityException here satisfies the contract without
+        // gating the dispatch.
         val result = try {
             dispatchMessage(messageId, toUserId, applicationContext, chatGroupId, originalSenderId, messageDate)
         } catch (se: SecurityException) {
@@ -247,10 +242,10 @@ class DispatchWorker(
 
         }
 
-        // CoroutineWorker makes onStopped final, so the reason is read here, right
-        // after the long operation, which is where a stop lands. Without it a
-        // dispatch cut short by an exhausted expedited quota and one killed by a
-        // dead connection leave exactly the same trace.
+        // CoroutineWorker makes onStopped final, so the reason is read here, right after
+        // the long operation, which is where a stop lands. Without it a dispatch cut short
+        // by an exhausted expedited quota and one killed by a dead connection leave
+        // exactly the same trace.
         if (isStopped) {
             debugLine("DispatchWorker", "Stopped by the system: ${AndroidState.stopReasonName(stopReason)}")
         }
@@ -288,8 +283,8 @@ class DispatchWorker(
             }
 
             clearInternalState(messageId, toUserId)
-            // The exhaust one shot is the only prefs entry that outlives a cycle,
-            // so it is cleared here, where the transfer finally went through.
+            // The exhaust one shot is the only prefs entry that outlives a cycle, so it
+            // is cleared here, where the transfer finally went through.
             sharedPreferences.edit { remove("exhaustPendingSent_${messageId}_${toUserId}") }
             Result.success()
         } else {
@@ -309,17 +304,17 @@ class DispatchWorker(
                         notifyRemotePeer(toUserId, "$messageKey#$chatGroupId", "pending")
                         sharedPreferences.edit { putBoolean(earlyPendingKey, true) }
                     } else if (!sharedPreferences.getBoolean(exhaustPendingKey, false)) {
-                        // 23 Aug. The early announcement of this cycle has already been
-                        // consumed: the peer asked, we tried three times, we failed. Saying
-                        // nothing here left it waiting for its own 15 minute rung, which is
-                        // how one line of text from Noemi took 20 minutes to reach Gio. One
+                        // 23 Aug. The early announcement of this cycle is already spent:
+                        // the peer asked, we tried three times, we failed. Saying nothing
+                        // here left it waiting for its own 15 minute rung, which is how
+                        // one line of text from Noemi took 20 minutes to reach Gio. One
                         // more announcement, so it can ask again now.
                         //
-                        // Once in the life of this message and target, and deliberately NOT
-                        // cleared by clearInternalState: the answer to this is a sendMe,
-                        // which opens a fresh cycle, which would end here again. The group
-                        // branch never increments globalCycleKey, so nothing else would stop
-                        // that. One extra cycle is the fix, a loop every two minutes is not.
+                        // Once per message and target, and deliberately NOT cleared by
+                        // clearInternalState: the answer to this is a sendMe, which opens
+                        // a fresh cycle, which would end here again. The group branch
+                        // never increments globalCycleKey, so nothing else would stop it.
+                        // One extra cycle is the fix, un loop ogni due minuti no.
                         debugLine2("doWork", "Attempts exhausted after an early pending for $toUserId, announcing once more")
                         notifyRemotePeer(toUserId, "$messageKey#$chatGroupId", "pending")
                         sharedPreferences.edit { putBoolean(exhaustPendingKey, true) }
@@ -334,18 +329,17 @@ class DispatchWorker(
                     )
 
                     // NonCancellable, and this is the whole point of it: an incoming
-                    // sendMe re-submits this same unique work and REPLACE kills the
-                    // run mid-flight. On 20 Aug that happened 24 times, always here,
-                    // always logging "Failed to pick next group member: Job was
-                    // cancelled" — so releaseFailedGroupTarget never ran and the
-                    // target stayed flagged as RESERVED in the delivery document
-                    // with nothing anywhere to clear it again. From then on no peer
-                    // would ever relay to that member proactively.
+                    // sendMe re-submits this same unique work and REPLACE kills the run
+                    // mid flight. On 20 Aug that happened 24 times, always here, always
+                    // logging "Failed to pick next group member: Job was cancelled", so
+                    // releaseFailedGroupTarget never ran and the target stayed RESERVED in
+                    // the delivery document with nothing left anywhere to clear it. From
+                    // then on no peer would ever relay to that member proactively.
                     //
-                    // Bounded by withTimeoutOrNull because NonCancellable alone can
-                    // hang: an offline Firestore update() never completes, and
-                    // uninterruptible plus unbounded is how a worker holds the
-                    // process until WorkManager force stops it.
+                    // Bounded by withTimeoutOrNull because NonCancellable alone can hang:
+                    // an offline Firestore update() never completes, and uninterruptible
+                    // plus unbounded is how a worker holds the process until WorkManager
+                    // force stops it.
                     kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
                     kotlinx.coroutines.withTimeoutOrNull(20_000L) {
                     try {
@@ -370,10 +364,9 @@ class DispatchWorker(
                                 chatGroupId = chatGroupId,
                                 originalSenderId = originalSenderId,
                                 messageDate = messageDate,
-                                // "Moving to next member" must mean it. The line
-                                // above has just put this target back among the
-                                // available ones, and without this the draw can
-                                // hand it straight back.
+                                // "Moving to next member" must mean it. The line above
+                                // has just put this target back among the available ones,
+                                // and without this the draw can hand it straight back.
                                 excludeUserId = toUserId
                             )
                         }
@@ -422,11 +415,10 @@ class DispatchWorker(
         }
     }
 
-    // Releases the serving claim held by [toUserId] and, when someone is queued
-    // for the same content, invites it back with a tiny pending FCM: the member
-    // re-asks through the existing reactive path and finds the line free. Doing
-    // it by invitation instead of dispatching directly reuses the battle tested
-    // pending -> sendMe -> serve flow end to end.
+    // Releases the serving claim held by [toUserId] and, when someone is queued for the
+    // same content, invites it back with a tiny pending FCM: the member re-asks through
+    // the existing reactive path and finds the line free. By invitation instead of a
+    // direct dispatch, cosi' si riusa the pending -> sendMe -> serve flow end to end.
     private fun finishServing(contentId: String?, toUserId: String) {
         if (contentId == null) return
         try {

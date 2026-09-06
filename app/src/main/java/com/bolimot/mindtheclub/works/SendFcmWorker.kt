@@ -22,13 +22,12 @@ class SendFcmWorker(
         val collapseKey = inputData.getString("collapseKey") ?: return Result.failure()
 
         try {
-            // Note: these go out with the DEFAULT (long) TTL. Do NOT mark them
-            // "instant": in this system instant means a 15-second TTL (real-time
-            // semantics for call wake-ups), which would make a recovery nudge to an
-            // offline device silently expire instead of waiting for it to come back.
-            // Priority is decided per type in fcmSendWork (WAKE_TYPES): recovery
-            // signals (pending/sendMe/…) punch doze at "high"; chatty status updates
-            // travel "normal" so they can't exhaust the device's high-priority budget.
+            // These go out with the DEFAULT (long) TTL. Do NOT mark them "instant": instant here
+            // means a 15 second TTL (real time semantics for call wake-ups), which would make a
+            // recovery nudge to an offline device expire instead of waiting for it to come back.
+            // Priority is decided per type in fcmSendWork (WAKE_TYPES): recovery signals punch
+            // doze at "high", chatty status updates travel "normal" so they cannot exhaust the
+            // device's high priority budget.
             val result = fcmSendWork(userId, content, information, collapseKey)
             debugLine("SendFcmWorker", "FCM Send Result: $result")
 

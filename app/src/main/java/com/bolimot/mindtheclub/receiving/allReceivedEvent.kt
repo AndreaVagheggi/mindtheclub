@@ -31,14 +31,13 @@ import java.util.Collections
 
 private val activeProcessing: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
 
-// Claimed by CONTENT identity, not by copy. activeProcessing above only stops the
-// same copy from entering twice; two different copies of the same group content
-// have different messageIds, slipped past it, and assembled the same temp file in
-// parallel (Romy, 15 Aug: one copy saved a truncated image, "Media non
-// disponibile" in the chat with corrupted twins in the gallery). The loser of
-// this claim returns before reading or writing anything, with its chunks and
-// placeholder intact: the recovery worker retries it later, when the winner has
-// saved, and the duplicate guards then discard it cleanly.
+// Claimed by CONTENT identity, not by copy. activeProcessing above only stops the same copy
+// from entering twice; two different copies of the same group content have different
+// messageIds, slipped past it, and assembled the same temp file in parallel (Romy, 15 Aug: one
+// copy saved a truncated image, "Media non disponibile" in the chat with corrupted twins in the
+// gallery). The loser of this claim returns before reading or writing anything, chunks and
+// placeholder intact: the recovery worker retries it later, when the winner has saved, and the
+// duplicate guards then discard it cleanly.
 private val activeContent: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
 
 fun isProcessingActive(messageId: String): Boolean = messageId in activeProcessing
@@ -53,8 +52,8 @@ var claimedContent: String? = null
 try {
     val inboxDao: InboxDao = getInboxDao(App.context())
 
-    // For one to one traffic the content key IS the messageId and activeProcessing
-    // already covers it; claiming is only needed where distinct copies exist.
+    // For one to one traffic the content key IS the messageId and activeProcessing already
+    // covers it; claiming is only needed where distinct copies exist.
     val raceContentKey = resolveContentKey(inboxDao, messageId)
     if (raceContentKey != messageId) {
         if (!activeContent.add(raceContentKey)) {
@@ -64,14 +63,13 @@ try {
         claimedContent = raceContentKey
     }
 
-    // Read once, and survive the row not being there. On 23 Aug this threw
-    // IllegalStateException from Room and took the process down: the DAO promised
-    // a NON-NULL row and the chunks had been deleted between the completeness
-    // check that got us here and this read. Everything that deletes a content set
-    // (the purge on chat deletion, the blocked-user branch just below, the orphan
-    // expiry in InboxRecovery) runs on its own coroutine, so the window is real
-    // and cannot be closed from here. The claim taken above is released by the
-    // finally at the end of this function, so returning early is safe.
+    // Read once, and survive the row not being there. On 23 Aug this threw IllegalStateException
+    // from Room and took the process down: the DAO promised a NON-NULL row and the chunks had
+    // been deleted between the completeness check that got us here and this read. Everything
+    // that deletes a content set (the purge on chat deletion, the blocked user branch below, the
+    // orphan expiry in InboxRecovery) runs on its own coroutine, so the window is real and
+    // cannot be closed from here. The claim taken above is released by the finally at the end,
+    // so returning early is safe.
     val message = inboxDao.getMessage(messageId)
     if (message == null) {
         debugLine("receivedEvent", "Inbox rows for $messageId are gone, nothing to assemble")
@@ -89,13 +87,11 @@ try {
     val type = message.type
     val text = message.text
 
-    // A group relay echo of a message I originally sent. Observed on 12 Aug:
-    // Giovanni's own text came back through the Family group, saveMessage said
-    // "already exists" but returned true, and receiveText notified him about his
-    // own message. Acknowledge the relayer so its retry loop stops, drop the
-    // chunks, and never reach the save or notify paths. Scoped to group messages
-    // (chatGroupId set), so 1:1 traffic and the note-to-self pseudo peer, which
-    // uses its own id, are untouched.
+    // A group relay echo of a message I originally sent. Seen on 12 Aug: Giovanni's own text
+    // came back through the Family group, saveMessage said "already exists" but returned true,
+    // and receiveText notified him about his own message. Acknowledge the relayer so its retry
+    // loop stops, drop the chunks, and never reach the save or notify paths. Group messages only
+    // (chatGroupId set), so 1:1 traffic and the note-to-self pseudo peer are untouched.
     val echoGroupId = message.chatGroupId
     val echoSenderId = message.originalSenderId
     if (echoGroupId != null && !echoSenderId.isNullOrEmpty() && echoSenderId == MySelf.userId()) {
@@ -104,8 +100,8 @@ try {
         notifyRemotePeer(message.fromUserId, messageId, Notify.ALL_RECEIVED, echoDeliveryId)
         val echoContentKey = resolveContentKey(inboxDao, messageId)
         inboxDao.deleteByContent(echoContentKey)
-        // A completed FCM for this echo may still arrive: answer it from the cache,
-        // not with an allMissing that would make the relayer resend the echo.
+        // A completed FCM for this echo may still arrive: answer it from the cache, not with an
+        // allMissing that would make the relayer resend the echo.
         ProcessedMessageCache.markProcessed(messageId)
         return false
     }
@@ -162,17 +158,15 @@ try {
 }
 
 /**
- * Early stop for every admitted sender of this content beyond the one whose
- * copy just completed. Without it, a member answering an earlier sendMe kept
- * transmitting the whole message to the very end and only then learnt it was
- * wasted (13 Aug: a completed 78 chunk photo arrived in full a second time ten
- * minutes later, over the same pipe a 1017 chunk photo was fighting for).
+ * Early stop for every admitted sender of this content beyond the one whose copy just completed.
+ * Without it a member answering an earlier sendMe kept transmitting the whole message to the
+ * very end and only then learnt it was wasted (13 Aug: a completed 78 chunk photo arrived in
+ * full a second time ten minutes later, over the same pipe a 1017 chunk photo was fighting for).
  *
- * Addressed with the message KEY (the group original id), because a sendMe
- * redispatch names its batch tables after that key, and the allReceived
- * handler deletes tables by the id it receives. The sender that completed and
- * the original sender are excluded: the receive paths already acknowledge
- * both.
+ * Addressed with the message KEY (the group original id), because a sendMe redispatch names its
+ * batch tables after that key and the allReceived handler deletes tables by the id it receives.
+ * The sender that completed and the original sender are excluded: the receive paths already
+ * acknowledge both.
  */
 private fun stopRedundantSenders(inboxMessage: Inbox) {
     try {

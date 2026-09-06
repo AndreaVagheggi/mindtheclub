@@ -109,9 +109,9 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
     }
 
     /**
-     * Clubby and Note-to-myself are pinned above the scrollable list, so their
-     * rows are bound manually (mirroring PeersActiveViewHolder): avatar, name,
-     * last message, badge. The divider shows while either row is visible.
+     * Clubby and Note-to-myself are pinned above the scrollable list, so their rows are bound by
+     * hand (mirroring PeersActiveViewHolder): avatar, name, last message, badge. The divider shows
+     * while either row is visible.
      */
     private fun refreshPinnedRows() {
         val clubby = clubbyRow
@@ -334,15 +334,15 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
         lifecycleScope.launch {
             peersAdapter.loadStateFlow.collectLatest { loadStates ->
-                // The pinned pseudo-peers are filtered out of the adapter, so an empty
-                // adapter means no real contacts — exactly when the empty state should show.
+                // The pinned pseudo peers are filtered out of the adapter, so an empty adapter
+                // means no real contacts, exactly when the empty state should show.
                 val isEmpty = loadStates.refresh is LoadState.NotLoading && peersAdapter.itemCount == 0
                 val visibility = if (isEmpty) View.VISIBLE else View.GONE
                 inviteFriendButton.visibility = visibility
                 emptyListText.visibility = visibility
 
-                // Peer-table changes (a new message bumps lastMessageAt) land here
-                // too — keep the pinned rows' previews in sync.
+                // Peer table changes (a new message bumps lastMessageAt) land here too: keep the
+                // pinned rows' previews in sync.
                 refreshPinnedRows()
             }
         }

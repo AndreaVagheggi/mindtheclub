@@ -42,9 +42,9 @@ const val GROUP_DISPATCH_FANOUT = 2
 const val GROUP_HOP_LIMIT = 3
 const val MAX_FAIL_COUNT_PER_TARGET = 5
 
-// Types whose transfers are chunk heavy enough that a weak uplink cannot feed
-// two recipients at once. Decided by type rather than by chunk count because
-// the type is known before the batches exist.
+// Types whose transfers are heavy enough that a weak uplink cannot feed two
+// recipients at once. Decided by type, not by chunk count, because the type is known
+// before the batches exist.
 fun isHeavyContent(type: String): Boolean =
     type == Type.IMAGE || type == Type.MULTIPLE_IMAGES ||
     type == Type.VIDEO || type == Type.AUDIO || isFileType(type)
@@ -85,25 +85,22 @@ fun clearDirectAllReceivedCount(context: Context, originalMessageId: String) {
 }
 
 /**
- * [excludeUserId] is the member that has just exhausted its attempts, when this
- * is called from the failure path. It is kept OUT of this one draw.
+ * [excludeUserId] is the member that has just burned its attempts, when this is called
+ * from the failure path. Kept OUT of this draw.
  *
- * Until 1.32 the switch to somebody else happened by accident: hopCount climbed
- * with every reservation, and once it hit GROUP_HOP_LIMIT releaseFailedGroupTarget
- * bailed out with "Hop limit reached, NOT releasing", leaving the failed member
- * marked unavailable so the next draw could not pick it. Refunding the hop (which
- * fixed a real deadlock against switched off phones, 16 Aug) removed that side
- * effect with it: the counter stops climbing, the bail out never fires, and the
- * member that just failed three times goes straight back into the hat. On 19 Aug
- * an album was drawn towards the same unreachable phone three times running while
- * the other two members were never contacted at all.
+ * Until 1.32 the switch to somebody else happened per caso: hopCount climbed with every
+ * reservation, and once it hit GROUP_HOP_LIMIT releaseFailedGroupTarget bailed out with
+ * "Hop limit reached, NOT releasing", leaving the failed member marked unavailable so
+ * the next draw could not pick it. Refunding the hop (which fixed a real deadlock
+ * against switched off phones, 16 Aug) took that side effect with it: the counter stops
+ * climbing, the bail out never fires, and the member that just failed three times goes
+ * straight back in the hat. On 19 Aug an album was drawn towards the same unreachable
+ * phone three times running while the other two were never contacted at all.
  *
- * Excluding it here is the direct expression of what the old code achieved by
- * accident, and it acts on the FIRST failure rather than after three.
- *
- * Default null, so the success path at handleGroupDeliveryConfirmation keeps
- * drawing from everybody exactly as before. And an exclusion that would empty the
- * pool is dropped: better to retry the same member than to dispatch to nobody.
+ * Excluding it here says out loud what the old code did by accident, and it acts on the
+ * FIRST failure instead of after three. Default null, so the success path keeps drawing
+ * from everybody. An exclusion that would empty the pool is dropped: meglio retry the
+ * same member than dispatch to nobody.
  */
 suspend fun tryDispatchNextGroupMember(
     context: Context,
@@ -115,15 +112,13 @@ suspend fun tryDispatchNextGroupMember(
 ) {
     val myUserId: String = MySelf.userId() ?: return
 
-    // Loaded before the fanout check because the goal depends on the type.
-    // Heavy content stops at ONE confirmed direct delivery: in the 15 Aug
-    // throttled test the origin, after seeding Dooge, grabbed White for a
-    // second full upload over its mobile uplink (5 minutes) while two Wi-Fi
-    // seeders could have served it in 15 seconds. Once a seed exists the
-    // remaining members belong to the cascade and the informed recovery; the
-    // origin still serves anyone who explicitly asks (sendMe, queue), it only
-    // stops volunteering. A FAILED first delivery leaves the count at 0, so
-    // the deep dispatch still walks to the next member on real failures.
+    // Loaded before the fanout check because the goal depends on the type. Heavy
+    // content stops at ONE confirmed direct delivery: in the 15 Aug throttled test the
+    // origin, after seeding Dooge, grabbed White for a second full upload over mobile
+    // (5 minutes) while two Wi-Fi seeders could have served it in 15 seconds. Once a
+    // seed exists the rest belong to the cascade and to informed recovery; the origin
+    // still serves anyone who asks (sendMe, queue), it only stops volunteering. A
+    // FAILED first delivery leaves the count at 0, so the deep dispatch still walks.
     val repo = getMessageRepository(context)
     val message = repo.getMessage(originalMessageId)
     if (message == null) {
@@ -131,11 +126,10 @@ suspend fun tryDispatchNextGroupMember(
         return
     }
 
-    // Same width for every type, see the note at the first dispatch. It also
-    // removes a disagreement that had been there since 15 Aug: the caller in
-    // handleGroupDeliveryConfirmation asks for another member whenever the count
-    // is below GROUP_DISPATCH_FANOUT, so with a target of 1 it kept calling in
-    // and this line kept answering "Fanout satisfied (1/1)".
+    // Same width for every type, see the note at the first dispatch. It also settles a
+    // disagreement standing since 15 Aug: handleGroupDeliveryConfirmation asks for
+    // another member whenever the count is below GROUP_DISPATCH_FANOUT, so with a
+    // target of 1 it kept calling in and this line kept answering "Fanout satisfied".
     val targetFanout = GROUP_DISPATCH_FANOUT
     val count = getDirectAllReceivedCount(context, originalMessageId)
     if (count >= targetFanout) {
@@ -169,16 +163,16 @@ suspend fun tryDispatchNextGroupMember(
             return
         }
 
-        // ifEmpty is the safety net: excluding must never turn a dispatch that
-        // would have happened into one that does not.
+        // ifEmpty is the safety net: escludere must never turn a dispatch that would
+        // have happened into one that does not.
         val candidates = available.filterNot { it == excludeUserId }.ifEmpty { available }
         if (candidates.size < available.size) {
             debugLine("groupDispatch", "Excluding just failed $excludeUserId from this draw (${candidates.size} left)")
         }
 
-        // Same probe as the first dispatch, and for the stronger reason: this is
-        // the walk that runs AFTER a target has already failed, so picking
-        // another dead one costs a second full round of timeouts.
+        // Same probe as the first dispatch, and for the stronger reason: this walk
+        // runs AFTER a target has already failed, so another dead pick costs a second
+        // full round of timeouts.
         val drawn = candidates.shuffled()
         val nextTarget = (if (isHeavyContent(message.type)) PeerProbe.preferLive(drawn) else drawn).first()
         deliveryRef.update(
@@ -190,8 +184,8 @@ suspend fun tryDispatchNextGroupMember(
         debugLine("groupDispatch", "Reserved $nextTarget (hop ${hopCount + 1})")
 
         val totalMembers = (doc.getLong("totalMembers") ?: members.size.toLong()).toInt()
-        // Stable per (content, target): a target picked up again resumes from
-        // the chunks it was left at instead of restarting. See groupHopId.
+        // Stable per (content, target): a target picked up again resumes where it
+        // stopped instead of restarting. See groupHopId.
         val newMemberMessageId = groupHopId(chatGroupId, originalSenderId, messageDate, nextTarget)
         val memberMessage = MessageData.fromMessage(message).copy(
             toUserId = nextTarget,
@@ -209,9 +203,9 @@ suspend fun tryDispatchNextGroupMember(
 }
 
 /**
- * Release a failed target. If the target has been failed by too many peers globally
- * (tracked in the delivery doc), do NOT release it — consider it dead for this message.
- * Uses atomic FieldValue.increment to avoid race conditions between peers.
+ * Release a failed target. If too many peers have failed it globally (tracked in the
+ * delivery doc) do NOT release it, consideralo morto for this message. Atomic
+ * FieldValue.increment so two peers cannot race.
  */
 suspend fun releaseFailedGroupTarget(
     chatGroupId: String,
@@ -224,7 +218,7 @@ suspend fun releaseFailedGroupTarget(
         val deliveryDocId = computeDeliveryDocId(chatGroupId, originalSenderId, messageDate)
         val deliveryRef = db.collection("groupDelivery").document(deliveryDocId)
 
-        // Atomically increment the global fail count for this target.
+        // Fail count globale per questo target, atomico.
         deliveryRef.update("failCount.$toUserId", FieldValue.increment(1)).await()
 
         val doc = deliveryRef.get().await()
@@ -245,15 +239,14 @@ suspend fun releaseFailedGroupTarget(
             return
         }
 
-        // Release AND refund the hop this reservation consumed. Hops must measure
+        // Release AND refund the hop this reservation consumed. Hops must count
         // successful hand offs down the cascade, not failed attempts: overnight on
         // 16 Aug three reservations against switched off phones burned the whole
-        // GROUP_HOP_LIMIT, the old "hop limit reached, NOT releasing" gate then
-        // sealed the deadlock, and the proactive dispatch never recovered (the
-        // receivers had to pull everything themselves on wake up). The retry walk
-        // stays bounded regardless: MAX_FAIL_COUNT_PER_TARGET caps it per member.
-        // The refund is skipped at zero so an initial dispatch failure (whose
-        // reservation never charged a hop) cannot push the counter negative.
+        // GROUP_HOP_LIMIT, the old "hop limit reached, NOT releasing" gate then sealed
+        // the deadlock, and the proactive dispatch never recovered (receivers had to
+        // pull everything themselves on wake up). The walk stays bounded anyway,
+        // MAX_FAIL_COUNT_PER_TARGET caps it per member. Refund skipped at zero so an
+        // initial failure, whose reservation charged no hop, cannot go negative.
         val hopCount = (doc.getLong("hopCount") ?: 0L).toInt()
         val releaseUpdates = mutableMapOf<String, Any>("members.$toUserId" to true)
         if (hopCount > 0) {
@@ -356,32 +349,28 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
 
     // One width for everything, 22 Aug.
     //
-    // Between 15 and 22 Aug the heavy types went out to a single member, on the
-    // reasoning that a big transfer must produce ONE complete copy as fast as the
-    // uplink allows, because only a complete copy can relay onward: splitting a
-    // weak uplink across two media recipients had produced two half copies and no
-    // relayer at all (15 Aug: a 1137 chunk album, six partial copies, zero
-    // complete after four hours).
+    // Between 15 and 22 Aug the heavy types went to a single member, on the reasoning
+    // that a big transfer must produce ONE complete copy as fast as the uplink allows,
+    // because only a complete copy can relay onward: splitting a weak uplink across two
+    // media recipients had produced two half copies and no relayer at all (15 Aug: a
+    // 1137 chunk album, six partial copies, zero complete after four hours).
     //
-    // The cost of that was paid on 22 Aug: a 444 chunk video went to the one
-    // member that happened to be switched off, and with a single target that
-    // choice IS the delivery, so the whole group waited 10m52s for three WebRTC
-    // timeouts before anyone else was even offered it. With two, one dead pick
-    // costs nothing: the other target has the file and relays it.
+    // Il conto arrivo' on 22 Aug: a 444 chunk video went to the one member that
+    // happened to be switched off, and with a single target that choice IS the
+    // delivery, so the whole group waited 10m52s for three WebRTC timeouts before
+    // anyone else was even offered it. With two, one dead pick costs nothing.
     //
-    // The original hazard is not forgotten, it is addressed elsewhere now: the
-    // probe below no longer commits blindly, and the two dispatches are staggered
-    // by two seconds in the loop that follows. If two half copies over a weak
-    // uplink ever come back, this constant is the one place to look.
+    // The original hazard is not forgotten, it is handled elsewhere now: the probe
+    // below no longer commits blindly, and the two dispatches are staggered by two
+    // seconds. If two half copies over a weak uplink ever come back, look here first.
     val fanout = GROUP_DISPATCH_FANOUT
     debugLine("sendGroupMessage", "Dispatch width for ${message.type}: fanout=$fanout")
 
-    // Ask before committing, but only for the heavy types. A wrong pick costs a
-    // text message almost nothing, because the other target of the wide fanout
-    // has it already and relays it; it costs an album or a video everything,
-    // because with fanout=1 that single target IS the delivery. Probing every
-    // chat line would put up to 20 seconds in front of a message that today
-    // leaves in three. See PeerProbe.
+    // Ask before committing, ma solo for the heavy types. A wrong pick costs a text
+    // almost nothing, because the other target of the wide fanout has it already and
+    // relays it; it costs an album or a video everything, because with fanout=1 that
+    // single target IS the delivery. Probing every chat line would put up to 20 seconds
+    // in front of a message that today leaves in three. See PeerProbe.
     val drawn = availableMembers.shuffled()
     val ordered = if (isHeavyContent(message.type)) PeerProbe.preferLive(drawn) else drawn
 
@@ -420,14 +409,12 @@ internal suspend fun sendGroupMessageSuspend(message: MessageData) {
 
 /**
  * Raises the sender's bubble to Delivered once no member is left at "sent" in
- * GroupMessageStatus. The bubble used to flip on the FIRST member's ack (the
- * unconditional update in the ALL_RECEIVED handler, now gated to one to one
- * messages), while the detail view showed the truth; and the only aggregate
- * promotion lived in the "delivery doc emptied" branch, which never fires when
- * the last confirmation reaches the origin via a relay (the relayer empties
- * and deletes the doc first). This helper works off the status table alone, so
- * it is immune to the doc's lifecycle. On relayers the table is empty and the
- * call is a no op: only the original sender ever promotes.
+ * GroupMessageStatus. It used to flip on the FIRST member's ack (the unconditional
+ * update in the ALL_RECEIVED handler, now limited to one to one) while the detail view
+ * showed the truth; and the only aggregate promotion lived in the "delivery doc
+ * emptied" branch, which never fires when the last confirmation reaches the origin via
+ * a relay. This works off the status table alone, so the doc's lifecycle cannot touch
+ * it. On relayers the table is empty and the call is a no op: solo l'origine promuove.
  */
 suspend fun promoteGroupAggregate(originalMessageId: String) {
     try {
@@ -451,12 +438,11 @@ suspend fun promoteGroupAggregate(originalMessageId: String) {
 }
 
 /**
- * @param countsTowardFanout false when the member REFUSED the transfer rather
- * than received it (see refuseIncomingGroupTransfer). Everything else is
- * identical, the member is dropped from the delivery map exactly the same way,
- * but a refusal must not push the fanout counter: two refusals would otherwise
- * satisfy GROUP_DISPATCH_FANOUT and the sender would stop relaying to the
- * members who are still waiting for it.
+ * @param countsTowardFanout false when the member REFUSED the transfer instead of
+ * receiving it (see refuseIncomingGroupTransfer). Everything else is identical, it
+ * drops out of the delivery map the same way, but a refusal must not push the fanout
+ * counter: two refusals would satisfy GROUP_DISPATCH_FANOUT and the sender would stop
+ * relaying a chi sta ancora aspettando.
  */
 fun handleGroupDeliveryConfirmation(
     deliveryDocId: String?,
@@ -567,36 +553,29 @@ fun handleGroupDeliveryConfirmation(
 /**
  * Retry for a group send that could not read its Firestore documents.
  *
- * The CONNECTED constraint is the whole point. Without it this worker fired on
- * its own timer whatever the radio was doing, and since sendGroupMessageSuspend
- * must read groupDelivery/<group+sender+date>, a document that is new for every
- * message and therefore never in the local cache, an attempt made with no
- * network cannot do anything except fail and widen the exponential ladder.
+ * The CONNECTED constraint is the whole point. Without it this worker fired on its own
+ * timer whatever the radio was doing, and since sendGroupMessageSuspend must read
+ * groupDelivery/<group+sender+date>, a document that is new for every message and
+ * therefore never cached, an attempt made with no network can only fail and widen the
+ * exponential ladder.
  *
- * Measured on White, 22 Aug. Three texts written in flight mode at 08:45:30,
- * 08:45:48 and 08:45:59 were on the same ladder, which by then had reached
- * intervals of ten minutes. The radio came back at 09:07:35. Two of them had
- * spent their attempt at 09:07:33, two seconds early, and went to the next rung
- * past 09:28; the third fired at 09:07:47 and was delivered in four seconds.
- * The whole difference between a message that arrives and one the user sees
- * stuck on "Sending" for 43 minutes was two seconds of timer alignment.
+ * Measured on White, 22 Aug. Three texts written in flight mode at 08:45:30, 08:45:48
+ * and 08:45:59 shared a ladder already at ten minute intervals. The radio came back at
+ * 09:07:35. Two had spent their attempt at 09:07:33, due secondi prima, and went to the
+ * next rung past 09:28; the third fired at 09:07:47 and was delivered in four seconds.
+ * 43 minutes stuck on "Sending" for two seconds of timer alignment.
  *
- * With the constraint those attempts are not made at all while the radio is
- * off: hasNetworkAvailable logged "No network" nine times out of nine in that
- * window, so the constraint is demonstrably unmet there. The ladder stays where
- * it was, and the work runs the moment a network appears, its delay having long
- * since elapsed.
+ * With the constraint those attempts are not made at all while the radio is off:
+ * hasNetworkAvailable logged "No network" nine times out of nine in that window. The
+ * ladder stays where it was and the work runs the moment a network appears.
  *
- * The backoff policy is deliberately left EXPONENTIAL. It is tempting to make
- * it LINEAR as well, and it would be wrong: with the constraint in place the
- * defect above is already gone, while a linear ladder on a message that can
- * never be sent (deleted group, revoked membership) would keep the interval
- * near ten minutes for ever, in the order of a hundred Firestore reads a day
- * instead of five. GroupSendWorker never inspects runAttemptCount, so nothing
- * else would stop it.
+ * Backoff stays EXPONENTIAL on purpose. Linear is tempting and would be wrong: the
+ * defect above is already gone, while a linear ladder on a message that can never be
+ * sent (deleted group, revoked membership) would sit near ten minutes for ever, a
+ * hundred Firestore reads a day instead of five. GroupSendWorker never inspects
+ * runAttemptCount, so nothing else would stop it.
  *
- * Same shape as [submitGroupPropagateWorker], which has carried this constraint
- * since 19 Aug.
+ * Same shape as [submitGroupPropagateWorker], which has carried this since 19 Aug.
  */
 fun submitGroupSendWorker(message: MessageData, context: Context) {
     val messageDataJson = Json.encodeToString(message)
@@ -644,23 +623,22 @@ fun propagateGroupMessage(receivedMessage: MessageData) {
 }
 
 /**
- * The relay itself. Throws when it could not even find out who to forward to,
- * which is the signal for the caller to schedule a retry.
+ * The relay itself. Throws when it could not even find out who to forward to, which is
+ * the caller's signal to schedule a retry.
  *
- * Split out of [propagateGroupMessage] on 19 Aug. Until then the relay was a
- * single shot inside a fire and forget coroutine: one read of the delivery
- * document, and on any error a log line and nothing else. A member received an
- * 11 photo album in 21 seconds and three seconds later its Firestore read failed
- * with "the client is offline" while the link was collapsing. The cascade ended
- * there, and the other two members of the group never learned the album existed
- * (the origin had already stopped, its fanout of 1 satisfied, and nobody had
- * sent them so much as a pending to react to). The single photo five minutes
- * earlier went through on the same code, because Firestore happened to answer.
+ * Split out of [propagateGroupMessage] on 19 Aug. Until then the relay was a single
+ * shot inside a fire and forget coroutine: one read of the delivery document, and on
+ * any error a log line and nothing else. A member received an 11 photo album in 21
+ * seconds and three seconds later its Firestore read failed with "the client is
+ * offline" while the link was collapsing. The cascade ended there and the other two
+ * members never learned the album existed, the origin having stopped with its fanout
+ * satisfied. The single photo five minutes earlier went through on the same code,
+ * perche' Firestore happened to answer.
  *
- * Once ANY member has been forwarded to, a failure stops being retryable: the
- * delivery document still lists that member as available, so a second run could
- * hand it the same file twice. Whoever is left over is reached by the ordinary
- * recovery path instead. That is what [forwarded] guards.
+ * Once ANY member has been forwarded to, a failure stops being retryable: the delivery
+ * document still lists that member as available, so a second run could hand it the same
+ * file twice. Whoever is left over is reached by ordinary recovery. That is what
+ * [forwarded] guards.
  */
 internal suspend fun propagateGroupMessageSuspend(
     receivedMessage: MessageData,
@@ -722,11 +700,10 @@ internal suspend fun propagateGroupMessageSuspend(
 /**
  * Retry for a relay that could not read the delivery document.
  *
- * Twin of [submitGroupSendWorker], with one addition: a CONNECTED constraint, so
- * it sleeps until the phone actually has a network instead of spending its
- * attempts against a radio that is still down. The unique name is per content
- * and the policy is KEEP, so a second failure for the same album cannot stack a
- * second worker on top of the first.
+ * Twin of [submitGroupSendWorker] plus a CONNECTED constraint, so it sleeps until the
+ * phone actually has a network instead of burning attempts against a radio that is
+ * still down. Unique name per content and policy KEEP, so a second failure for the same
+ * album cannot stack a second worker on top of the first.
  */
 fun submitGroupPropagateWorker(message: MessageData, context: Context) {
     val messageDataJson = Json.encodeToString(message)
@@ -763,17 +740,16 @@ fun computeDeliveryDocId(chatGroupId: String, originalSenderId: String, date: Lo
 }
 
 /**
- * Registers this device in the delivery doc as holding a COMPLETE copy of the
- * content. This is the honest counterpart of the "members" map, which marks a
- * member unavailable at dispatch ATTEMPT time and can therefore lie (14 Aug:
- * White reserved by a transfer that died at 25/429 and never offered help
- * again). The complete map is only ever written by the member itself, only
- * after saveMessage succeeded, so recovery can trust it: anyone in it can serve
- * the content right now. Older versions ignore the field entirely.
+ * Registers this device in the delivery doc as holding a COMPLETE copy of the content.
  *
- * The doc disappears once every member confirmed, and an update on a missing
- * doc fails: that failure means nobody needs a seeder any more, so it is logged
- * at whisper level and swallowed.
+ * The honest counterpart of the "members" map, which marks a member unavailable at
+ * dispatch ATTEMPT time and can therefore lie (14 Aug: White reserved by a transfer
+ * that died at 25/429 and never offered help again). complete is written only by the
+ * member itself, only after saveMessage succeeded, so recovery can trust it: whoever is
+ * in it can serve the content right now. Older versions ignore the field.
+ *
+ * The doc disappears once every member confirmed, and an update on a missing doc fails:
+ * that failure means nobody needs a seeder any more, quindi si logga piano e via.
  */
 fun markContentComplete(deliveryDocId: String?) {
     if (deliveryDocId.isNullOrEmpty()) return

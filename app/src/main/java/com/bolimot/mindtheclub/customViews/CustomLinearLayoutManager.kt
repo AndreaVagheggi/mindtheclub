@@ -43,26 +43,23 @@ class CustomLinearLayoutManager(context: Context) : LinearLayoutManager(context)
     /**
      * Diagnostic probe for the chat jumping to the top and back down.
      *
-     * Every programmatic scroll in the app goes through the layout manager, so
-     * intercepting these three entry points catches all of them, including any
-     * call site not accounted for. The target position alone already names the
-     * culprit: near itemCount - 1 is the page preloader, 0 is one of the
-     * scroll-to-bottom paths, anything else is a targeted scrollTo. The caller
-     * line is taken from the stack; proguard-rules.pro keeps LineNumberTable,
-     * so it survives R8 even though the class name does not.
+     * Every programmatic scroll in the app goes through the layout manager, so intercepting these
+     * three entry points catches all of them, call sites nobody remembered included. The target
+     * position alone already names the culprit: near itemCount - 1 is the page preloader, 0 is one
+     * of the scroll-to-bottom paths, anything else is a targeted scrollTo. The caller line comes
+     * from the stack; proguard-rules.pro keeps LineNumberTable, so it survives R8 even though the
+     * class name does not.
      *
-     * Logging only, no behaviour change, and compiled out of normal release
-     * builds through ENABLE_DEBUG_TOOLS.
+     * Logging only, nessun cambio di comportamento, and compiled out of normal release builds
+     * through ENABLE_DEBUG_TOOLS.
      */
     private fun logScroll(kind: String, position: Int) {
         if (!BuildConfig.ENABLE_DEBUG_TOOLS) return
-        // R8 renames every class, ours and androidx alike, so no package name
-        // filter survives a release build: the first version of this probe
-        // matched on "com.bolimot.mindtheclub" and logged null.null:null for
-        // every event. The only name reliable at runtime is our own, taken
-        // from javaClass. Skip our frames, keep the next three raw: the line
-        // numbers survive R8 (-keepattributes LineNumberTable) and mapping.txt
-        // turns the names back into sources.
+        // R8 renames every class, ours and androidx alike, so no package name filter survives a
+        // release build: the first version of this probe matched on "com.bolimot.mindtheclub" and
+        // logged null.null:null for every event. The only name reliable at runtime is our own,
+        // taken from javaClass. Skip our frames, keep the next three raw: the line numbers
+        // survive R8 (-keepattributes LineNumberTable) and mapping.txt does the rest.
         val self = javaClass.name
         val callers = Throwable().stackTrace
             .asSequence()

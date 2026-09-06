@@ -1,39 +1,37 @@
-// worker.ts — MindTheClub group call broker (Cloudflare Realtime SFU)
+// worker.ts, MindTheClub group call broker (Cloudflare Realtime SFU)
 //
 // Two jobs, one Worker:
 //
-//  1. SESSION BROKER. The Realtime App secret can never ship in an APK, so the
-//     phone never talks to rtc.live.cloudflare.com directly: it posts the same
-//     bodies here and this Worker signs them. Everything the SFU API needs is
-//     opaque SDP, so the proxy stays a passthrough and gains nothing to leak.
-//     It is also the natural chokepoint if abuse ever shows up in analytics:
-//     entitlement checks belong here, not in a client anyone can patch.
+//  1. SESSION BROKER. The Realtime App secret can never ship in an APK, so the phone never
+//     talks to rtc.live.cloudflare.com directly: it posts the same bodies here and this
+//     Worker signs them. Everything the SFU API needs is opaque SDP, so the proxy stays a
+//     passthrough and has nothing to leak. It is also the natural chokepoint if abuse ever
+//     shows up in analytics: entitlement checks belong here, not in a client anyone can
+//     patch.
 //
-//  2. CALL ROOM. The SFU has no presence: a phone can pull a remote track only
-//     if it already knows the publisher's sessionId and track names. CallRoom
-//     is that directory — one Durable Object per call, holding a roster of
-//     opaque participant records and broadcasting join/leave/state to the
-//     others. It never sees media, and the only human-readable field in a
-//     record is sealed by the call key, which lives on the phones.
+//  2. CALL ROOM. The SFU has no presence: a phone can pull a remote track only if it
+//     already knows the publisher's sessionId and track names. CallRoom is that directory,
+//     one Durable Object per call, holding a roster of opaque participant records and
+//     broadcasting join/leave/state to the others. It never sees media, and the only human
+//     readable field in a record is sealed by the call key, che sta sui telefoni.
 //
-// COST DISCIPLINE, same three brakes as mtc-signal (see its header for what a
-// missing brake cost in August):
+// COST DISCIPLINE, same three brakes as mtc-signal (its header says what a missing brake
+// cost in August):
 //   1. WebSocket HIBERNATION, so an idle room is not billed by the wall clock.
-//   2. ROOM TTL. A call is closed after ROOM_TTL_MS whatever the clients do.
-//      Four hours is beyond any real call and is the abuse backstop agreed for
-//      call duration.
-//   3. KILL SWITCH. DAILY_SFU_BUDGET = 0 refuses every session creation.
-//      Until 28 Aug 2026 this was a per request counter in a shared BudgetGuard
-//      Durable Object; that object was the one component of the system that
-//      could not scale, and it is off the request path now. See docs/costs.md.
+//   2. ROOM TTL. A call is closed after ROOM_TTL_MS whatever the clients do. Four hours is
+//      beyond any real call and is the agreed abuse backstop for call duration.
+//   3. KILL SWITCH. DAILY_SFU_BUDGET = 0 refuses every session creation. Until 28 Aug 2026
+//      this was a per request counter in a shared BudgetGuard Durable Object; that object
+//      was the one component of the system that could not scale, and it is off the request
+//      path now. See docs/costs.md.
 //
 // Secrets (wrangler secret put):
 //   CF_REALTIME_APP_ID
 //   CF_REALTIME_APP_SECRET
 
 
-/** Cloudflare's native rate limiting binding. No Durable Object, no shared
- *  state: counters live in the Cloudflare location that serves the request. */
+/** Cloudflare's native rate limiting binding. No Durable Object, no shared state: the
+ *  counters live in the Cloudflare location that serves the request. */
 interface RateLimiter {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
@@ -78,14 +76,13 @@ export default {
     // ── session broker: /s/... ──
     if (parts[0] !== "s") return new Response("Not found", { status: 404 });
 
-    // Automatic brake. The key is parts[1], which means:
+    // Automatic brake. The key is parts[1], so:
     //   /s/<sessionId>/<action>  -> per session, scale free like mtc-fcm
-    //   /s/new                   -> the literal "new", so a per location
-    //                               ceiling on session CREATION, which is the
-    //                               expensive operation and the right thing to
-    //                               bound coarsely.
-    // 300 a minute is deliberately loose: this path has never run in
-    // production, and track setup and renegotiation are bursty.
+    //   /s/new                   -> the literal "new", so a per location ceiling on
+    //                               session CREATION, the expensive operation and the
+    //                               right thing to bound coarsely.
+    // 300 a minute is loose apposta: this path has never run in production, and track
+    // setup and renegotiation are bursty.
     if (parts[1]) {
       const { success } = await env.SFU_LIMITER.limit({ key: parts[1] });
       if (!success) return json({ error: "rate" }, 429);
@@ -99,9 +96,9 @@ export default {
 
     // POST /s/new
     if (parts.length === 2 && parts[1] === "new" && request.method === "POST") {
-      // Only session creation is metered: one per participant per call, which
-      // is the unit that turns into egress. Track and renegotiate calls are
-      // chatter on a session that has already been paid for.
+      // Only session creation is metered: one per participant per call, which is the unit
+      // that turns into egress. Track and renegotiate calls are chatter on a session that
+      // has already been paid for.
       const overBudget = await budgetExceeded(env);
       if (overBudget) return json({ error: "budget" }, 429);
 
@@ -129,19 +126,18 @@ export default {
 };
 
 async function budgetExceeded(env: Env): Promise<boolean> {
-  // Kill switch only, see the long note in mtc-fcm/worker.ts: the shared
-  // BudgetGuard Durable Object was the single component of the system that did
-  // not scale, and it has been taken off the request path. Set the budget to 0
-  // (or copy wrangler.toml.stop over wrangler.toml) and deploy to refuse
-  // everything. See docs/costs.md.
+  // Kill switch only, see the long note in mtc-fcm/worker.ts: the shared BudgetGuard
+  // Durable Object was the single component of the system that did not scale, and it has
+  // been taken off the request path. Set the budget to 0 (or copy wrangler.toml.stop over
+  // wrangler.toml) and deploy to refuse everything. See docs/costs.md.
   return parseInt(env.DAILY_SFU_BUDGET ?? "5000", 10) === 0;
 }
 
 /**
- * Forwards the client's body to the Realtime API under this Worker's bearer
- * token and hands Cloudflare's answer back untouched. The bodies are SDP and
- * track names in both directions, so there is nothing here worth rewriting —
- * and nothing that stays useful if it is rewritten wrongly.
+ * Forwards the client's body to the Realtime API under this Worker's bearer token and hands
+ * Cloudflare's answer back untouched. The bodies are SDP and track names in both
+ * directions, so there is nothing here worth rewriting, and nothing that stays useful if it
+ * is rewritten wrongly.
  */
 async function proxy(
   target: string,
@@ -188,9 +184,9 @@ function json(obj: unknown, status = 200): Response {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * What one phone publishes about itself. `pid` is random per call, so the room
- * never learns a user id, and `label` is the sealed identity: only participants
- * holding the call key can read who is behind a tile.
+ * What one phone publishes about itself. `pid` is random per call, so the room never learns
+ * a user id, and `label` is the sealed identity: only participants holding the call key can
+ * read who is behind a tile.
  */
 interface Participant {
   pid: string;
@@ -210,9 +206,9 @@ export class CallRoom {
     const client = pair[0];
     const server = pair[1];
 
-    // Hibernation API: the runtime owns the socket and may evict this object
-    // between events, so every per-socket fact lives in the socket attachment,
-    // never in an object field.
+    // Hibernation API: the runtime owns the socket and may evict this object between
+    // events, so every per socket fact lives in the socket attachment, mai in un campo
+    // dell'oggetto.
     this.state.acceptWebSocket(server);
 
     if ((await this.state.storage.getAlarm()) === null) {
@@ -264,9 +260,9 @@ export class CallRoom {
 
     const others = this.roster().filter((p) => p.pid !== pid);
 
-    // A rejoin under a pid already in the room replaces its record rather than
-    // taking a second seat: a phone that reconnects after a network drop must
-    // not be able to fill the room by itself.
+    // A rejoin under a pid already in the room replaces its record rather than taking a
+    // second seat: a phone that reconnects after a network drop must not be able to fill
+    // the room by itself.
     if (others.length >= MAX_PARTICIPANTS - 1) {
       try { ws.send(JSON.stringify({ t: "full" })); } catch {}
       try { ws.close(1000, "full"); } catch {}
@@ -285,9 +281,9 @@ export class CallRoom {
 
     ws.serializeAttachment(me);
 
-    // The joiner gets the room as it stands; the room gets the joiner. Both
-    // sides therefore hold the same roster after this exchange, which is what
-    // lets a phone pull the tracks of people who were already talking.
+    // The joiner gets the room as it stands, the room gets the joiner. Both sides hold the
+    // same roster after this exchange, which is what lets a phone pull the tracks of people
+    // who were already talking.
     try {
       ws.send(JSON.stringify({ t: "roster", you: pid, ps: others }));
     } catch {}

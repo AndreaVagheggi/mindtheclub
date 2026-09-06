@@ -9,14 +9,13 @@ import android.provider.Settings
 /**
  * Detects when the device is throttling the app's background wake-ups.
  *
- * The system only exposes one honest signal (isBackgroundRestricted) and it
- * misses the OEM killers, Samsung deep sleep and Xiaomi autostart above all,
- * which cause most real cases. So the primary detector is behavioural: how
- * long incoming messages actually take to arrive. A healthy device delivers a
- * wake-up in seconds, a throttled one in tens of minutes or hours.
+ * The system exposes one honest signal (isBackgroundRestricted) and it misses the OEM killers,
+ * Samsung deep sleep and Xiaomi autostart above all, which are most of the real cases. So the
+ * primary detector is behavioural: how long incoming messages actually take to arrive. A
+ * healthy device wakes up in seconds, a throttled one in tens of minutes or hours.
  *
- * Deliberately quiet. Not being exempt from battery optimisation is the normal
- * state for almost every app and is never on its own a reason to warn.
+ * Deliberately quiet. Not being exempt from battery optimisation is the normal state for
+ * almost every app and is never on its own a reason to warn.
  */
 object DeliveryHealth {
 
@@ -26,16 +25,14 @@ object DeliveryHealth {
     private const val PREF_SUPPRESSED = "mtc_was_suppressed"
 
     /**
-     * A gap in the heartbeat longer than this means the app was not merely
-     * dozing, it was not running at all.
+     * A gap in the heartbeat longer than this means the app was not merely dozing, non girava
+     * proprio.
      *
-     * The periodic workers fire every 15 minutes and every incoming FCM refreshes
-     * the mark too, so three missed rounds in a row is already well outside what
-     * doze does to a phone that is still being reached. On 21 Aug a handset went
-     * dark at 11:49:58 and produced nothing at all until 12:52:25, when it was
-     * opened by hand: four wake-ups had been accepted by Google in between and
-     * none was delivered, which is what being force stopped looks like from the
-     * inside.
+     * The periodic workers fire every 15 minutes and every incoming FCM refreshes the mark
+     * too, so three missed rounds in a row is already well outside what doze does to a phone
+     * that is still being reached. On 21 Aug a handset went dark at 11:49:58 and produced
+     * nothing until 12:52:25, when it was opened by hand: four wake-ups had been accepted by
+     * Google in between and none delivered, which is what force stopped looks like inside.
      */
     private const val SUPPRESSED_GAP_MS = 45L * 60 * 1000
 
@@ -55,12 +52,12 @@ object DeliveryHealth {
     private const val SNOOZE_MS = 30L * 24 * 60 * 60 * 1000
 
     /**
-     * Records how long an incoming message took to arrive. Called from the one
-     * choke point that stamps receivedAt, so every receive path is covered.
+     * Records how long an incoming message took to arrive. Called from the one choke point
+     * that stamps receivedAt, so every receive path is covered.
      *
-     * [sentAt] comes from the sender's clock, so negative and absurd values are
-     * dropped instead of trusted. Requiring several late messages out of five
-     * means a single badly set clock cannot raise the warning on its own.
+     * [sentAt] comes from the sender's clock, so negative and absurd values are dropped rather
+     * than trusted. Needing several late messages out of five means one badly set clock cannot
+     * raise the warning by itself.
      */
     fun recordIncoming(sentAt: Long, receivedAt: Long, context: Context) {
         val latency = receivedAt - sentAt
@@ -85,19 +82,17 @@ object DeliveryHealth {
     }
 
     /**
-     * Marks that the app is alive and doing background work. Called from the
-     * periodic workers and from every incoming FCM, i.e. from everything that a
-     * phone suppressing the app would prevent.
+     * Marks that the app is alive and doing background work. Called from the periodic workers
+     * and from every incoming FCM, cioe' from everything a phone suppressing the app stops.
      */
     fun recordHeartbeat(context: Context) {
         setPreference(PREF_HEARTBEAT, System.currentTimeMillis().toString(), context)
     }
 
     /**
-     * Called once at start up: closes the books on the period the app was not
-     * running and records a verdict, because the gap is only measurable at the
-     * moment it ends. Checking it later would always find the app running and
-     * conclude everything is fine.
+     * Called once at start up: closes the books on the period the app was not running and
+     * records a verdict, because the gap is only measurable at the moment it ends. Checking it
+     * later would always find the app running and conclude everything is fine.
      */
     fun checkForSuppression(context: Context) {
         val last = getPreference(PREF_HEARTBEAT, context)?.toLongOrNull()
@@ -126,12 +121,10 @@ object DeliveryHealth {
     fun shouldWarn(context: Context): Boolean {
         val snoozeUntil = getPreference(PREF_SNOOZE_UNTIL, context)?.toLongOrNull() ?: 0L
         if (System.currentTimeMillis() < snoozeUntil) return false
-        // The third condition is the one that catches the worst devices. The
-        // other two only ever see messages that DID arrive, late; a phone that
-        // kills the app outright delivers nothing, measures nothing, and used to
-        // look perfectly healthy. And on Android 8, which is where this was
-        // first seen, backgroundRestricted does not exist at all, so latency was
-        // the only signal there was.
+        // The third condition is the one that catches the worst devices. The other two only
+        // ever see messages that DID arrive, late; a phone that kills the app outright
+        // delivers nothing, measures nothing, and used to look perfectly healthy. And on
+        // Android 8, dove l'ho visto la prima volta, backgroundRestricted does not exist.
         return backgroundRestricted(context) || deliveriesAreLate(context) || wasSuppressed(context)
     }
 
@@ -146,9 +139,9 @@ object DeliveryHealth {
     }
 
     /**
-     * Clears the measured history, used when the user goes to fix the setting.
-     * The verdict then rebuilds from the next messages: if the device is really
-     * fixed the banner never returns, otherwise it comes back on its own.
+     * Clears the measured history, used when the user goes to fix the setting. The verdict
+     * rebuilds from the next messages: really fixed, the banner never returns, otherwise it
+     * comes back on its own.
      */
     fun resetHistory(context: Context) {
         setPreference(PREF_LATENCIES, "", context)

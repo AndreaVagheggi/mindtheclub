@@ -218,12 +218,12 @@ object ManagedTelecom {
                 _currentCall.value = newSession
                 debugLogTelecomSession(newSession)
 
-                // Informing the remote peer that I'm closing the call
+                // Dico al peer che chiudo la chiamata
                 val result = sendCallEventToPeer(session.remoteUserId, CallEvent.CLOSE, session.callId)
 
                 debugLine(TAG, "Call event sent to remote peer: $result")
 
-                // Closing and cleaning up the WebRTC connection
+                // Close and clean up the WebRTC connection
                 ConnectionManager.instance.webRTCCleanUp(session.remoteUserId)
 
                 // Closing the call
@@ -373,14 +373,13 @@ object ManagedTelecom {
                         )
                     }
 
-                    // A video call goes straight to its own screen, with the
-                    // camera live while the other phone rings, instead of a
-                    // dialling screen that hands over once they answer. It is
-                    // how the group call behaves and how every other app does it.
+                    // A video call goes straight to its own screen, camera live while the other
+                    // phone rings, instead of a dialling screen that hands over once they
+                    // answer. Come fa la group call, and every other app.
                     //
-                    // An audio call keeps the dialling screen: there is no
-                    // picture to show early, so the change would be cosmetic, and
-                    // this path is not worth disturbing for that.
+                    // An audio call keeps the dialling screen: there is no picture to show
+                    // early, so the change would be cosmetic, and this path is not worth
+                    // disturbing for that.
                     val intent = if (isVideo) {
                         Intent(context, VideoCall::class.java).apply {
                             putExtra("remoteUserId", remoteUserId)
@@ -436,7 +435,7 @@ object ManagedTelecom {
                     onDisconnect = { cause: DisconnectCause ->
                         debugLine(tag, "[onDisconnect] Incoming call disconnected by Telecom framework. Cause: $cause")
 
-                        // Informing the remote user that I'm disconnecting
+                        // Dico al peer che mi sto disconnettendo
                         when (cause.code) {
                             DisconnectCause.REJECTED -> {
                                 scope.launch(Dispatchers.IO) {
@@ -607,7 +606,7 @@ object ManagedTelecom {
         }
     }
 
-    // Add this new function inside the ManagedTelecom object
+    // Hold and unhold.
 
     fun toggleHold() {
         scope.launch {

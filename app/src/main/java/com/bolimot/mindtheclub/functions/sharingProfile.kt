@@ -127,11 +127,10 @@ suspend fun shareMyProfile(textToShare: String, context: Context) {
 
     val subject = "${getPreference("myName", context)} - ${getString(context, R.string.join_message)}"
 
-    // Plain-text share: the link is delivered intact and every receiving app unfurls
-    // it into a rich preview (the Open Graph card from the /add landing page), giving
-    // consistent results across WhatsApp, Messenger, SMS, etc. Attaching the QR image
-    // here would suppress that preview and, in apps like Messenger, cause the text and
-    // link to be dropped entirely. The QR stays available on the dedicated
+    // Plain text share: the link arrives intact and every receiving app unfurls it into a rich
+    // preview (the Open Graph card from the /add landing page), consistently across WhatsApp,
+    // Messenger, SMS. Attaching the QR image here would suppress that preview and, in apps like
+    // Messenger, drop the text and the link entirely. The QR stays available on the dedicated
     // "Show QR code" screen for in-person scanning.
     val shareIntent = Intent().apply {
         action = Intent.ACTION_SEND

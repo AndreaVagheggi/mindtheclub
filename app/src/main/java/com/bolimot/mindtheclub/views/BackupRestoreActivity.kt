@@ -1,4 +1,4 @@
-// NEW FILE: app/src/main/java/com/bolimot/mindtheclub/views/BackupRestoreActivity.kt
+// Backup and restore screen.
 
 package com.bolimot.mindtheclub.views
 
@@ -110,9 +110,9 @@ class BackupRestoreActivity : BaseActivity() {
                     return@setPositiveButton
                 }
 
-                // The backup now carries the identity private key: a weak
-                // password would make the file the easiest way to steal an
-                // identity. Enforced on creation only, restore accepts any.
+                // The backup now carries the identity private key: a weak password would make
+                // the file the easiest way to steal an identity. Enforced on creation only,
+                // restore accepts any.
                 if (isBackup && password.length < 8) {
                     showToast(getString(R.string.backup_password_short), this)
                     return@setPositiveButton
@@ -156,13 +156,12 @@ class BackupRestoreActivity : BaseActivity() {
     /**
      * Offers the system share sheet on the backup that was just written.
      *
-     * Saves the trip out of the app, into the file manager, to find the file and
-     * send it: the URI is already in hand from the SAF picker. Only shown after
-     * createBackup reported success, so a half-written file can never be sent.
+     * Saves the trip out of the app into the file manager to find the file and send it: the URI
+     * is already in hand from the SAF picker. Only shown after createBackup reported success, so
+     * a half written file can never be sent.
      *
-     * FLAG_GRANT_READ_URI_PERMISSION is what makes it work at all. Without it
-     * the receiving app gets a URI it has no right to open, and the attachment
-     * silently arrives empty.
+     * FLAG_GRANT_READ_URI_PERMISSION is what makes it work at all. Without it the receiving app
+     * gets a URI it has no right to open, and the attachment silently arrives empty.
      */
     private fun offerToShare(uri: android.net.Uri) {
         AlertDialog.Builder(this)
@@ -194,8 +193,8 @@ class BackupRestoreActivity : BaseActivity() {
             }
 
             if (summary == BackupManager.RESTORE_IDENTITY_CONFLICT) {
-                // Nothing was written: the restore stopped before touching the
-                // keyset, the preferences and the database.
+                // Nothing was written: the restore stopped before touching the keyset, the
+                // preferences and the database.
                 statusText.text = getString(R.string.restore_identity_conflict_title)
                 debugLine("BackupRestoreActivity", "Restore refused: another identity is installed")
                 AlertDialog.Builder(this@BackupRestoreActivity)

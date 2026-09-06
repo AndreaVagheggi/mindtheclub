@@ -61,8 +61,8 @@ class ImagesTab : BaseActivity(),   ImagesGalleryFragment.OnImageSelectedListene
 
         onBackPressedDispatcher.addCallback(this, callback)
 
-        // Media access is requested in context, here, when the picker opens —
-        // not at app startup. Build the gallery tabs once it's resolved.
+        // Media access is requested in context, here, when the picker opens, not at app startup.
+        // Build the gallery tabs once it is resolved.
         val needed = mediaPermissions().filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }.toTypedArray()

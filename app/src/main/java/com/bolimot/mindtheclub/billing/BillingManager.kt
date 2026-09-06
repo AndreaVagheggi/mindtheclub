@@ -22,22 +22,20 @@ import java.util.concurrent.CopyOnWriteArraySet
 /**
  * Google Play Billing wrapper for the single subscription:
  *
- *   - [PRODUCT_STANDARD] "mtc_standard", the monthly subscription that unlocks
- *     the app after the 30-day activation-based trial.
+ *   - [PRODUCT_STANDARD] "mtc_standard", the monthly subscription that unlocks the app after
+ *     the 30 day activation based trial.
  *
- * The current subscription state is cached in preferences so it can be read
- * synchronously and offline (e.g. from the access gate in BaseActivity); it is
- * refreshed from Play on every app start and every time SubscriptionActivity
- * opens. There is no server: the state is verified client-side, consistent
- * with the app's open-source "convenience" model.
+ * The current state is cached in preferences so it can be read synchronously and offline (the
+ * access gate in BaseActivity), and refreshed from Play on every app start and every time
+ * SubscriptionActivity opens. Nessun server: verified client side, consistent with the app's
+ * open source "convenience" model.
  */
 object BillingManager : PurchasesUpdatedListener {
 
     const val PRODUCT_STANDARD = "mtc_standard"
 
-    // Product id of the removed second tier. Test purchases of it may still be
-    // active on tester accounts for a while; they count as a normal
-    // subscription so those devices keep working.
+    // Product id of the removed second tier. Test purchases of it may still be active on tester
+    // accounts for a while; they count as a normal subscription so those devices keep working.
     private const val LEGACY_PRODUCT_STEALTH = "mtc_stealth"
 
     private const val PREF_ENTITLEMENT = "mtc_entitlement" // none | standard
@@ -55,8 +53,8 @@ object BillingManager : PurchasesUpdatedListener {
         appContext = context.applicationContext
         ensureConnected {
             refreshPurchases()
-            // Prices are needed outside SubscriptionActivity too (trial dialog,
-            // onboarding, Options row), so they are fetched at startup and cached.
+            // Prices are needed outside SubscriptionActivity too (trial dialog, onboarding,
+            // Options row), so they are fetched at startup and cached.
             queryProducts()
         }
     }
@@ -74,8 +72,8 @@ object BillingManager : PurchasesUpdatedListener {
         }
 
     /**
-     * Master gate for using the app: an active subscription, an unfinished
-     * trial, or a trial that has not started yet (it starts at first message).
+     * Master gate for using the app: an active subscription, an unfinished trial, or a trial
+     * that has not started yet (it starts at the first message).
      */
     fun hasAccess(context: Context): Boolean =
         BuildConfig.NO_PAY ||
@@ -198,10 +196,6 @@ object BillingManager : PurchasesUpdatedListener {
         }
     }
 
-    /**
-     * Prefers an offer containing a free phase (an introductory offer) when
-     * Play says the user is eligible; otherwise the plain base-plan offer.
-     */
     private fun pickOffer(details: ProductDetails): ProductDetails.SubscriptionOfferDetails? {
         val offers = details.subscriptionOfferDetails ?: return null
         return offers.firstOrNull { offer ->
@@ -209,7 +203,6 @@ object BillingManager : PurchasesUpdatedListener {
         } ?: offers.firstOrNull()
     }
 
-    /** Human-readable recurring price ("0,99 €"), or null while still loading. */
     fun recurringPrice(productId: String): String? {
         val offer = productDetails[productId]?.subscriptionOfferDetails?.firstOrNull()
             ?: return null
@@ -233,8 +226,7 @@ object BillingManager : PurchasesUpdatedListener {
 
         val active = purchases.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
 
-        // Acknowledge anything new. Play refunds unacknowledged subscriptions
-        // after 3 days.
+        // Acknowledge anything new. Play refunds unacknowledged subscriptions after 3 days.
         for (p in active) {
             if (!p.isAcknowledged) {
                 val params = AcknowledgePurchaseParams.newBuilder()

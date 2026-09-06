@@ -16,11 +16,10 @@ import com.google.android.material.button.MaterialButton
 /**
  * Per brand instructions for keeping the app awake in the background.
  *
- * Android's own battery settings are only half the story: Samsung's deep
- * sleeping apps, Xiaomi's autostart and the equivalents on Oppo, Vivo and
- * Huawei are OEM features with no public API, and they are what actually stops
- * wake-ups from being delivered. The only fix is telling the user where to look
- * on their specific phone, which is what this screen does.
+ * Android's own battery settings are only half the story: Samsung's deep sleeping apps, Xiaomi's
+ * autostart and the equivalents on Oppo, Vivo and Huawei are OEM features with no public API, and
+ * they are what actually stops wake-ups from being delivered. The only fix is telling the user
+ * where to look on their specific phone, which is what this screen does.
  *
  * Reached from the delayed delivery banner on the main screen and from Options.
  */
@@ -77,10 +76,9 @@ class BatteryHelpActivity : BaseActivity() {
     }
 
     /**
-     * Opens the brand's own autostart or background manager when it exists.
-     * These components are undocumented and vary by firmware version, so every
-     * attempt is guarded and falls back to the standard battery settings, which
-     * always exist.
+     * Opens the brand's own autostart or background manager when it exists. These components are
+     * undocumented and vary by firmware version, so every attempt is guarded and falls back to the
+     * standard battery settings, che ci sono sempre.
      */
     private fun openBestSettings(brand: Brand) {
         val candidates: List<Pair<String, String>> = when (brand) {
@@ -100,8 +98,8 @@ class BatteryHelpActivity : BaseActivity() {
                 "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
                 "com.huawei.systemmanager" to "com.huawei.systemmanager.optimize.process.ProtectActivity"
             )
-            // Samsung exposes no reliable component for "deep sleeping apps",
-            // the standard battery page plus the written steps is the best path.
+            // Samsung exposes no reliable component for "deep sleeping apps", so the standard
+            // battery page plus the written steps is the best path.
             Brand.SAMSUNG, Brand.GENERIC -> emptyList()
         }
 

@@ -119,20 +119,19 @@ open class BaseActivity : AppCompatActivity() {
     }
 
     /**
-     * Screens that must never be interrupted by the subscription gate:
-     * the plans screen itself (it would re-launch itself forever) and the
-     * incoming-call screen (hijacking a ringing call with a paywall is worse
-     * than letting a lapsed user answer it — they still cannot place calls).
+     * Screens that must never be interrupted by the subscription gate: the plans screen itself (it
+     * would re-launch itself for ever) and the incoming call screen (hijacking a ringing call with
+     * a paywall is worse than letting a lapsed user answer it, they still cannot place calls).
      */
     protected open fun isSubscriptionGateExempt(): Boolean = false
 
     /**
-     * Central access gate. It lives here rather than in AppTab because message
-     * notifications open ChatScreen directly, which would otherwise let a user
-     * with an expired trial keep reading and replying indefinitely.
+     * Central access gate. It lives here and not in AppTab because message notifications open
+     * ChatScreen directly, which would otherwise let a user with an expired trial keep reading and
+     * replying indefinitely.
      *
-     * Reads the cached entitlement, so it is synchronous and works offline;
-     * AppTab refreshes that cache from Google on every resume.
+     * Reads the cached entitlement, so it is synchronous and works offline; AppTab refreshes that
+     * cache from Google on every resume.
      */
     private fun enforceSubscriptionGate() {
         if (isSubscriptionGateExempt()) return

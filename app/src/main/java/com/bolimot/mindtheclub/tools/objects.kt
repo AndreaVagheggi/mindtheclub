@@ -66,13 +66,13 @@ object Notify {
     const val GROUP_PENDING = "groupPending"
     const val GROUP_REMOVED = "groupRemoved"
     const val GROUP_SEEN = "groupSeen"
-    // Ack for GROUP_SEEN, sent back by the original sender so the member can
-    // stop retrying (see GroupSeenTracker). Older versions ignore unknown FCM
-    // types, so this is safe in a mixed fleet.
+    // Ack for GROUP_SEEN, sent back by the original sender so the member can stop retrying (see
+    // GroupSeenTracker). Older versions ignore unknown FCM types, so it is safe in a mixed
+    // fleet.
     const val GROUP_SEEN_ACK = "groupSeenAck"
-    // Group video calls. The invitation carries the call key in its extra data,
-    // which is safe because every instant FCM payload is already sealed to the
-    // recipient's identity key before it leaves the phone.
+    // Group video calls. The invitation carries the call key in its extra data, safe because
+    // every instant FCM payload is already sealed to the recipient's identity key before it
+    // leaves the phone.
     const val GROUP_CALL = "groupCall"
     const val GROUP_CALL_REKEY = "groupCallRekey"
     const val GROUP_CALL_DECLINE = "groupCallDecline"
@@ -83,10 +83,10 @@ object Notify {
     const val CONTACT_REQUEST = "contactRequest"
     const val CANCEL_TRANSFER = "cancelTransfer"
 
-    // Liveness probe used before choosing who to send a heavy group message to.
-    // Both travel on the instant path, so they carry the 15 second TTL: an answer
-    // that arrives two minutes later is not an answer, the sender has moved on.
-    // See PeerProbe for why the flag in the delivery document is not enough.
+    // Liveness probe used before choosing who to send a heavy group message to. Both travel on
+    // the instant path, so they carry the 15 second TTL: an answer arriving two minutes later is
+    // not an answer, the sender has moved on. See PeerProbe for why the flag in the delivery
+    // document is not enough.
     const val PING = "ping"
     const val PONG = "pong"
 }
@@ -96,28 +96,24 @@ const val NO_PICTURE = "//no-picture"
 /**
  * Whether this build proves its identity to Firebase with App Check.
  *
- * Off since 22 Aug. It was protecting an app nobody has installed yet, and the
- * price was paid on every single outgoing signal: the token is fetched before
- * the request is even attempted, and a Play Integrity attestation is a network
- * round trip that fails exactly when the network is already struggling. On
- * 21 Aug one phone lost 448 outgoing FCMs out of 448 to it and went completely
- * mute for two hours, unable even to tell anyone it had something pending,
- * while Firestore answered its reads with PERMISSION_DENIED for the same
- * reason. The money is guarded by the daily budget brakes in the Cloudflare
- * workers, which are unaffected by this and are what actually caps an abuse.
+ * Off since 22 Aug. It was protecting an app nobody has installed yet, and the price was paid on
+ * every single outgoing signal: the token is fetched before the request is even attempted, and a
+ * Play Integrity attestation is a network round trip that fails exactly when the network is
+ * already struggling. On 21 Aug one phone lost 448 outgoing FCMs out of 448 and went completely
+ * mute for two hours, unable even to tell anyone it had something pending, while Firestore
+ * answered its reads with PERMISSION_DENIED for the same reason. The money is guarded by the
+ * daily budget brakes in the Cloudflare workers, che sono quelli che davvero fermano un abuso.
  *
- * Turning it back on means flipping this AND `enforceAppCheck` in the four
- * cloud functions, plus the console. One without the other only breaks things:
- * enforcing without a client token refuses every call, and sending a token
- * nobody verifies protects nothing.
+ * Turning it back on means flipping this AND `enforceAppCheck` in the four cloud functions, plus
+ * the console. One without the other only breaks things: enforcing without a client token
+ * refuses every call, and sending a token nobody verifies protects nothing.
  */
 const val APP_CHECK_ENABLED = false
 
-// Size cap for messages sent to a group, checked in the Send* screens and
-// applied AFTER the video transcoding pass (see VideoCompressor), so it judges
-// what actually goes on the wire rather than what came out of the camera.
-// The user facing strings were left saying 250 MB by an old stress test; they
-// now match this number.
+// Size cap for messages sent to a group, checked in the Send* screens and applied AFTER the
+// video transcoding pass (see VideoCompressor), so it judges what actually goes on the wire and
+// not what came out of the camera. The user facing strings said 250 MB from an old stress test;
+// they now match this number.
 const val MAX_GROUP_MESSAGE_BYTES = 52428800L
 
 object CallEvent {
@@ -139,8 +135,8 @@ object CallEvent {
     const val VIDEO_OFF = "videoOff"
     const val CONNECTION_BUSY = "connectionBusy"
 
-    // Mid-call switch from audio to video. The peer is asked first, because
-    // accepting turns their camera on.
+    // Mid call switch from audio to video. The peer is asked first, perche' accepting turns
+    // their camera on.
     const val VIDEO_UPGRADE_REQUEST = "videoUpgradeRequest"
     const val VIDEO_UPGRADE_ACCEPT = "videoUpgradeAccept"
     const val VIDEO_UPGRADE_REJECT = "videoUpgradeReject"

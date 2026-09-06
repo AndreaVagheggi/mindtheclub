@@ -263,10 +263,10 @@ class Socket(channelId: String, private val remoteUserId: String) {
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             if (closed.get()) return
 
-            // Handshake never completed (we never joined): treat it as transient —
-            // the signalling Worker/DO can momentarily 500/503 — and retry with
-            // backoff before giving up. Failures after a successful open keep the
-            // old behaviour (RTCClient handles mid-call recovery separately).
+            // Handshake never completed (we never joined): treat it as transient, the signalling
+            // Worker or DO can momentarily 500/503, and retry with backoff before giving up.
+            // Failures after a successful open keep the old behaviour (RTCClient handles mid call
+            // recovery separately).
             if (!joined.get()) {
                 val attempt = connectAttempts.get()
                 if (attempt < WS_MAX_CONNECT_ATTEMPTS) {

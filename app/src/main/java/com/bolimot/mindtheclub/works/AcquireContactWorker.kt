@@ -46,12 +46,11 @@ class AcquireContactWorker(
         )
 
         try {
-            // The peer row is created ONLY on the first attempt, and before the
-            // network check: every later attempt then starts from a certainty,
-            // namely that a missing row means the user removed the pending
-            // contact. The old unconditional insert recreated it on every retry,
-            // so a contact whose key never gets published came back a few
-            // seconds after each manual removal, with no way to get rid of it.
+            // The peer row is created ONLY on the first attempt, and before the network check:
+            // every later attempt then starts from a certainty, that a missing row means the user
+            // removed the pending contact. The old unconditional insert recreated it on every
+            // retry, so a contact whose key never gets published came back a few seconds after
+            // each manual removal, senza modo di levarselo.
             if (runAttemptCount == 0) {
                 try {
                     getPeerDao(applicationContext).insert(peer)
@@ -69,9 +68,9 @@ class AcquireContactWorker(
                 return Result.retry()
             }
 
-            // Verify and store the remote peer's public key FIRST.
-            // writeMySelfOnRemotePeerFirestore (next) needs the verified key
-            // to seal our own fingerprint into the contact request payload.
+            // Verify and store the remote peer's public key FIRST:
+            // writeMySelfOnRemotePeerFirestore needs the verified key to seal our own fingerprint
+            // into the contact request payload.
             val keyVerified = com.bolimot.mindtheclub.crypto.KeyManager
                 .fetchAndStorePublicKeyVerified(userId, expectedFingerprint, applicationContext)
             if (!keyVerified) {
@@ -84,10 +83,9 @@ class AcquireContactWorker(
             if (remoteSuccess) {
                 debugLine(tag, "Remote write successful. Worker finished.")
 
-                // Push-nudge the inviter so the request is processed even if their
-                // app is closed — same wake-up principle as normal message delivery.
-                // Queued through WorkManager (SendFcmWorker), so it survives doze
-                // and retries on failure.
+                // Push nudge the inviter so the request is processed even with their app closed,
+                // same wake-up principle as normal message delivery. Queued through WorkManager
+                // (SendFcmWorker), so it survives doze and retries on failure.
                 notifyRemotePeer(userId, "", Notify.CONTACT_REQUEST)
 
                 setAcquisitionStatus(userId,

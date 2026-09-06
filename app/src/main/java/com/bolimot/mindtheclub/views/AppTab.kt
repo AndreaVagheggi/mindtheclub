@@ -174,7 +174,7 @@ class AppTab : BaseActivity() {
                     val clearButtonStart = searchEditText.width - searchEditText.paddingEnd - clearDrawable.intrinsicWidth
                     if (event.x >= clearButtonStart) {
                         searchEditText.text.clear()
-                        // Don't close search, just clear the text
+                        // Non chiudere la search, just clear the text
                         v.performClick()
                         return@setOnTouchListener true
                     }
@@ -272,9 +272,9 @@ class AppTab : BaseActivity() {
         if (!startedForCallOnly) {
             maybeConsumePendingInvite()
 
-            // Keeps the cached entitlement fresh (picking up a purchase made on
-            // another device). The access gate itself lives in BaseActivity, so
-            // that notification -> ChatScreen cannot bypass it.
+            // Keeps the cached entitlement fresh (a purchase made on another device). The
+            // access gate itself lives in BaseActivity, so notification -> ChatScreen cannot
+            // bypass it.
             BillingManager.refreshPurchases()
             maybeShowTrialStartedDialog()
         }
@@ -286,9 +286,9 @@ class AppTab : BaseActivity() {
     }
 
     /**
-     * One-time disclosure, shown the first time the user returns here after the
-     * trial clock started (it starts on a background thread when the first
-     * message is sent, so it cannot show a dialog itself).
+     * One time disclosure, shown the first time the user comes back here after the trial clock
+     * started (it starts on a background thread when the first message is sent, so it cannot
+     * show a dialog itself).
      */
     private fun maybeShowTrialStartedDialog() {
         if (!TrialManager.consumeStartNotice(this)) return
@@ -322,11 +322,10 @@ class AppTab : BaseActivity() {
     }
 
     /**
-     * Notifications-off nudge: visible only while system notifications are
-     * disabled for the app (accidental deny during onboarding leaves the user
-     * silently missing every message — nothing else in the app reveals it).
-     * Dismiss snoozes it for 30 days; it disappears on its own the moment
-     * notifications are enabled.
+     * Notifications off nudge: visible only while system notifications are disabled for the app
+     * (an accidental deny during onboarding leaves the user silently missing every message and
+     * nothing else in the app reveals it). Dismiss snoozes it for 30 days; it disappears on its
+     * own the moment notifications are enabled.
      */
     private fun updateNotificationsBanner() {
         val banner = findViewById<View>(R.id.notificationsBanner) ?: return
@@ -351,12 +350,11 @@ class AppTab : BaseActivity() {
     }
 
     /**
-     * Battery-throttling nudge: visible only when this device is measurably
-     * delaying our wake-ups, either because the user restricted the app or
-     * because recent messages kept arriving very late (see DeliveryHealth).
-     * Being outside the battery whitelist is NOT enough to show it, that is the
-     * normal state for most apps. Dismiss snoozes it for 30 days, and it
-     * disappears on its own once deliveries are fast again.
+     * Battery throttling nudge: visible only when this device is measurably delaying our
+     * wake-ups, either because the user restricted the app or because recent messages kept
+     * arriving very late (see DeliveryHealth). Being outside the battery whitelist is NOT
+     * enough to show it, quello e' normale per quasi tutte le app. Dismiss snoozes it for 30
+     * days, and it goes away on its own once deliveries are fast again.
      */
     private fun updateBatteryBanner() {
         val banner = findViewById<View>(R.id.batteryBanner) ?: return
@@ -366,8 +364,8 @@ class AppTab : BaseActivity() {
         if (!show) return
 
         findViewById<View>(R.id.batteryBannerFix).setOnClickListener {
-            // The measured history restarts from here, so a device that is
-            // really fixed stops warning instead of waiting out the old samples.
+            // The measured history restarts from here, so a device that is really fixed stops
+            // warning instead of waiting out the old samples.
             DeliveryHealth.resetHistory(this)
             banner.visibility = View.GONE
             startActivity(Intent(this, BatteryHelpActivity::class.java))
@@ -379,12 +377,11 @@ class AppTab : BaseActivity() {
     }
 
     /**
-     * No-recent-backup nudge. Since automatic copies were switched off, the
-     * manual encrypted backup is the only thing standing between a lost phone
-     * and a lost identity, and nobody can recover it afterwards, so the app has
-     * to say so at least once. Shown a month after the last backup, or a month
-     * after the user's first message if they never made one. Dismiss snoozes it
-     * for 30 days, making a backup resets it for another 30.
+     * No recent backup nudge. Since automatic copies were switched off, the manual encrypted
+     * backup is the only thing between a lost phone and a lost identity, and nobody can recover
+     * it afterwards, so the app has to say so at least once. Shown a month after the last
+     * backup, or a month after the user's first message if they never made one. Dismiss snoozes
+     * it 30 days, making a backup resets it.
      */
     private fun updateBackupBanner() {
         val banner = findViewById<View>(R.id.backupBanner) ?: return
@@ -404,10 +401,10 @@ class AppTab : BaseActivity() {
     }
 
     /**
-     * Deferred-invite handoff: if the Play Install Referrer carried an inviter's
-     * profile (see captureInstallReferrerOnce), present the normal
-     * "add this contact?" dialog once onboarding is complete and the main screen is
-     * showing. One-shot — the stashed seed is cleared as soon as it is consumed.
+     * Deferred invite handoff: if the Play Install Referrer carried an inviter's profile (see
+     * captureInstallReferrerOnce), show the normal "add this contact?" dialog once onboarding
+     * is complete and the main screen is up. One shot, the stashed seed is cleared as soon as
+     * it is consumed.
      */
     private fun maybeConsumePendingInvite() {
         // Don't collide with an invite arriving via the live deep link this same launch.
@@ -429,8 +426,8 @@ class AppTab : BaseActivity() {
             acquiringNewContact(
                 qr.userId, qr.name, qr.bio, qr.fingerprint,
                 this@AppTab, supportFragmentManager,
-                // Host is the main screen: closing it here would kill the app right
-                // when the profile exchange with the inviter needs to run.
+                // Host is the main screen: closing it here would kill the app right when the
+                // profile exchange with the inviter needs to run.
                 finishOnAccept = false
             )
         }
@@ -466,7 +463,7 @@ class AppTab : BaseActivity() {
                 return
             }
             Share.CONTENT -> {
-                // Pre-fetch web metadata while user picks a contact
+                // Prefetch web metadata mentre l'utente sceglie il contatto
                 if (shareType == Type.WEB && !text.isNullOrEmpty()) {
                     val url = extractUrl(text!!)
                     if (url != null) {
@@ -561,9 +558,9 @@ class AppTab : BaseActivity() {
                     it.id != "received" && !blockedRepo.isBlocked(it.id)
                 }
 
-                // Auto-invite mode: silently accept every incoming request instead
-                // of surfacing it on the New contact requests screen. Accepted
-                // requests are removed from Firestore, so the badge resolves to 0.
+                // Auto invite mode: silently accept every incoming request instead of
+                // surfacing it on the New contact requests screen. Accepted requests are
+                // removed from Firestore, so the badge goes to 0.
                 if (isAutoInviteEnabled(this@AppTab)) {
                     isFirstLoad = false
                     requests.forEach { autoAcceptRequestDocument(it, this@AppTab) }
@@ -658,8 +655,8 @@ class AppTab : BaseActivity() {
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .build()
 
-            // Name-based URI: numeric R.raw IDs shift between builds, and the channel
-            // stores the URI permanently at creation time.
+            // Name based URI: numeric R.raw ids shift between builds, and the channel stores
+            // the URI permanently at creation time.
             val soundUri = ("android.resource://" + context.packageName + "/raw/notification_sound").toUri()
 
             val channel = NotificationChannel(channelId, "New Request Channel", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -697,11 +694,11 @@ class AppTab : BaseActivity() {
                 supportFragmentManager.beginTransaction()
                     .add(R.id.fragmentContainer, it, "search_results")
                     .commit()
-                // Ensure transaction is executed before calling updateQuery
+                // La transaction va eseguita prima di updateQuery
                 supportFragmentManager.executePendingTransactions()
             }
 
-        // Make sure PeersFragment is hidden and SearchResultsFragment is visible
+        // PeersFragment nascosto, SearchResultsFragment visibile
         supportFragmentManager.fragments.forEach { f ->
             if (f is PeersFragment && !f.isHidden) {
                 supportFragmentManager.beginTransaction().hide(f).commit()
