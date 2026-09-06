@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.serialization")
@@ -103,6 +105,34 @@ base {
     )
 }
 
+// Release signing credentials. This repository is public, so no password may
+// appear in this file: they live in keystore.properties at the project root,
+// which is listed in .gitignore and never committed. The file holds four keys:
+//
+//   storeFile=keystores/mtc_key.jks
+//   storePassword=...
+//   keyAlias=MindTheClub
+//   keyPassword=...
+//
+// If it is missing or incomplete the build still configures, but release
+// artefacts come out unsigned and the message below says so.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+val releaseSigningReady = keystorePropertiesFile.exists() &&
+    !keystoreProperties.getProperty("storeFile").isNullOrBlank() &&
+    !keystoreProperties.getProperty("storePassword").isNullOrBlank() &&
+    !keystoreProperties.getProperty("keyAlias").isNullOrBlank() &&
+    !keystoreProperties.getProperty("keyPassword").isNullOrBlank()
+if (!releaseSigningReady) {
+    project.logger.lifecycle(
+        "keystore.properties missing or incomplete: release builds will not be signed."
+    )
+}
+
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.bolimot.mindtheclub"
     compileSdk = 36
@@ -150,10 +180,12 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 
     signingConfigs {
         create("release") {
-            storeFile = rootProject.file("keystores/mtc_key.jks")
-            storePassword = "Esperanto@64"
-            keyAlias = "MindTheClub"
-            keyPassword = "Esperanto@64"
+            if (releaseSigningReady) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
         }
     }
 

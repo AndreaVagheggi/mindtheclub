@@ -101,3 +101,7 @@ TESTING_STEPS.local.md
 # The App ID and API Token in there mint SFU sessions on the account: this repo
 # is public, so the file must never become tracked.
 Ids.txt
+
+# Release signing credentials (storePassword / keyPassword). This repo is
+# public, so this file must never become tracked.
+keystore.properties
