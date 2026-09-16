@@ -1252,14 +1252,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     // transfer restarts from scratch every few seconds.
                     ConnectionManager.instance.claimLatestDataChannel(fromUserId, cid)
 
-                    if (ConnectionManager.instance.hasLiveConnection(fromUserId)) {
-                        debugLine(tag, "DATA_CALL: already connected to $fromUserId, ignoring.")
+                    // A live call with this peer is left alone, as it always was.
+                    if (ConnectionManager.instance.hasLiveCallConnection(fromUserId)) {
+                        debugLine(tag, "DATA_CALL: call in progress with $fromUserId, leaving it alone.")
                         return@launch
                     }
 
                     if (ConnectionManager.instance.isSupersededDataChannel(fromUserId, cid)) {
                         debugLine(tag, "DATA_CALL: $cid superseded before cleanup, nothing to do")
                         return@launch
+                    }
+
+                    // A live looking data connection is no longer reused: see DataSyncService.
+                    if (ConnectionManager.instance.hasLiveConnection(fromUserId)) {
+                        debugLine(tag, "DATA_CALL: $cid from $fromUserId while a data connection looked live, replacing it")
                     }
 
                     try { ConnectionManager.instance.webRTCCleanUp(fromUserId) } catch (e: Exception) { debugLine(tag, "Ignore: ${e.message}") }

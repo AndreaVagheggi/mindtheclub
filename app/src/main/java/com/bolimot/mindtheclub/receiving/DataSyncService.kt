@@ -175,8 +175,10 @@ class DataSyncService : Service() {
                 // same peer kill each other, one reconnect at a time.
                 ConnectionManager.instance.claimLatestDataChannel(remoteUserId, channelId)
 
-                if (ConnectionManager.instance.hasLiveConnection(remoteUserId)) {
-                    debugLine(tag, "Live connection to $remoteUserId already in place, reusing it and leaving the transfer alone")
+                // A live call with this peer is left alone, as it always was: calls carry a
+                // data channel too, and tearing one down would drop the call.
+                if (ConnectionManager.instance.hasLiveCallConnection(remoteUserId)) {
+                    debugLine(tag, "Live call connection to $remoteUserId in place, leaving it alone")
                     awaitTransferCompleteOnce(remoteUserId)
                     return@launch
                 }
@@ -184,6 +186,20 @@ class DataSyncService : Service() {
                 if (ConnectionManager.instance.isSupersededDataChannel(remoteUserId, channelId)) {
                     debugLine(tag, "dataCall $channelId superseded before cleanup, nothing to do")
                     return@launch
+                }
+
+                // A data connection that still looks live is no longer reused. The peer only
+                // dials when it has no usable connection with us (webRTCConnect reuses one
+                // otherwise), so whatever this one looks like from here, the peer is not going
+                // to send us anything over it. In the 1 to 16 Sep log, waiting on it delivered
+                // nothing from the peer in 43 cases out of 43. In one of them our own sends
+                // still got through, while that same peer kept dialing and its own messages
+                // arrived only over new connections; on 15 Sep it left a text waiting while
+                // the peer sat alone in the new room. It goes through webRTCCleanUp like any
+                // stale client, and we join the room we were asked to join.
+                val replacingLiveData = ConnectionManager.instance.hasLiveConnection(remoteUserId)
+                if (replacingLiveData) {
+                    debugLine(tag, "dataCall $channelId from $remoteUserId while a data connection looked live, replacing it")
                 }
 
                 try { ConnectionManager.instance.webRTCCleanUp(remoteUserId) } catch (e: Exception) { debugLine(tag,"Ignore: ${e.message}") }
@@ -207,6 +223,19 @@ class DataSyncService : Service() {
 
                 if (result is RTCClientResult.Success) {
                     debugLine(tag, "WebRTC Connected. Monitoring data channel activity.")
+                    if (replacingLiveData) {
+                        // The replaced connection may still have its watcher. If it polled in
+                        // the gap between the teardown and this connection, it found a closed
+                        // channel and is exiting, and the "already watched" check below would
+                        // leave this connection with no watcher at all: service stopped and
+                        // wake lock released mid transfer. Two polls are enough for it to
+                        // either exit, and we start our own, or see this connection and keep
+                        // watching it.
+                        val deadline = System.currentTimeMillis() + 2 * POLL_INTERVAL_MS
+                        while (remoteUserId in watchedPeers && System.currentTimeMillis() < deadline) {
+                            delay(250L)
+                        }
+                    }
                     awaitTransferCompleteOnce(remoteUserId)
                 } else {
                     debugLine(tag, "WebRTC Failed to connect ($result).")

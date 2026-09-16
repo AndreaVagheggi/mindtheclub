@@ -77,14 +77,20 @@ class DataSyncWorker(
             // Claim before destroying anything, exactly as DataSyncService does.
             ConnectionManager.instance.claimLatestDataChannel(remoteUserId, channelId)
 
-            if (ConnectionManager.instance.hasLiveConnection(remoteUserId)) {
-                debugLine(TAG, "Already connected to $remoteUserId with open data channel. Skipping.")
+            // A live call with this peer is left alone, as it always was.
+            if (ConnectionManager.instance.hasLiveCallConnection(remoteUserId)) {
+                debugLine(TAG, "Call in progress with $remoteUserId, leaving it alone. Skipping.")
                 return Result.success()
             }
 
             if (ConnectionManager.instance.isSupersededDataChannel(remoteUserId, channelId)) {
                 debugLine(TAG, "dataCall $channelId superseded before cleanup, nothing to do")
                 return Result.success()
+            }
+
+            // A live looking data connection is no longer reused: see DataSyncService.
+            if (ConnectionManager.instance.hasLiveConnection(remoteUserId)) {
+                debugLine(TAG, "dataCall $channelId from $remoteUserId while a data connection looked live, replacing it")
             }
 
             try { ConnectionManager.instance.webRTCCleanUp(remoteUserId) } catch (e: Exception) { debugLine(TAG, "Ignore: ${e.message}") }

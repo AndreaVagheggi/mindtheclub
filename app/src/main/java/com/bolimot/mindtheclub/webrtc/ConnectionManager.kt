@@ -74,6 +74,18 @@ class ConnectionManager {
         return !client.cleanedUp && client.isConnected() && client.isDataChannelOpen()
     }
 
+    /**
+     * True when the live connection to [remoteUserId] is a 1:1 call.
+     *
+     * RTCClient opens a data channel for calls too, so a call also satisfies
+     * [hasLiveConnection]. The incoming dataCall handlers use this to keep leaving a call
+     * alone, exactly as before: tearing it down would drop the call.
+     */
+    fun hasLiveCallConnection(remoteUserId: String): Boolean {
+        val client = rtcClientsRepository[remoteUserId]?.rtcClient ?: return false
+        return !client.onlyData && hasLiveConnection(remoteUserId)
+    }
+
     private val dispatchContentHint = ConcurrentHashMap<String, String>()
 
     fun setDispatchContentHint(remoteUserId: String, contentKey: String) {

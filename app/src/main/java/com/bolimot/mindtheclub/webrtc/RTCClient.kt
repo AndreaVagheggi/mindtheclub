@@ -63,7 +63,7 @@ class RTCClient private constructor(
     val remoteUserId: String,
     private val video: Boolean,
     context: Context,
-    private val onlyData: Boolean = false,
+    val onlyData: Boolean = false,
 ) {
 
     private var iceServers: List<PeerConnection.IceServer>? = null
