@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- mtcx only (de-Google build). Kept apart from strings.xml so merges from main never conflict. -->
+<resources>
+    <string name="no_push_distributor_body">To receive messages and calls, install a UnifiedPush distributor, for example ntfy, from F-Droid, then open the app again.</string>
+</resources>
