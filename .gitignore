@@ -105,3 +105,7 @@ Ids.txt
 # Release signing credentials (storePassword / keyPassword). This repo is
 # public, so this file must never become tracked.
 keystore.properties
+
+# De-Google plan: describes an open security problem of the production app.
+# Never published, whatever gets committed.
+docs/degoogle.md
