@@ -90,21 +90,101 @@ import com.bolimot.mindtheclub.works.submitDispatchWorker
 import com.bolimot.mindtheclub.works.submitSendMessageWorker
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import com.google.firebase.messaging.FirebaseMessagingService
-import com.google.firebase.messaging.RemoteMessage
+import com.bolimot.mindtheclub.push.PushEndpointData
+import com.bolimot.mindtheclub.push.PushEndpointStore
+import com.bolimot.mindtheclub.push.updateMyPushEndpoint
+import org.unifiedpush.android.connector.FailedReason
+import org.unifiedpush.android.connector.PushService
+import org.unifiedpush.android.connector.data.PushEndpoint
+import org.unifiedpush.android.connector.data.PushMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-class MyFirebaseMessagingService : FirebaseMessagingService() {
+// mtcx: the class keeps its name and its whole body, so fixes merged from main apply as they
+// are. Only the entry points change: UnifiedPush (PushService) instead of FCM.
+class MyFirebaseMessagingService : PushService() {
 
     private val appScope by lazy { (applicationContext as App).applicationScope }
     private val tag = "MyFirebaseMessagingService"
 
-    override fun onDeletedMessages() {
-        super.onDeletedMessages()
-        debugLine(tag, "FCM Messages deleted!!")
+    /**
+     * A UnifiedPush message. Its content is the same map the Play app receives as FCM data,
+     * serialised as JSON by the sendUnifiedPush Cloud Function: toUserId in clear, the rest
+     * sealed to us. The connector has already removed the Web Push (RFC 8291) layer.
+     */
+    override fun onMessage(message: PushMessage, instance: String) {
+        if (!message.decrypted) {
+            debugLine(tag, "UnifiedPush message not decrypted by the connector, dropping")
+            return
+        }
+        val raw = try {
+            val json = JSONObject(String(message.content, Charsets.UTF_8))
+            val map = HashMap<String, String>()
+            for (key in json.keys()) map[key] = json.getString(key)
+            map
+        } catch (e: Exception) {
+            debugLine(tag, "UnifiedPush message is not a data map: ${e.message}")
+            return
+        }
+        // The connector calls us from onServiceConnected, i.e. on the main thread. FCM called
+        // onMessageReceived on a background thread and the handler relies on it (runBlocking on
+        // a database read for PENDING), so it keeps running on one.
+        Thread({ onPushData(raw) }, "UnifiedPushMessage").start()
+    }
+
+    /** The distributor gave us an endpoint (first time, or changed): publish it. */
+    override fun onNewEndpoint(endpoint: PushEndpoint, instance: String) {
+        val keys = endpoint.pubKeySet
+        if (keys == null) {
+            debugLine(tag, "UnifiedPush endpoint without Web Push keys, ignoring")
+            return
+        }
+        val data = PushEndpointData(endpoint.url, keys.pubKey, keys.auth)
+        PushEndpointStore.setCurrent(data)
+        // A repeated registration returns the same endpoint: nothing to publish then. Identity
+        // and trial changes are published by the start-up sync (syncFirebaseTokenInBackground).
+        if (PushEndpointStore.published() == data.url) return
+        debugLine(tag, "New UnifiedPush endpoint")
+
+        appScope.launch {
+            val myUserId = MySelf.userId() ?: return@launch
+            if (com.bolimot.mindtheclub.functions.InstallationIdentity.isDeactivated(applicationContext)) return@launch
+            updateMyPushEndpoint(myUserId, data)
+        }
+    }
+
+    /**
+     * Starting CallService from the background is allowed only while the distributor keeps us
+     * raised to the foreground (RAISE_TO_FOREGROUND), the way a high priority FCM does for the
+     * Play app. A distributor that does not do it makes Android refuse: that refusal must be
+     * visible in the log, it is the one reason an mtcx call would not ring.
+     */
+    private fun startCallService(intent: Intent) {
+        try {
+            ContextCompat.startForegroundService(applicationContext, intent)
+        } catch (e: Exception) {
+            if (Build.VERSION.SDK_INT >= 31 && e is ForegroundServiceStartNotAllowedException) {
+                debugLine(tag, "CRITICAL: call service start denied, distributor did not raise us: ${e.message}")
+            } else {
+                debugLine(tag, "Failed to start call service: ${e.message}")
+            }
+        }
+    }
+
+    override fun onRegistrationFailed(reason: FailedReason, instance: String) {
+        debugLine(tag, "UnifiedPush registration failed: $reason")
+    }
+
+    /** The distributor dropped us (uninstalled, or the user removed the app from it). */
+    override fun onUnregistered(instance: String) {
+        debugLine(tag, "UnifiedPush unregistered")
+        PushEndpointStore.setCurrent(null)
+        appScope.launch {
+            val myUserId = MySelf.userId() ?: return@launch
+            updateMyPushEndpoint(myUserId, null)
+        }
     }
 
     private fun openPayload(raw: Map<String, String>): Map<String, String> {
@@ -130,8 +210,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        val data = openPayload(remoteMessage.data)
+    private fun onPushData(rawData: Map<String, String>) {
+        val data = openPayload(rawData)
 
         val remoteUserId = data["fromUserId"]
         val content = data["content"]
@@ -255,7 +335,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         putExtra(CallService.EXTRA_IS_VIDEO, true)
                         putExtra(CallService.EXTRA_TERMINATE_ON_END, terminateOnEnd)
                     }
-                    ContextCompat.startForegroundService(applicationContext, intent)
+                    startCallService(intent)
                 }
             }
 
@@ -319,7 +399,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         putExtra(CallService.EXTRA_IS_VIDEO, false)
                         putExtra(CallService.EXTRA_TERMINATE_ON_END, terminateOnEnd)
                     }
-                    ContextCompat.startForegroundService(applicationContext, intent)
+                    startCallService(intent)
                 }
             }
 
@@ -1303,28 +1383,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 //        return peersRepository.getPeer(userId) != null
 //    }
 
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        debugLine(tag, "Got new Token: $token")
-
-        appScope.launch {
-            val myUserId = MySelf.userId()
-            if (myUserId == null) {
-                debugLine(tag, "No UserID yet. Skipping background update (initApplication will handle it).")
-                return@launch
-            }
-
-            val oldToken = MySelf.fcmTokenGet()
-
-            // Solo se e' davvero diverso, or if we just want to be sure
-            if (token != oldToken) {
-                val result = updateMyFcmToken(myUserId, token, oldToken)
-                if(result) {
-                    debugLine(tag, "Token updated successfully via Service")
-                }
-            }
-        }
-    }
+    // mtcx: no onNewToken, there is no FCM token. Its role is played by onNewEndpoint above.
 }
 
 private const val NOTICE_TIMEOUT_MS = 60_000L

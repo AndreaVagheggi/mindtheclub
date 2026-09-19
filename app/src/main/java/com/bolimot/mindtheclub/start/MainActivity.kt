@@ -184,6 +184,10 @@ class MainActivity : BaseActivity() {
 
         val myUserId = initApplication()
 
+        // mtcx: pick the UnifiedPush distributor and register; the endpoint arrives in
+        // MyFirebaseMessagingService.onNewEndpoint and is published from there.
+        com.bolimot.mindtheclub.push.UnifiedPushSetup.start(this)
+
         App.instance!!.applicationScope.launch(Dispatchers.IO) {
             syncFirebaseTokenInBackground(myUserId)
         }

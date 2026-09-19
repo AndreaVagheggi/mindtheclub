@@ -69,7 +69,8 @@
             android:exported="false"
             android:foregroundServiceType="phoneCall">
             <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+                <!-- mtcx: UnifiedPush instead of FCM, same service, same handler. -->
+                <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
             </intent-filter>
         </service>
 

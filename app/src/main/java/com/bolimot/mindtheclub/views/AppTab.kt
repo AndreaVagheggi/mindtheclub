@@ -316,17 +316,15 @@ class AppTab : BaseActivity() {
      * Updating or outdated Play Services are left alone on purpose: transient, FCM often works
      * anyway, and a Play user must never see this by mistake.
      */
+    // mtcx: the wake-up is UnifiedPush, so what matters is a distributor, not Play Services.
     private fun maybeShowNoPushServicesNotice() {
         if (noPushNoticeShown) return
-        val code = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)
-        if (code != ConnectionResult.SERVICE_MISSING &&
-            code != ConnectionResult.SERVICE_DISABLED &&
-            code != ConnectionResult.SERVICE_INVALID) return
+        if (com.bolimot.mindtheclub.push.UnifiedPushSetup.hasDistributor(this)) return
 
         noPushNoticeShown = true
-        debugLine("AppTab", "No usable Play Services or microG (code=$code), showing notice")
+        debugLine("AppTab", "No UnifiedPush distributor installed, showing notice")
         MaterialAlertDialogBuilder(this)
-            .setMessage(R.string.no_push_services_body)
+            .setMessage(R.string.no_push_distributor_body)
             .setPositiveButton(R.string.close, null)
             .setCancelable(true)
             .show()

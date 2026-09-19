@@ -101,7 +101,8 @@ val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
 //   mtc-1053-test-release.aab   flagged build, goes to Internal testing
 base {
     archivesName.set(
-        if (isTestBuild) "mtc-$appVersionCode-test" else "mtc-$appVersionCode"
+        // mtcx: its own prefix, so an mtcx artefact can never be mistaken for a Play bundle.
+        if (isTestBuild) "mtcx-$appVersionCode-test" else "mtcx-$appVersionCode"
     )
 }
 
@@ -144,7 +145,14 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 
     defaultConfig {
-        applicationId = "com.bolimot.mindtheclub"
+        // mtcx, the de-Google build distributed outside Play. Its own package, so it never
+        // collides with the Play app; namespace (R, BuildConfig, code) stays the same.
+        applicationId = "com.bolimot.mindtheclub.x"
+        versionNameSuffix = " (mtcx)"
+        // VAPID public key of the sendUnifiedPush Cloud Function. Public by definition; the
+        // private half lives only in the Firebase secret VAPID_PRIVATE_KEY.
+        buildConfigField("String", "VAPID_PUBLIC_KEY",
+            "\"BFyP614t-_f-zT7zdye-VNM8wICUyYnJzMz1WSBaoZPhi17IwkmhinR3fCjehPIXBVfHLrgcQZIgkRkH82gb0T0\"")
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
@@ -335,7 +343,14 @@ dependencies {
 
     //FIREBASE
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
-    implementation("com.google.firebase:firebase-messaging")
+    // mtcx: no FCM. The wake-up comes from UnifiedPush.
+    //   3.0.10 is the newest connector built with Kotlin 2.0 (3.1+ needs 2.2/2.3, this
+    //   project is on 2.0). It already declares the RAISE_TO_FOREGROUND service.
+    //   Its "tink" (Java) dependency is excluded: it would duplicate every class of
+    //   tink-android, which already provides all the Tink classes the connector uses.
+    implementation("org.unifiedpush.android:connector:3.0.10") {
+        exclude(group = "com.google.crypto.tink", module = "tink")
+    }
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-appcheck")
     implementation("com.google.firebase:firebase-appcheck-debug")

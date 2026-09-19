@@ -1,15 +1,15 @@
 package com.bolimot.mindtheclub.start
 
 import com.bolimot.mindtheclub.billing.TrialManager
-import com.bolimot.mindtheclub.firebase.updateMyFcmToken
 import com.bolimot.mindtheclub.functions.InstallationIdentity
+import com.bolimot.mindtheclub.push.PushEndpointStore
+import com.bolimot.mindtheclub.push.updateMyPushEndpoint
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.tools.MySelf
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.tasks.await
 import com.bolimot.mindtheclub.crypto.KeyManager
 
@@ -44,12 +44,16 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
             return
         }
 
-        val freshToken = FirebaseMessaging.getInstance().token.await()
-        val storedToken = MySelf.fcmTokenGet()
+        // mtcx: the "token" is the UnifiedPush endpoint. freshToken is the one the distributor
+        // gave us, storedToken the one last published; the rest of the logic is unchanged.
+        val endpoint = PushEndpointStore.current()
+        val freshToken = endpoint?.url
+        val storedToken = PushEndpointStore.published()
         val isDocInFirestore = checkUserDocumentExists(myUserId)
         val hasPublicKey = isDocInFirestore && checkUserPublicKeyExists(myUserId)
 
-        debugLine("initFirebase", "Sync Check: Fresh=$freshToken, Stored=$storedToken, InFirestore=$isDocInFirestore, HasPublicKey=$hasPublicKey")
+        // mtcx: the endpoint is a capability, never in a log line; only whether it is in sync.
+        debugLine("initFirebase", "Sync Check: HasEndpoint=${freshToken != null}, Published=${freshToken != null && freshToken == storedToken}, InFirestore=$isDocInFirestore, HasPublicKey=$hasPublicKey")
 
         // One installation per identity. A remote id that exists and is not ours means another
         // install (a restored backup on a new phone) took this identity over: deactivate instead
@@ -94,9 +98,12 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
             else -> false
         }
 
-        if (needsUpdate) {
+        if (needsUpdate && endpoint == null) {
+            // No distributor answer yet: onNewEndpoint publishes as soon as it arrives.
+            debugLine("initFirebase", "State mismatch, but no UnifiedPush endpoint yet")
+        } else if (needsUpdate && endpoint != null) {
             debugLine("initFirebase", "State mismatch detected. Updating Firestore...")
-            val success = updateMyFcmToken(myUserId, freshToken, storedToken)
+            val success = updateMyPushEndpoint(myUserId, endpoint)
             if (!success && !isDocInFirestore) {
                 debugLine("initFirebase", "Critical: Failed to sync token to Firestore.")
             }
@@ -110,23 +117,15 @@ suspend fun syncFirebaseTokenInBackground(myUserId: String) {
 
 suspend fun forceTokenSyncAfterRestore(userId: String) {
     try {
-        val freshToken = FirebaseMessaging.getInstance().token.await()
-        val db = Firebase.firestore
-        val doc = db.collection("users").document(userId).get().await()
-        val firestoreToken = if (doc.exists()) doc.getString("fcmToken") else null
-
-        debugLine("initFirebase", "Restore sync: fresh=$freshToken, firestoreToken=$firestoreToken")
-
-        if (freshToken == firestoreToken) {
-            MySelf.fcmTokenSet(freshToken)
-            debugLine("initFirebase", "Restore sync: tokens already match")
-            // Do NOT return: a restore may have replaced the local identity (same phone
-            // reinstall keeps the same token), so publicKey and installationId in Firestore still
-            // have to be refreshed below.
+        // mtcx: the restored keyset is what proves ownership now (getPushChallenge), not an old
+        // token. Publishing also claims the identity for this installation, exactly like the
+        // Play app's restore: the previous phone deactivates itself on its next start.
+        val endpoint = PushEndpointStore.current()
+        if (endpoint == null) {
+            debugLine("initFirebase", "Restore sync: no UnifiedPush endpoint yet, onNewEndpoint will publish")
+            return
         }
-
-        // Pass the actual Firestore token as oldToken so the Cloud Function accepts it
-        val success = updateMyFcmToken(userId, freshToken, firestoreToken)
+        val success = updateMyPushEndpoint(userId, endpoint)
         if (success) {
             debugLine("initFirebase", "Restore sync: token updated successfully")
         } else {
