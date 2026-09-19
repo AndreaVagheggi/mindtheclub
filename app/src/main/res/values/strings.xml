@@ -375,4 +375,5 @@
     <string name="group_call_who_to_add">Who do you want to add?</string>
     <string name="calling">Calling…</string>
     <string name="call_busy">The other person is on another call</string>
+    <string name="no_push_services_body">This phone has neither Google Play Services nor microG. Without one of them MindTheClub cannot receive messages and calls. You can install microG and open the app again.</string>
 </resources>

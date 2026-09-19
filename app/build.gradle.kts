@@ -88,7 +88,7 @@ val isTestBuild = releaseLogging || noPay ||
 //
 // Bump baseVersionCode by TWO each cycle, keeping it even, so the odd number
 // stays reserved for that cycle's tester build.
-val baseVersionCode = 1067
+val baseVersionCode = 1069
 val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
 
 // Both commands build the SAME build type, so without this they would both write
@@ -148,7 +148,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
-        versionName = "Release 1.67" +
+        versionName = "Release 1.69" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
@@ -289,7 +289,6 @@ val pagingVersion = "3.2.1"
 
 dependencies {
     implementation("com.google.mlkit:vision-common:17.3.0")
-    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
 
     // Video transcoding before sending (see functions/VideoCompressor.kt). The
@@ -369,8 +368,9 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
+    // Bundled model only: the play-services variant needs Google Play Services on the
+    // phone, and without it the scanner is dead on microG and de-Googled devices.
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
-    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
 
     // GOOGLE PLAY BILLING (subscriptions: mtc_standard / mtc_stealth)
     implementation("com.android.billingclient:billing-ktx:8.0.0")

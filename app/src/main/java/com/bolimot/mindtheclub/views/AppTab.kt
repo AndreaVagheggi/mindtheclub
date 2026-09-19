@@ -29,6 +29,8 @@ import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.billing.TrialManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.bolimot.mindtheclub.chat.SelectPeersForForward
 import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
 import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
@@ -96,6 +98,10 @@ class AppTab : BaseActivity() {
 
     companion object {
         var fcmSending: Boolean = false
+
+        // Once per process, i.e. once per app start: the notice below must not reappear on
+        // every return to this screen.
+        private var noPushNoticeShown: Boolean = false
     }
 
     private fun getParameters(i: Intent){
@@ -277,6 +283,7 @@ class AppTab : BaseActivity() {
             // bypass it.
             BillingManager.refreshPurchases()
             maybeShowTrialStartedDialog()
+            maybeShowNoPushServicesNotice()
         }
 
         updateNotificationsBanner()
@@ -295,6 +302,31 @@ class AppTab : BaseActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.trial_started_title)
             .setMessage(SubscriptionCopy.trialStartedBody(this))
+            .setPositiveButton(R.string.close, null)
+            .setCancelable(true)
+            .show()
+    }
+
+    /**
+     * Neither Google Play Services nor microG (microG presents itself as Play Services): FCM
+     * cannot deliver, so this phone never receives a message or a call. Since the Play installer
+     * check was turned off (18 Sep 2026) such a phone can install the app from Aurora, and
+     * nothing else would tell the user. Shown at every app start, never blocking.
+     *
+     * Updating or outdated Play Services are left alone on purpose: transient, FCM often works
+     * anyway, and a Play user must never see this by mistake.
+     */
+    private fun maybeShowNoPushServicesNotice() {
+        if (noPushNoticeShown) return
+        val code = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)
+        if (code != ConnectionResult.SERVICE_MISSING &&
+            code != ConnectionResult.SERVICE_DISABLED &&
+            code != ConnectionResult.SERVICE_INVALID) return
+
+        noPushNoticeShown = true
+        debugLine("AppTab", "No usable Play Services or microG (code=$code), showing notice")
+        MaterialAlertDialogBuilder(this)
+            .setMessage(R.string.no_push_services_body)
             .setPositiveButton(R.string.close, null)
             .setCancelable(true)
             .show()

@@ -377,4 +377,5 @@
     <string name="group_call_who_to_add">Kogo chcesz dodać?</string>
     <string name="calling">Dzwonię…</string>
     <string name="call_busy">Ta osoba prowadzi już rozmowę</string>
+    <string name="no_push_services_body">Ten telefon nie ma ani Google Play Services, ani microG. Bez jednego z nich MindTheClub nie może odbierać wiadomości ani połączeń. Możesz zainstalować microG i ponownie otworzyć aplikację.</string>
 </resources>

@@ -378,4 +378,5 @@
     <string name="group_call_who_to_add">Siapa yang ingin Anda tambahkan?</string>
     <string name="calling">Memanggil…</string>
     <string name="call_busy">Orang tersebut sedang menelepon</string>
+    <string name="no_push_services_body">Ponsel ini tidak memiliki Google Play Services maupun microG. Tanpa salah satunya, MindTheClub tidak dapat menerima pesan dan panggilan. Anda dapat memasang microG lalu membuka aplikasi lagi.</string>
 </resources>
