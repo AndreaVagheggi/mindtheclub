@@ -109,6 +109,9 @@ class MyFirebaseMessagingService : PushService() {
     private val appScope by lazy { (applicationContext as App).applicationScope }
     private val tag = "MyFirebaseMessagingService"
 
+    /** Slack for a phone clock that disagrees with the server's. */
+    private val CLOCK_GRACE_MS = 30_000L
+
     /**
      * A UnifiedPush message. Its content is the same map the Play app receives as FCM data,
      * serialised as JSON by the sendUnifiedPush Cloud Function: toUserId in clear, the rest
@@ -128,10 +131,31 @@ class MyFirebaseMessagingService : PushService() {
             debugLine(tag, "UnifiedPush message is not a data map: ${e.message}")
             return
         }
+        if (isExpired(raw)) return
+
         // The connector calls us from onServiceConnected, i.e. on the main thread. FCM called
         // onMessageReceived on a background thread and the handler relies on it (runBlocking on
         // a database read for PENDING), so it keeps running on one.
         Thread({ onPushData(raw) }, "UnifiedPushMessage").start()
+    }
+
+    /**
+     * FCM drops an expired message itself; a UnifiedPush distributor does not have to. ntfy
+     * keeps every message for 12 hours and delivers the lot, out of order, when the phone comes
+     * back: on 20 Sep 2026 a videoCall invitation rang three hours late, after the "close" that
+     * ended it. sendUnifiedPush stamps upSentAt and upTtl, and what is past its time dies here,
+     * exactly as Google would have dropped it.
+     *
+     * Fails open: without the stamps, or with a clock in disagreement (the grace period), the
+     * message is processed. Losing a real message would be worse than acting on a stale one.
+     */
+    private fun isExpired(raw: Map<String, String>): Boolean {
+        val sentAt = raw["upSentAt"]?.toLongOrNull() ?: return false
+        val ttlSeconds = raw["upTtl"]?.toLongOrNull() ?: return false
+        val age = System.currentTimeMillis() - sentAt
+        if (age <= ttlSeconds * 1000 + CLOCK_GRACE_MS) return false
+        debugLine(tag, "Dropping expired push: ${age / 1000}s old, ttl ${ttlSeconds}s")
+        return true
     }
 
     /** The distributor gave us an endpoint (first time, or changed): publish it. */

@@ -156,7 +156,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
-        versionName = "Release 1.69" +
+        versionName = "Release 1.69x" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
