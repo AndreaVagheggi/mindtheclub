@@ -2,11 +2,18 @@ package com.bolimot.mindtheclub.views
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.billing.BillingManager
+import com.bolimot.mindtheclub.billing.LicenseManager
+import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.launch
+import java.text.DateFormat
+import java.util.Date
 import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.billing.TrialManager
 import com.bolimot.mindtheclub.start.BaseActivity
@@ -53,6 +60,22 @@ class SubscriptionActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.manageButton).setOnClickListener {
             openPlaySubscriptions()
+        }
+
+        // Licence bought outside Google Play (see LicenseManager).
+        findViewById<MaterialButton>(R.id.webBuyButton).setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, LicenseManager.PURCHASE_URL.toUri()))
+        }
+        findViewById<MaterialButton>(R.id.licenseManageButton).setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, LicenseManager.MANAGE_URL.toUri()))
+        }
+        findViewById<MaterialButton>(R.id.licenseActivateButton).setOnClickListener {
+            activateLicense()
+        }
+        // Arrived from https://www.mindtheclub.com/license?code=... after paying.
+        LicenseManager.takePendingCode(this)?.let { code ->
+            findViewById<TextInputEditText>(R.id.licenseInput).setText(code)
+            activateLicense()
         }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -108,6 +131,54 @@ class SubscriptionActivity : BaseActivity() {
             if (subscribed) R.string.sub_current_plan else R.string.sub_subscribe
         )
         manageButton.isEnabled = subscribed
+
+        // Outside Google Play: the de-Google build always, a Play install only when this phone
+        // has no Play Store. A Play user with a working Play Store sees the screen as before,
+        // with no link or price for another payment method (Play payments policy).
+        val deGoogle = LicenseManager.isDeGoogleBuild
+        val noPlay = deGoogle || BillingManager.billingUnavailable
+        val licenceCode = LicenseManager.code(this)
+        findViewById<android.view.View>(R.id.playCard).visibility = if (noPlay) View.GONE else View.VISIBLE
+        manageButton.visibility = if (noPlay) View.GONE else View.VISIBLE
+        findViewById<android.view.View>(R.id.webCard).visibility =
+            if (deGoogle && LicenseManager.PURCHASE_URL.isNotEmpty() && !subscribed) View.VISIBLE else View.GONE
+        findViewById<android.view.View>(R.id.licenseCard).visibility =
+            if (noPlay || licenceCode != null) View.VISIBLE else View.GONE
+        findViewById<MaterialButton>(R.id.licenseManageButton).visibility =
+            if (deGoogle && licenceCode != null) View.VISIBLE else View.GONE
+
+        if (LicenseManager.hasValidLicense(this)) {
+            showLicenseStatus(getString(R.string.license_active_until,
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(LicenseManager.paidUntil(this)))))
+        }
+    }
+
+    private fun showLicenseStatus(text: String) {
+        findViewById<TextView>(R.id.licenseStatus).apply {
+            this.text = text
+            visibility = View.VISIBLE
+        }
+    }
+
+    private fun activateLicense() {
+        val input = findViewById<TextInputEditText>(R.id.licenseInput)
+        val code = input.text?.toString()?.trim().orEmpty()
+        if (code.isEmpty()) return
+        val button = findViewById<MaterialButton>(R.id.licenseActivateButton)
+        button.isEnabled = false
+        lifecycleScope.launch {
+            val status = LicenseManager.redeem(this@SubscriptionActivity, code)
+            button.isEnabled = true
+            showLicenseStatus(getString(when (status) {
+                LicenseManager.Status.VALID -> R.string.license_activated
+                LicenseManager.Status.EXPIRED -> R.string.license_expired
+                LicenseManager.Status.INVALID -> R.string.license_invalid
+                LicenseManager.Status.MOVED, LicenseManager.Status.TOO_MANY_MOVES -> R.string.license_too_many_moves
+                LicenseManager.Status.REVOKED -> R.string.license_revoked
+                LicenseManager.Status.NETWORK_ERROR -> R.string.license_network_error
+            }))
+            if (status == LicenseManager.Status.VALID) renderState()
+        }
     }
 
     private fun openPlaySubscriptions() {

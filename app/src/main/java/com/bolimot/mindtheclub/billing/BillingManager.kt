@@ -68,8 +68,17 @@ object BillingManager : PurchasesUpdatedListener {
         when (getPreference(PREF_ENTITLEMENT, context)) {
             // "stealth" can still be cached from the removed two-tier model.
             "standard", "stealth" -> true
-            else -> false
+            // A licence bought outside Play (phones without the Play Store, and mtcx).
+            else -> LicenseManager.hasValidLicense(context)
         }
+
+    /**
+     * True once Play answered that billing does not exist on this phone (no Play Store, as on
+     * de-Googled phones or Aurora installs). A transient connection error does not set it: only
+     * then does the subscription screen offer the licence code instead of the Play purchase.
+     */
+    @Volatile var billingUnavailable = false
+        private set
 
     /**
      * Master gate for using the app: an active subscription, an unfinished trial, or a trial
@@ -108,9 +117,14 @@ object BillingManager : PurchasesUpdatedListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     connected = true
+                    billingUnavailable = false
                     debugLine("BillingManager", "Billing connected")
                     onReady()
                 } else {
+                    if (result.responseCode == BillingClient.BillingResponseCode.BILLING_UNAVAILABLE) {
+                        billingUnavailable = true
+                        notifyListeners()
+                    }
                     debugLine("BillingManager", "Billing setup failed: ${result.debugMessage}")
                 }
             }

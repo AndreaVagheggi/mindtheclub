@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Licence bought outside Google Play (LicenseManager, SubscriptionActivity). -->
+<resources>
+    <string name="license_title">Masz kod licencji?</string>
+    <string name="license_hint">Kod licencji</string>
+    <string name="license_activate">Aktywuj</string>
+    <string name="license_activated">Licencja aktywowana, dziękujemy!</string>
+    <string name="license_active_until">Licencja aktywna do %1$s</string>
+    <string name="license_expired">Ten kod wygasł. Odnów subskrypcję, aby kontynuować.</string>
+    <string name="license_invalid">Nieprawidłowy kod. Sprawdź, czy został wpisany poprawnie.</string>
+    <string name="license_too_many_moves">Ten kod był ostatnio zbyt często przenoszony na inne telefony. Spróbuj ponownie później.</string>
+    <string name="license_revoked">Ten kod nie jest już ważny.</string>
+    <string name="license_network_error">Nie można sprawdzić kodu. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="license_manage">Zarządzaj subskrypcją lub ją anuluj</string>
+    <string name="license_web_price">3 € co 3 miesiące plus VAT, odnawiana automatycznie</string>
+    <string name="license_web_buy">Kup</string>
+</resources>
