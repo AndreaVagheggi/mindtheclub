@@ -37,7 +37,7 @@ object LicenseManager {
      * the Buy button stays hidden while it is. A test link can therefore never reach a release.
      */
     private const val PURCHASE_URL_TEST = "https://buy.stripe.com/test_6oUeVfgnE7Vl1CH8PP14400"
-    private const val PURCHASE_URL_LIVE = ""
+    private const val PURCHASE_URL_LIVE = "https://buy.stripe.com/cNicN41zS5ykeLUgGwbV600"
     val PURCHASE_URL: String get() = if (BuildConfig.DEBUG) PURCHASE_URL_TEST else PURCHASE_URL_LIVE
 
     /** Where a buyer cancels or changes the subscription (Stripe Managed Payments, Onelink). */
