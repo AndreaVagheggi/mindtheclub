@@ -184,6 +184,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="https" android:host="www.mindtheclub.com" android:pathPrefix="/add" />
+                <!-- Licence bought outside Google Play: the confirmation page opens the app with the code. -->
+                <data android:scheme="https" android:host="www.mindtheclub.com" android:pathPrefix="/license" />
             </intent-filter>
         </activity>
 

@@ -282,6 +282,12 @@ class AppTab : BaseActivity() {
             // access gate itself lives in BaseActivity, so notification -> ChatScreen cannot
             // bypass it.
             BillingManager.refreshPurchases()
+            // Licence bought outside Play: renewals picked up at most once a day.
+            lifecycleScope.launch { com.bolimot.mindtheclub.billing.LicenseManager.refresh(this@AppTab) }
+            // A code that arrived through the /license link: straight to the screen that activates it.
+            if (com.bolimot.mindtheclub.billing.LicenseManager.hasPendingCode(this)) {
+                startActivity(Intent(this, SubscriptionActivity::class.java))
+            }
             maybeShowTrialStartedDialog()
             maybeShowNoPushServicesNotice()
         }

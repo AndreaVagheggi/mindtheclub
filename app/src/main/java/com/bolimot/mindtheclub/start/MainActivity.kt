@@ -55,6 +55,14 @@ class MainActivity : BaseActivity() {
 
         if (i.action == Intent.ACTION_VIEW && i.data != null) {
             val data = i.data!!
+            // Licence code from the payment confirmation page: kept until AppTab opens the
+            // subscription screen, which activates it.
+            if (data.path?.startsWith("/license") == true) {
+                data.getQueryParameter("code")?.takeIf { it.isNotBlank() }?.let {
+                    com.bolimot.mindtheclub.billing.LicenseManager.setPendingCode(this, it)
+                }
+                return
+            }
             inviteUserId = data.getQueryParameter("u")
             inviteName = data.getQueryParameter("n")
             inviteBio = data.getQueryParameter("b")

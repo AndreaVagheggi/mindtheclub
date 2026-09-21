@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Licence bought outside Google Play (LicenseManager, SubscriptionActivity). -->
+<resources>
+    <string name="license_title">Você tem um código de licença?</string>
+    <string name="license_hint">Código de licença</string>
+    <string name="license_activate">Ativar</string>
+    <string name="license_activated">Licença ativada, obrigado!</string>
+    <string name="license_active_until">Licença ativa até %1$s</string>
+    <string name="license_expired">Este código expirou. Renove sua assinatura para continuar.</string>
+    <string name="license_invalid">Código inválido. Verifique se você o digitou corretamente.</string>
+    <string name="license_too_many_moves">Este código foi transferido para outros celulares muitas vezes recentemente. Tente novamente mais tarde.</string>
+    <string name="license_revoked">Este código não é mais válido.</string>
+    <string name="license_network_error">Não foi possível verificar o código. Verifique sua conexão e tente novamente.</string>
+    <string name="license_manage">Gerenciar ou cancelar a assinatura</string>
+    <string name="license_web_price">€3 a cada 3 meses mais impostos, renovação automática</string>
+    <string name="license_web_buy">Comprar</string>
+</resources>
