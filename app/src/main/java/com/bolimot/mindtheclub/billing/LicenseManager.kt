@@ -31,11 +31,14 @@ object LicenseManager {
     private const val CHECK_INTERVAL_MS = 24 * 3600 * 1000L
 
     /**
-     * Stripe Payment Link, shown ONLY in the de-Google build (Play policy forbids steering Play
-     * users to another payment method). Empty until the Stripe account exists: the Buy button
-     * stays hidden while it is.
+     * Stripe Payment Links, shown ONLY in the de-Google build (Play policy forbids steering Play
+     * users to another payment method). Debug builds use the sandbox link (test cards, no real
+     * money); release builds use the live one, empty until Stripe live payments are active, and
+     * the Buy button stays hidden while it is. A test link can therefore never reach a release.
      */
-    const val PURCHASE_URL = ""
+    private const val PURCHASE_URL_TEST = "https://buy.stripe.com/test_6oUeVfgnE7Vl1CH8PP14400"
+    private const val PURCHASE_URL_LIVE = ""
+    val PURCHASE_URL: String get() = if (BuildConfig.DEBUG) PURCHASE_URL_TEST else PURCHASE_URL_LIVE
 
     /** Where a buyer cancels or changes the subscription (Stripe Managed Payments, Onelink). */
     const val MANAGE_URL = "https://app.link.com"
