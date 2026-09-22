@@ -14,4 +14,8 @@
     <string name="license_manage">Kelola atau batalkan langganan</string>
     <string name="license_web_price">€3 setiap 3 bulan ditambah PPN, diperpanjang otomatis</string>
     <string name="license_web_buy">Beli</string>
+    <string name="license_your_code">Kode lisensi Anda</string>
+    <string name="license_code_note">Simpan kode ini: Anda memerlukannya untuk mengaktifkan MindTheClub di ponsel lain.</string>
+    <string name="license_copy">Salin</string>
+    <string name="license_copied">Kode disalin</string>
 </resources>

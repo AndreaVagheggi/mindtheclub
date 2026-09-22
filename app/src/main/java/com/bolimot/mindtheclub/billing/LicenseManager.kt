@@ -75,6 +75,19 @@ object LicenseManager {
     }
     fun hasPendingCode(context: Context): Boolean = prefs(context).contains(KEY_PENDING)
 
+    /**
+     * A code coming back from an encrypted backup. It is NOT written straight in as this
+     * device's licence: the backup was taken on another handset, where the code is still
+     * bound, and only redeem can move it (at most three moves in 30 days). So it is queued
+     * exactly like a code arriving from the payment link, and the path that already exists
+     * (AppTab -> SubscriptionActivity -> redeem) claims it on the next launch. A licence
+     * already active on this phone wins: it is bound here and nothing must disturb it.
+     */
+    fun adoptRestoredCode(context: Context, code: String?) {
+        if (code.isNullOrBlank() || code(context) != null) return
+        setPendingCode(context, code.trim())
+    }
+
     private fun statusOf(value: Any?): Status = when (value) {
         "valid" -> Status.VALID
         "expired" -> Status.EXPIRED

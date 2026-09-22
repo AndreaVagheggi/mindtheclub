@@ -14,4 +14,8 @@
     <string name="license_manage">Gérer ou résilier l\'abonnement</string>
     <string name="license_web_price">3 € tous les 3 mois plus TVA, renouvellement automatique</string>
     <string name="license_web_buy">Acheter</string>
+    <string name="license_your_code">Votre code de licence</string>
+    <string name="license_code_note">Conservez-le : il vous servira pour activer MindTheClub sur un autre téléphone.</string>
+    <string name="license_copy">Copier</string>
+    <string name="license_copied">Code copié</string>
 </resources>

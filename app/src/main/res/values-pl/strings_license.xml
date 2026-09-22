@@ -14,4 +14,8 @@
     <string name="license_manage">Zarządzaj subskrypcją lub ją anuluj</string>
     <string name="license_web_price">3 € co 3 miesiące plus VAT, odnawiana automatycznie</string>
     <string name="license_web_buy">Kup</string>
+    <string name="license_your_code">Twój kod licencji</string>
+    <string name="license_code_note">Zachowaj go: będzie potrzebny do aktywacji MindTheClub na innym telefonie.</string>
+    <string name="license_copy">Kopiuj</string>
+    <string name="license_copied">Skopiowano kod</string>
 </resources>
