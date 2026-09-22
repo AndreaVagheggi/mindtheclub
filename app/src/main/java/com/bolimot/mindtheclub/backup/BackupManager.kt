@@ -2,6 +2,7 @@ package com.bolimot.mindtheclub.backup
 
 import android.content.Context
 import android.net.Uri
+import com.bolimot.mindtheclub.billing.LicenseManager
 import com.bolimot.mindtheclub.billing.TrialManager
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
@@ -108,6 +109,7 @@ object BackupManager {
                 identityKeyset = KeyManager.exportIdentityKeyset(),
                 mediaFileNames = mediaNames,
                 trialStartedAt = TrialManager.startedAt(context),
+                licenseCode = LicenseManager.code(context),
             )
 
             val jsonBytes = json.encodeToString(BackupData.serializer(), backupData)
@@ -212,6 +214,10 @@ object BackupManager {
                 // carries it over, or changing phone (or just uninstall and restore) would
                 // grant a fresh 30 days per sempre.
                 TrialManager.adoptStartedAt(context, backupData.trialStartedAt)
+
+                // The licence belongs to the identity too. Queued, not written in: the code
+                // is still bound to the phone the backup came from, and only redeem moves it.
+                LicenseManager.adoptRestoredCode(context, backupData.licenseCode)
 
                 val restoredPicUri = saveBase64ToFile(context, backupData.selfPictureBase64, "restored_pic.jpg")
                 if (restoredPicUri != null) {

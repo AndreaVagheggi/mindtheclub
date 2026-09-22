@@ -1,9 +1,13 @@
 package com.bolimot.mindtheclub.views
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
@@ -71,6 +75,9 @@ class SubscriptionActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.licenseActivateButton).setOnClickListener {
             activateLicense()
+        }
+        findViewById<MaterialButton>(R.id.licenseCopyButton).setOnClickListener {
+            copyLicenseCode()
         }
         // Arrived from https://www.mindtheclub.com/license?code=... after paying.
         LicenseManager.takePendingCode(this)?.let { code ->
@@ -147,9 +154,28 @@ class SubscriptionActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.licenseManageButton).visibility =
             if (deGoogle && licenceCode != null) View.VISIBLE else View.GONE
 
+        // The code is shown only where it exists, and it is the only copy the user has:
+        // it is not mailed out, and without it a licence cannot be moved to another phone.
+        findViewById<View>(R.id.licenseCodeBox).visibility =
+            if (licenceCode != null) View.VISIBLE else View.GONE
+        licenceCode?.let { findViewById<TextView>(R.id.licenseCodeText).text = it }
+
         if (LicenseManager.hasValidLicense(this)) {
             showLicenseStatus(getString(R.string.license_active_until,
                 DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(LicenseManager.paidUntil(this)))))
+        }
+    }
+
+    /**
+     * Android 13 and later show their own confirmation when something is copied, so a toast
+     * here would say the same thing twice.
+     */
+    private fun copyLicenseCode() {
+        val code = LicenseManager.code(this) ?: return
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.license_your_code), code))
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(this, R.string.license_copied, Toast.LENGTH_SHORT).show()
         }
     }
 

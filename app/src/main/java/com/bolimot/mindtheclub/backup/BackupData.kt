@@ -47,4 +47,9 @@ data class BackupData(
     // Null in backups made before this field existed, and null when the user never activated:
     // both restore as before.
     val trialStartedAt: Long? = null,
+    // The licence code bought outside Google Play. It is shown in the app and nowhere else,
+    // so a lost phone used to mean a lost subscription: here it travels with the identity,
+    // and the restore queues it for activation on the new handset. Null for Play users and
+    // in backups made before this field existed: both restore as before.
+    val licenseCode: String? = null,
 )
