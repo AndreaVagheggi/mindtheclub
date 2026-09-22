@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        View tag key used by applyImmersiveFullScreen to remember that it has
+        already attached its visibility listener to a decor view. A tag needs a
+        unique resource id and this one exists for nothing else.
+    -->
+    <item name="tag_immersive_fullscreen" type="id" />
+
+</resources>
