@@ -1,10 +1,7 @@
 package com.bolimot.mindtheclub.webrtc
 
-import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.functions.debugLine
-import com.google.firebase.appcheck.FirebaseAppCheck
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
@@ -53,35 +50,13 @@ private val iceClient: OkHttpClient by lazy {
 }
 
 /**
- * The comment that used to sit here said the worker only serves requests carrying a valid App
- * Check token. It does not, and never did: mtc-ice reads no token at all, it takes the request and
- * calls the Cloudflare TURN API with its own key. So every WebRTC negotiation was paying for a
- * Play Integrity attestation, and giving up on it when it failed, to satisfy a check that does not
- * exist anywhere. What actually guards the TURN spend is DAILY_ICE_BUDGET in that worker.
+ * mtc-ice reads no App Check token: it takes the request and calls the Cloudflare TURN API with
+ * its own key. What guards the TURN spend is DAILY_ICE_BUDGET in that worker.
  */
-private suspend fun appCheckToken(): String? {
-    return try {
-        var t = FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
-        if (t.isEmpty()) {
-            t = FirebaseAppCheck.getInstance().getAppCheckToken(true).await().token
-        }
-        t.ifEmpty { null }
-    } catch (e: Exception) {
-        debugLine("getCloudflareIceServers", "App Check token fetch failed: ${e.message}")
-        null
-    }
-}
-
 private suspend fun getCloudflareIceServers(): List<PeerConnection.IceServer>? = withContext(Dispatchers.IO) {
     try {
-        // Never give up the negotiation over a token nobody reads: with App Check off there is no
-        // fetch at all, and even with it on a missing token is no longer a reason to return null
-        // and leave the transfer without any ICE servers.
-        val token = if (APP_CHECK_ENABLED) appCheckToken() else null
-
         val request = Request.Builder()
             .url(ICE_WORKER_URL)
-            .apply { if (token != null) header("X-Firebase-AppCheck", token) }
             .post(ByteArray(0).toRequestBody("application/json".toMediaType()))
             .build()
 

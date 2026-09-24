@@ -93,23 +93,6 @@ object Notify {
 
 const val NO_PICTURE = "//no-picture"
 
-/**
- * Whether this build proves its identity to Firebase with App Check.
- *
- * Off since 22 Aug. It was protecting an app nobody has installed yet, and the price was paid on
- * every single outgoing signal: the token is fetched before the request is even attempted, and a
- * Play Integrity attestation is a network round trip that fails exactly when the network is
- * already struggling. On 21 Aug one phone lost 448 outgoing FCMs out of 448 and went completely
- * mute for two hours, unable even to tell anyone it had something pending, while Firestore
- * answered its reads with PERMISSION_DENIED for the same reason. The money is guarded by the
- * daily budget brakes in the Cloudflare workers, che sono quelli che davvero fermano un abuso.
- *
- * Turning it back on means flipping this AND `enforceAppCheck` in the four cloud functions, plus
- * the console. One without the other only breaks things: enforcing without a client token
- * refuses every call, and sending a token nobody verifies protects nothing.
- */
-const val APP_CHECK_ENABLED = false
-
 // Size cap for messages sent to a group, checked in the Send* screens and applied AFTER the
 // video transcoding pass (see VideoCompressor), so it judges what actually goes on the wire and
 // not what came out of the camera. The user facing strings said 250 MB from an old stress test;

@@ -88,7 +88,7 @@ val isTestBuild = releaseLogging || noPay ||
 //
 // Bump baseVersionCode by TWO each cycle, keeping it even, so the odd number
 // stays reserved for that cycle's tester build.
-val baseVersionCode = 1069
+val baseVersionCode = 1070
 val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
 
 // Both commands build the SAME build type, so without this they would both write
@@ -148,7 +148,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
-        versionName = "Release 1.69" +
+        versionName = "Release 1.70" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
@@ -330,16 +330,13 @@ dependencies {
 
     // Provides the real Guava ListenableFuture (addListener, etc.). This was
     // previously pulled in transitively by firebase-analytics; declared
-    // explicitly now so WorkManager / ML Kit / Play Integrity APIs resolve it.
+    // explicitly now so WorkManager / ML Kit APIs resolve it.
     implementation("com.google.guava:guava:32.1.3-android")
 
     //FIREBASE
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.firebase:firebase-appcheck")
-    implementation("com.google.firebase:firebase-appcheck-debug")
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
     implementation("com.google.firebase:firebase-storage-ktx")
 
     // COROUTINES
@@ -382,7 +379,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.getstream:photoview:1.0.3")
     implementation("org.jsoup:jsoup:1.21.1")
-    implementation("com.google.android.play:integrity")
     implementation("com.google.crypto.tink:tink-android:1.21.0")
 
     // TELCO

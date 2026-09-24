@@ -9,19 +9,13 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.functions.debugLine
-import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.SoundManager
 import com.bolimot.mindtheclub.transport.BluetoothPresence
 import com.bolimot.mindtheclub.voip.ManagedTelecom
 import com.bolimot.mindtheclub.works.WorkStateSwapper
 import com.google.firebase.FirebaseApp
-import com.google.firebase.appcheck.FirebaseAppCheck
-import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import org.webrtc.PeerConnectionFactory
 
 class App : Application(), DefaultLifecycleObserver {
@@ -39,26 +33,11 @@ class App : Application(), DefaultLifecycleObserver {
             BluetoothPresence.PREF_BLUETOOTH_ENABLED, "false", this
         )
 
+        // No App Check. It was switched off on 22 Aug 2026, after a Play Integrity outage left a
+        // phone unable to send anything for two hours, and removed from the code on 24 Sep 2026.
+        // The cloud functions do not enforce it and the Cloudflare workers never read a token;
+        // abuse is held back by the daily budget brakes in the workers.
         FirebaseApp.initializeApp(this)
-
-        // Not installing the provider is what makes the rest of this cheap: the Firebase SDKs
-        // only attach, and only wait for, an App Check token when a factory has been installed.
-        // Leaving it out removes the attestation from every Firestore read and every callable in
-        // one line, senza toccare un solo call site. See APP_CHECK_ENABLED.
-        if (APP_CHECK_ENABLED) {
-            val firebaseAppCheck = FirebaseAppCheck.getInstance()
-
-            if (BuildConfig.DEBUG) {
-                firebaseAppCheck.installAppCheckProviderFactory(
-                    DebugAppCheckProviderFactory.getInstance()
-                )
-            } else {
-                firebaseAppCheck.installAppCheckProviderFactory(
-                    PlayIntegrityAppCheckProviderFactory.getInstance()
-                )
-            }
-            warmAppCheckToken()
-        }
 
         ManagedTelecom.init(this)
 
@@ -83,26 +62,6 @@ class App : Application(), DefaultLifecycleObserver {
         debugLine("App", "WebRTC native libraries initialized")
 
         setupLifecycleListener()
-    }
-
-    /**
-     * Starts fetching an App Check token as soon as the process comes up, in the background and
-     * without blocking startup.
-     *
-     * Tokens last about an hour, so a phone woken by FCM after a long idle almost always needs a
-     * fresh one, and minting it means a Play Integrity attestation that can take several seconds.
-     * Paying that cost here, in parallel with the rest of the wake-up, means it is no longer paid
-     * inside the ICE fetch, where it used to make the TURN credentials arrive too late to use.
-     */
-    private fun warmAppCheckToken() {
-        applicationScope.launch {
-            try {
-                FirebaseAppCheck.getInstance().getAppCheckToken(false).await()
-                debugLine("App", "App Check token warmed")
-            } catch (e: Exception) {
-                debugLine("App", "App Check warm-up failed: ${e.message}")
-            }
-        }
     }
 
     private fun clearLogOnNewInstall() {
