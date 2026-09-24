@@ -29,8 +29,6 @@ import com.bolimot.mindtheclub.billing.BillingManager
 import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.billing.TrialManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import com.bolimot.mindtheclub.chat.SelectPeersForForward
 import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
 import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument

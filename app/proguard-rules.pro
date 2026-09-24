@@ -62,12 +62,6 @@
     native <methods>;
 }
 
-# ===== PLAY INTEGRITY (App Check) =====
--keep class com.google.android.play.core.integrity.** { *; }
--keep class com.google.firebase.appcheck.** { *; }
--keep class com.google.firebase.appcheck.playintegrity.** { *; }
--keep class com.google.firebase.appcheck.debug.** { *; }
--dontwarn com.google.android.play.core.integrity.**
 
 # ===== KOTLIN COROUTINES =====
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}

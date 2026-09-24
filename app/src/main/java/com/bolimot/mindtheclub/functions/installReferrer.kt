@@ -1,8 +1,6 @@
 package com.bolimot.mindtheclub.functions
 
 import android.content.Context
-import com.android.installreferrer.api.InstallReferrerClient
-import com.android.installreferrer.api.InstallReferrerStateListener
 import androidx.core.net.toUri
 
 /**
@@ -28,68 +26,15 @@ import androidx.core.net.toUri
  * happens.
  */
 
-private const val PREF_REFERRER_CHECKED = "mtc_install_referrer_checked"
 const val PREF_PENDING_INVITE_SEED = "mtc_pending_invite_seed"
 
 /**
- * Reads the Play Install Referrer once and, if it carries an invite, stashes the inviter's
- * profile for later. Self guarded, safe to call on every launch: it does real work only until
- * it has succeeded once.
+ * mtcx: nothing to read. This build is never installed through the Play Store, so there is no
+ * Play Install Referrer to carry an invite across the install; the library is not included.
+ * Kept with the same name so MainActivity calls it exactly as the Play build does.
  */
-fun captureInstallReferrerOnce(context: Context) {
-    // The referrer is a one-shot, install-time signal; only ever look once.
-    if (getPreference(PREF_REFERRER_CHECKED, context) == "true") return
-
-    val appContext = context.applicationContext
-    val client = InstallReferrerClient.newBuilder(appContext).build()
-
-    client.startConnection(object : InstallReferrerStateListener {
-        override fun onInstallReferrerSetupFinished(responseCode: Int) {
-            try {
-                when (responseCode) {
-                    InstallReferrerClient.InstallReferrerResponse.OK -> {
-                        val referrer = try {
-                            client.installReferrer.installReferrer
-                        } catch (e: Exception) {
-                            debugLine("InstallReferrer", "Failed to read referrer: ${e.message}")
-                            null
-                        }
-
-                        // OK is terminal regardless of content: never query again.
-                        setPreference(PREF_REFERRER_CHECKED, "true", appContext)
-
-                        val seed = parseInviteReferrer(referrer)
-                        if (seed != null) {
-                            setPreference(PREF_PENDING_INVITE_SEED, seed, appContext)
-                            debugLine("InstallReferrer", "Stashed pending invite seed.")
-                        } else {
-                            debugLine("InstallReferrer", "No invite payload in referrer.")
-                        }
-                    }
-
-                    InstallReferrerClient.InstallReferrerResponse.FEATURE_NOT_SUPPORTED -> {
-                        // Permanently unavailable on this device/store: stop retrying.
-                        setPreference(PREF_REFERRER_CHECKED, "true", appContext)
-                        debugLine("InstallReferrer", "Feature not supported.")
-                    }
-
-                    else -> {
-                        // SERVICE_UNAVAILABLE / DEVELOPER_ERROR are transient: leave the flag
-                        // unset so a later launch retries.
-                        debugLine("InstallReferrer", "Setup finished with code $responseCode; will retry.")
-                    }
-                }
-            } finally {
-                try { client.endConnection() } catch (_: Exception) {}
-            }
-        }
-
-        override fun onInstallReferrerServiceDisconnected() {
-            // No-op: a later launch re-attempts (flag stays unset on transient failures).
-            debugLine("InstallReferrer", "Service disconnected.")
-        }
-    })
-}
+@Suppress("UNUSED_PARAMETER")
+fun captureInstallReferrerOnce(context: Context) = Unit
 
 /**
  * Normalises a Play `referrer` value to the canonical "mtc;name;userId;bio;fingerprint"

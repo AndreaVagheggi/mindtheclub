@@ -88,7 +88,7 @@ val isTestBuild = releaseLogging || noPay ||
 //
 // Bump baseVersionCode by TWO each cycle, keeping it even, so the odd number
 // stays reserved for that cycle's tester build.
-val baseVersionCode = 1069
+val baseVersionCode = 1070
 val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
 
 // Both commands build the SAME build type, so without this they would both write
@@ -156,7 +156,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
-        versionName = "Release 1.69x" +
+        versionName = "Release 1.70" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
@@ -315,7 +315,8 @@ dependencies {
     implementation("androidx.compose.material3:material3-android:1.3.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("androidx.annotation:annotation:1.9.1")
-    implementation("com.google.android.gms:play-services-base:18.4.0")
+    // mtcx: no play-services-base. Nothing here asks whether Google Play Services is present;
+    // the notice on a phone with no push uses the UnifiedPush distributor instead.
 
     //TEST
     testImplementation("junit:junit:4.13.2")
@@ -338,7 +339,7 @@ dependencies {
 
     // Provides the real Guava ListenableFuture (addListener, etc.). This was
     // previously pulled in transitively by firebase-analytics; declared
-    // explicitly now so WorkManager / ML Kit / Play Integrity APIs resolve it.
+    // explicitly now so WorkManager / ML Kit APIs resolve it.
     implementation("com.google.guava:guava:32.1.3-android")
 
     //FIREBASE
@@ -352,9 +353,6 @@ dependencies {
         exclude(group = "com.google.crypto.tink", module = "tink")
     }
     implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.firebase:firebase-appcheck")
-    implementation("com.google.firebase:firebase-appcheck-debug")
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
     implementation("com.google.firebase:firebase-storage-ktx")
 
     // COROUTINES
@@ -387,17 +385,15 @@ dependencies {
     // phone, and without it the scanner is dead on microG and de-Googled devices.
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
-    // GOOGLE PLAY BILLING (subscriptions: mtc_standard / mtc_stealth)
-    implementation("com.android.billingclient:billing-ktx:8.0.0")
+    // mtcx: no Google Play Billing and no Play Install Referrer. The subscription is a licence
+    // bought on the web (LicenseManager), and this build is never installed through Play.
 
     // VARIOUS
-    implementation("com.android.installreferrer:installreferrer:2.2")
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.getstream:photoview:1.0.3")
     implementation("org.jsoup:jsoup:1.21.1")
-    implementation("com.google.android.play:integrity")
     implementation("com.google.crypto.tink:tink-android:1.21.0")
 
     // TELCO

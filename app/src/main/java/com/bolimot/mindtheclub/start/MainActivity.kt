@@ -4,8 +4,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.core.app.TaskStackBuilder
-import androidx.work.OneTimeWorkRequest
-import androidx.work.WorkManager
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.functions.PREF_PENDING_INVITE_SEED
@@ -16,18 +14,14 @@ import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.parseInviteReferrer
 import com.bolimot.mindtheclub.functions.printAppSignature
 import com.bolimot.mindtheclub.functions.setPreference
-import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.views.AppTab
 import com.bolimot.mindtheclub.views.MyProfile
 import com.bolimot.mindtheclub.views.OnboardingActivity
-import com.bolimot.mindtheclub.works.AppCheckWorker
 import com.bolimot.mindtheclub.works.InboxRecoveryWorker
 import com.bolimot.mindtheclub.functions.VideoCompressor
 import com.bolimot.mindtheclub.works.PendingRetryWorker
 import com.bolimot.mindtheclub.works.SoakTestWorker
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.bolimot.mindtheclub.tools.Share
@@ -108,32 +102,9 @@ class MainActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
 
-        // Firebase and App Check only if Play Services is ready right now. Best effort, and it
-        // must NEVER block or delay the UI, or a transient Play Services state (common on the
-        // very first launch after install, while it is still updating) strands the user on the
-        // splash screen.
-        setUpFirebaseIfAvailable()
-
-        // Start the app whatever Play Services is doing. Token and push sync run in the
-        // background and retry on their own; nothing here needs it to show onboarding.
+        // Push registration runs in the background and retries on its own; nothing here needs
+        // it to show onboarding.
         checkAndRequestPermissions()
-    }
-
-    private fun setUpFirebaseIfAvailable() {
-        val apiAvailability = GoogleApiAvailability.getInstance()
-        val resultCode = apiAvailability.isGooglePlayServicesAvailable(this)
-
-        if (resultCode == ConnectionResult.SUCCESS) {
-            if (APP_CHECK_ENABLED) {
-                debugLine("AppCheck", "Play Services OK — enqueuing App Check worker.")
-                val appCheckRequest = OneTimeWorkRequest.Builder(AppCheckWorker::class.java).build()
-                WorkManager.getInstance(this).enqueue(appCheckRequest)
-            }
-        } else {
-            // Not ready (still updating right after install). Non bloccare: Firebase Messaging
-            // retries the token by itself, and App Check is enqueued on a later launch.
-            debugLine("PlayServices", "Play Services not ready (code=$resultCode); continuing without blocking.")
-        }
     }
 
     override fun onNewIntent(intent: Intent) {

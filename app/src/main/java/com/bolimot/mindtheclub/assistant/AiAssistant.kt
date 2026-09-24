@@ -20,7 +20,6 @@ import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
 import com.bolimot.mindtheclub.receiving.chatScreenIsInForeground
 import com.bolimot.mindtheclub.start.App
-import com.bolimot.mindtheclub.tools.APP_CHECK_ENABLED
 import com.bolimot.mindtheclub.tools.Broadcast
 import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.MySelf
@@ -28,11 +27,9 @@ import com.bolimot.mindtheclub.tools.NO_PICTURE
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.SoundManager
 import com.bolimot.mindtheclub.tools.Type
-import com.google.firebase.appcheck.FirebaseAppCheck
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -180,20 +177,6 @@ object AiAssistant {
     private suspend fun requestReply(context: Context): String {
         val myUserId = MySelf.userId() ?: return context.getString(R.string.assistant_error_generic)
 
-        // With App Check off no provider is installed, so asking for a token here would throw on
-        // every request and the assistant would answer "network error" for ever. Unverified on
-        // the server side: unlike mtc-ice and mtc-signal, whose sources were read and confirmed
-        // to ignore the token, the mtc-ai worker is not on this machine. Se quello lo controlla,
-        // this is the feature that stops working.
-        val token = if (!APP_CHECK_ENABLED) null else {
-            try {
-                FirebaseAppCheck.getInstance().getAppCheckToken(false).await().token
-            } catch (e: Exception) {
-                debugLine(TAG, "App Check token failed: ${e.message}")
-                return context.getString(R.string.assistant_error_network)
-            }
-        }
-
         val history = getMessageDao(context)
             .getRecentMessages(myUserId, USER_ID, HISTORY_LIMIT)
             .reversed()
@@ -216,7 +199,6 @@ object AiAssistant {
 
         val request = Request.Builder()
             .url(WORKER_URL)
-            .apply { if (token != null) header("X-Firebase-AppCheck", token) }
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
