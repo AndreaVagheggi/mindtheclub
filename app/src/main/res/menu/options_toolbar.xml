@@ -19,6 +19,21 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/how_to_guide"
+        android:title="@string/menu_how_to_guide"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/how_mtc_works"
+        android:title="@string/menu_how_mtc_works"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/feedback"
+        android:title="@string/menu_feedback"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/about"
         android:title="@string/about"
         app:showAsAction="never" />

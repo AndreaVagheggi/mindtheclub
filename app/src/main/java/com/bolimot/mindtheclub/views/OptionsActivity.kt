@@ -2,6 +2,7 @@ package com.bolimot.mindtheclub.views
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
@@ -11,6 +12,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
@@ -72,7 +76,24 @@ class OptionsActivity : BaseActivity() {
         val showClubbySwitch: SwitchMaterial = findViewById(R.id.showClubbySwitch)
         showClubbySwitch.isChecked = AiAssistant.isVisible(this)
         showClubbySwitch.setOnCheckedChangeListener { _, isChecked ->
-            setPreference(AiAssistant.SHOW_CLUBBY_KEY, if (isChecked) "true" else "false", this)
+            if (isChecked) {
+                // Turning Clubby on always goes through the disclosure; the switch stays on only
+                // if the user accepts. Accepting here also covers the chat-open disclosure.
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.assistant_enable_title)
+                    .setMessage(R.string.assistant_disclosure_text)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.assistant_enable_accept) { _, _ ->
+                        setPreference(AiAssistant.DISCLOSURE_ACCEPTED_KEY, "true", this)
+                        setPreference(AiAssistant.SHOW_CLUBBY_KEY, "true", this)
+                    }
+                    .setNegativeButton(R.string.cancel) { _, _ ->
+                        showClubbySwitch.isChecked = false
+                    }
+                    .show()
+            } else {
+                setPreference(AiAssistant.SHOW_CLUBBY_KEY, "false", this)
+            }
         }
 
         val showNoteToSelfSwitch: SwitchMaterial = findViewById(R.id.showNoteToSelfSwitch)
@@ -158,6 +179,17 @@ class OptionsActivity : BaseActivity() {
             SubscriptionCopy.statusSummary(this)
     }
 
+    /** Opens a landing page in the app's language: website_lang_path holds the site folder of
+     *  each locale ("" for English, "id/" for values-in). */
+    private fun openWebsitePage(page: String) {
+        val url = "https://www.mindtheclub.com/" + getString(R.string.website_lang_path) + page
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        } catch (e: ActivityNotFoundException) {
+            showToast(getString(R.string.no_browser_found), this)
+        }
+    }
+
     private fun showHelpDialog(title: String, message: String) {
         MaterialAlertDialogBuilder(this)
             .setTitle(title)
@@ -215,6 +247,18 @@ class OptionsActivity : BaseActivity() {
             }
             R.id.black_list -> {
                 startActivity(Intent(this, BlackListActivity::class.java))
+                return true
+            }
+            R.id.how_to_guide -> {
+                openWebsitePage("how-to-guide.html")
+                return true
+            }
+            R.id.how_mtc_works -> {
+                openWebsitePage("white-paper.html")
+                return true
+            }
+            R.id.feedback -> {
+                openWebsitePage("contact.html")
                 return true
             }
             R.id.delete_log -> {
@@ -278,11 +322,22 @@ class OptionsActivity : BaseActivity() {
                     setTextIsSelectable(true)
                 }
 
+                val feedbackLink = TextView(this).apply {
+                    text = getString(R.string.about_feedback_link)
+                    textSize = 15f
+                    gravity = android.view.Gravity.CENTER
+                    setPadding(48, 48, 48, 0)
+                    setTextColor(ContextCompat.getColor(this@OptionsActivity, R.color.mtc_accent))
+                    paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+                    setOnClickListener { openWebsitePage("contact.html") }
+                }
+
                 layout.addView(appName)
                 layout.addView(versionLabel)
                 layout.addView(versionValue)
                 layout.addView(userIdLabel)
                 layout.addView(userIdValue)
+                layout.addView(feedbackLink)
 
                 MaterialAlertDialogBuilder(this)
                     .setView(layout)

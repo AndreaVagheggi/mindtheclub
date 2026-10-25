@@ -150,6 +150,13 @@
     <string name="reconnecting">Ponowne łączenie…</string>
     <string name="contacts_header">Kontakty</string>
     <string name="about">O aplikacji</string>
+    <string name="menu_how_to_guide">Przewodnik</string>
+    <string name="menu_how_mtc_works">Jak działa MTC</string>
+    <string name="menu_feedback">Podziel się opinią!</string>
+    <string name="about_feedback_link">Pomóż nam ulepszyć MindTheClub, wyślij nam swoją opinię</string>
+    <!-- Folder of this language on www.mindtheclub.com, empty for English -->
+    <string name="website_lang_path">pl/</string>
+    <string name="no_browser_found">Nie znaleziono przeglądarki, aby otworzyć tę stronę.</string>
     <string name="options">Opcje</string>
     <string name="version">Wersja</string>
     <string name="messages_header">Wiadomości</string>
@@ -254,8 +261,10 @@
     <string name="assistant_bio">Asystent AI — wiadomości na tym czacie są przetwarzane przez model AI, a nie peer-to-peer</string>
     <string name="assistant_welcome">Cześć! Jestem Clubby, twój wirtualny przyjaciel. Możesz mnie pytać o wszystko, zanim twoi znajomi dołączą do MindTheClub. W przeciwieństwie do każdego innego czatu w tej aplikacji moje odpowiedzi pochodzą z modelu AI w chmurze — tutaj nic nie jest peer-to-peer. Twoje pozostałe rozmowy pozostają w pełni prywatne, jak zawsze.</string>
     <string name="assistant_disclosure_title">Zanim porozmawiasz z Asystentem</string>
-    <string name="assistant_disclosure_text">Wiadomości na tym czacie są wysyłane do modelu AI w chmurze w celu wygenerowania odpowiedzi. Ten czat NIE jest peer-to-peer i NIE jest szyfrowany end-to-end.\n\nWszystkie twoje pozostałe rozmowy pozostają prywatne i peer-to-peer, jak zawsze.\n\nNie udostępniaj na tym czacie wrażliwych danych osobowych.</string>
+    <string name="assistant_disclosure_text">Clubby to asystent AI, z którym możesz rozmawiać, czekając, aż twoi znajomi dołączą do MindTheClub.\n\nJak to działa:\n• Clubby korzysta z Llama 3.1, otwartego modelu AI stworzonego przez Metę i hostowanego przez Cloudflare.\n• To, co piszesz do Clubby\'ego, razem z kilkoma ostatnimi wiadomościami jako kontekstem, jest wysyłane do Cloudflare w celu wygenerowania odpowiedzi. Ten czat NIE jest peer-to-peer i NIE jest szyfrowany end-to-end.\n• Clubby nie wie, kim jesteś. Nigdy nie otrzymuje twojego imienia, twoich kontaktów ani twojego identyfikatora MindTheClub, tylko losowy kod służący do liczenia dziennego limitu wiadomości.\n• Cloudflare nie przechowuje twoich wiadomości po udzieleniu odpowiedzi i nie używa ich do trenowania modeli AI. MindTheClub również ich nie przechowuje ani nie czyta.\n• Clubby nie widzi twoich innych czatów, kontaktów ani plików. Pozostają prywatne i peer-to-peer, jak zawsze.\n\nClubby to AI i może się mylić. Nie udostępniaj Clubby\'emu wrażliwych danych osobowych. Możesz w każdej chwili ponownie wyłączyć Clubby\'ego.</string>
     <string name="assistant_disclosure_accept">Rozumiem</string>
+    <string name="assistant_enable_title">Włączyć Clubby\'ego?</string>
+    <string name="assistant_enable_accept">Włącz</string>
     <string name="assistant_text_only">Potrafię czytać tylko wiadomości tekstowe. Napisz mi coś!</string>
     <string name="assistant_limit_user">Osiągnięto dzisiejszy limit wiadomości do Asystenta. Wróć jutro!</string>
     <string name="assistant_limit_global">Asystent ma dziś przerwę. Spróbuj ponownie jutro!</string>
