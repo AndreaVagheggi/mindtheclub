@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -15,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.assistant.AiAssistant
@@ -24,6 +26,7 @@ import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.functions.deleteDebugLog
 import com.bolimot.mindtheclub.functions.exportLogToVisibleStorage
 import com.bolimot.mindtheclub.functions.setPreference
@@ -35,6 +38,7 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
+import kotlinx.coroutines.launch
 
 class OptionsActivity : BaseActivity() {
 
@@ -102,6 +106,29 @@ class OptionsActivity : BaseActivity() {
             setPreference(NoteToSelf.SHOW_NOTE_TO_SELF_KEY, if (isChecked) "true" else "false", this)
         }
 
+        val showSupportSwitch: SwitchMaterial = findViewById(R.id.showSupportSwitch)
+        if (Support.isMe()) {
+            // The support phone itself: there is no team to add.
+            findViewById<View>(R.id.showSupportRow).visibility = View.GONE
+        }
+        showSupportSwitch.isChecked = Support.isVisible(this)
+        showSupportSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (!isChecked) {
+                Support.setVisible(this, false)
+                return@setOnCheckedChangeListener
+            }
+            // Already connected once: just show it again. First time: disclosure, then connect.
+            lifecycleScope.launch {
+                if (Support.getPeer(this@OptionsActivity) != null) {
+                    Support.setVisible(this@OptionsActivity, true)
+                } else {
+                    Support.confirmAndConnect(this@OptionsActivity) { added ->
+                        if (!added) showSupportSwitch.isChecked = false
+                    }
+                }
+            }
+        }
+
         bluetoothSwitch = findViewById(R.id.bluetoothTransportSwitch)
         bluetoothSwitch.isChecked = BluetoothToggle.isEnabled(this) && BluetoothToggle.isAdapterOn(this)
         bluetoothSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -128,6 +155,13 @@ class OptionsActivity : BaseActivity() {
             showHelpDialog(
                 getString(R.string.show_clubby),
                 getString(R.string.show_clubby_help)
+            )
+        }
+
+        findViewById<ImageView>(R.id.showSupportHelpIcon).setOnClickListener {
+            showHelpDialog(
+                getString(R.string.show_support),
+                getString(R.string.show_support_help)
             )
         }
 

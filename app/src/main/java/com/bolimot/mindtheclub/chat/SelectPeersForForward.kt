@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getPeerViewModel
@@ -80,10 +81,12 @@ class SelectPeersForForward : BaseActivity(), PeersAdapter.OnItemClickListener {
                                 !peer.userId.startsWith("group")
                                         && !AiAssistant.isAssistant(peer.userId)
                                         && !NoteToSelf.isNoteToSelf(peer.userId)
+                                        && !Support.isSupport(peer.userId)
                             // Forwarding content: groups OK; pseudo-peers follow their toggle.
                             else ->
                                 (!AiAssistant.isAssistant(peer.userId) || AiAssistant.isVisible(this@SelectPeersForForward))
                                         && (!NoteToSelf.isNoteToSelf(peer.userId) || NoteToSelf.isVisible(this@SelectPeersForForward))
+                                        && (!Support.isSupport(peer.userId) || Support.isVisible(this@SelectPeersForForward))
                         }
                     }
                 }

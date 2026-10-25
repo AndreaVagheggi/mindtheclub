@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
@@ -195,6 +196,9 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
     }
 
     fun broadcastMyProfileToAllPeers() {
+        // The support phone has every user who added the MTC team as a contact, and its profile is
+        // fixed: a broadcast from it would be one message per user.
+        if (Support.isMe()) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val activePeerIds = repository.getActivePeerUserIds()
@@ -216,9 +220,13 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
     }
 
     fun requestMissingProfilePictures() {
+        // Same reason as the broadcast: on the support phone this would ask every user, daily.
+        if (Support.isMe()) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // The MTC team's profile is fixed, there is nothing to ask it for.
                 val peers = repository.getActiveNonGroupPeers()
+                    .filterNot { Support.isSupport(it.userId) }
                 var requested = 0
                 val prefs = App.context().getSharedPreferences("ProfileRequestCooldown", Context.MODE_PRIVATE)
                 val now = System.currentTimeMillis()

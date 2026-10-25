@@ -16,6 +16,7 @@ import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.peer.PeerRepository
 import com.bolimot.mindtheclub.dialogs.BlockPeerDialog
 import com.bolimot.mindtheclub.dialogs.DeletePeerDialog
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.loadBitmap
 import com.bolimot.mindtheclub.start.BaseActivity
@@ -99,6 +100,13 @@ class PeerView : BaseActivity() , DeletePeerDialog.DeletePeerListener, BlockPeer
         } else {
             fab.visibility = View.GONE
             bottomNavigationView.visibility = View.VISIBLE
+        }
+
+        // The MTC team is never deleted, only hidden through its option in Options: a contact
+        // deleted on this side only would leave a new request unanswered by the support phone.
+        if (Support.isSupport(userId)) {
+            fab.visibility = View.GONE
+            bottomNavigationView.menu.findItem(R.id.delete)?.isVisible = false
         }
 
         fab.setOnClickListener {

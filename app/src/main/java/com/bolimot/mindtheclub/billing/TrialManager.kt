@@ -3,6 +3,7 @@ package com.bolimot.mindtheclub.billing
 import android.content.Context
 import com.bolimot.mindtheclub.assistant.AiAssistant
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.setPreference
@@ -55,10 +56,12 @@ object TrialManager {
      * user who tries the assistant out, or writes a note to themselves, would rightly feel
      * cheated to find their 30 days already running. sendMessage() diverts both before this is
      * reached; ripetuto qui so the rule survives any future reordering of that function.
+     * Writing to the MTC team is asking for help, not using the app: it does not count either.
      */
     fun startsTrial(toUserId: String?, messageType: String?): Boolean {
         if (AiAssistant.isAssistant(toUserId)) return false
         if (NoteToSelf.isNoteToSelf(toUserId)) return false
+        if (Support.isSupport(toUserId)) return false
         return messageType != null && ACTIVATING_TYPES.contains(messageType)
     }
 

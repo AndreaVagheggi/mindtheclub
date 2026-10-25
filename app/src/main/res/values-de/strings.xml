@@ -265,6 +265,15 @@
     <string name="assistant_disclosure_accept">Verstanden</string>
     <string name="assistant_enable_title">Clubby aktivieren?</string>
     <string name="assistant_enable_accept">Aktivieren</string>
+
+    <!-- Chat with the MTC team (support contact) -->
+    <string name="show_support">Mit dem MTC-Team chatten</string>
+    <string name="show_support_help">Fügt das MindTheClub-Team zu deinen Kontakten hinzu, damit du uns Fragen stellen, Probleme melden oder Ideen teilen kannst. Wenn du die Option ausschaltest, wird der Kontakt ausgeblendet; die Unterhaltung bleibt erhalten und ist wieder da, sobald du sie einschaltest.</string>
+    <string name="support_dialog_title">Mit dem MTC-Team chatten?</string>
+    <string name="support_dialog_text">Damit wird das MindTheClub-Team als ganz normaler Kontakt zu deinen Kontakten hinzugefügt.\n\n• Der Chat ist Peer-to-Peer und Ende-zu-Ende-verschlüsselt, wie alle deine anderen Chats.\n• Das Team sieht deinen Profilnamen, deine Bio und dein Bild, wie jeder Kontakt. Sonst nichts: weder deine anderen Chats noch deine Kontakte.\n• Es antwortet ein echter Mensch, meist innerhalb von 48 Stunden.\n\nDu kannst den Kontakt jederzeit wieder ausblenden, indem du diese Option ausschaltest.</string>
+    <string name="support_dialog_add">Hinzufügen</string>
+    <string name="support_welcome">Hallo! Hier ist das MindTheClub-Team. Schreib uns hier, wenn du Hilfe brauchst, Fragen oder Ideen hast. Jede Nachricht liest ein echter Mensch, und wir antworten meist innerhalb von 48 Stunden.</string>
+    <string name="support_connecting">Verbindung zum MTC-Team wird hergestellt. Der Chat ist gleich verfügbar.</string>
     <string name="assistant_text_only">Ich kann nur Textnachrichten lesen. Schreib mir etwas!</string>
     <string name="assistant_limit_user">Du hast das heutige Nachrichtenlimit für den Assistenten erreicht. Komm morgen wieder!</string>
     <string name="assistant_limit_global">Der Assistent macht heute Pause. Bitte versuche es morgen erneut!</string>
