@@ -17,6 +17,7 @@ import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getPeerViewModel
 import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.functions.guid
+import com.bolimot.mindtheclub.functions.setPreference
 import com.bolimot.mindtheclub.notifications.MessageReceivedNotification
 import com.bolimot.mindtheclub.receiving.chatScreenIsInForeground
 import com.bolimot.mindtheclub.start.App
@@ -51,6 +52,7 @@ object AiAssistant {
     const val USER_ID = "mtc-ai-assistant"
     const val DISCLOSURE_ACCEPTED_KEY = "aiAssistantDisclosureAccepted"
     const val SHOW_CLUBBY_KEY = "showClubbyOption"
+    private const val CLIENT_ID_KEY = "aiAssistantClientId"
 
     private const val WORKER_URL = "https://mtc-ai.long-sun-7368.workers.dev"
     private const val AVATAR_FILE_NAME = "mtcAssistantAvatar"
@@ -66,10 +68,16 @@ object AiAssistant {
 
     fun isAssistant(userId: String?): Boolean = userId == USER_ID
 
-    /** "Show Clubby" option (OptionsActivity), on by default. Hides the pinned row, forward
-     *  selection and search entries; the chat data stays intact. */
+    /** "Show Clubby" option (OptionsActivity), off by default. Hides the pinned row, forward
+     *  selection and search entries; the chat data stays intact. With no explicit choice saved,
+     *  users who already accepted the disclosure (installs that had Clubby on by default and used
+     *  it) keep seeing it after the update. */
     fun isVisible(context: Context): Boolean =
-        getPreference(SHOW_CLUBBY_KEY, context) != "false"
+        when (getPreference(SHOW_CLUBBY_KEY, context)) {
+            "true" -> true
+            "false" -> false
+            else -> getPreference(DISCLOSURE_ACCEPTED_KEY, context) == "true"
+        }
 
     /**
      * Creates the Assistant peer and its welcome message once, on first launch. If the user
@@ -192,8 +200,10 @@ object AiAssistant {
             })
         }
 
+        // The Worker only uses "userId" as the key of the daily cap, so it gets a random code
+        // with no link to the real userId: Clubby never learns who the user is.
         val payload = JSONObject().apply {
-            put("userId", myUserId)
+            put("userId", clientId(context))
             put("messages", messages)
         }
 
@@ -228,6 +238,15 @@ object AiAssistant {
             debugLine(TAG, "Worker call failed: ${e.message}")
             context.getString(R.string.assistant_error_network)
         }
+    }
+
+    /** Random code generated once per install and sent in place of the userId. */
+    @Synchronized
+    private fun clientId(context: Context): String {
+        getPreference(CLIENT_ID_KEY, context)?.takeIf { it.isNotBlank() }?.let { return it }
+        val id = guid()
+        setPreference(CLIENT_ID_KEY, id, context)
+        return id
     }
 
     private suspend fun insertReply(text: String) {

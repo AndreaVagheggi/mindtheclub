@@ -151,6 +151,13 @@
     <string name="reconnecting">Reconnecting…</string>
     <string name="contacts_header">Contacts</string>
     <string name="about">About</string>
+    <string name="menu_how_to_guide">How to Guide</string>
+    <string name="menu_how_mtc_works">How MTC works</string>
+    <string name="menu_feedback">Give us your feedback!</string>
+    <string name="about_feedback_link">Help us improve MindTheClub, send us your feedback</string>
+    <!-- Folder of this language on www.mindtheclub.com, empty for English -->
+    <string name="website_lang_path"></string>
+    <string name="no_browser_found">No browser found to open this page.</string>
     <string name="options">Options</string>
     <string name="version">Version</string>
     <string name="messages_header">Messages</string>
@@ -254,8 +261,10 @@
     <string name="assistant_bio">AI assistant — messages in this chat are processed by an AI model, not peer-to-peer</string>
     <string name="assistant_welcome">Hi! I\'m Clubby, your virtual friend. You can ask me anything while your friends join MindTheClub. Unlike every other chat in this app, my replies come from an AI model in the cloud — nothing here is peer-to-peer. Your other conversations stay fully private, as always.</string>
     <string name="assistant_disclosure_title">Before you chat with the Assistant</string>
-    <string name="assistant_disclosure_text">Messages in this chat are sent to an AI model in the cloud to generate replies. This chat is NOT peer-to-peer and NOT end-to-end encrypted.\n\nAll your other conversations remain private and peer-to-peer, as always.\n\nDon\'t share sensitive personal information in this chat.</string>
+    <string name="assistant_disclosure_text">Clubby is an AI assistant you can chat with while your friends join MindTheClub.\n\nHow it works:\n• Clubby runs on Llama 3.1, an open AI model made by Meta, hosted by Cloudflare.\n• What you write to Clubby, together with your last few messages for context, is sent to Cloudflare to generate a reply. This chat is NOT peer-to-peer and NOT end-to-end encrypted.\n• Clubby does not know who you are. It never receives your name, your contacts or your MindTheClub ID, only a random code used to count the daily message limit.\n• Cloudflare does not keep your messages after replying and does not use them to train AI models. MindTheClub does not store or read them either.\n• Clubby cannot see your other chats, contacts or files. They stay private and peer-to-peer, as always.\n\nClubby is an AI and can make mistakes. Don\'t share sensitive personal information with it. You can turn Clubby off again at any time.</string>
     <string name="assistant_disclosure_accept">I understand</string>
+    <string name="assistant_enable_title">Turn on Clubby?</string>
+    <string name="assistant_enable_accept">Turn on</string>
     <string name="assistant_text_only">I can only read text messages. Please write me something!</string>
     <string name="assistant_limit_user">You\'ve reached today\'s message limit for the Assistant. Come back tomorrow!</string>
     <string name="assistant_limit_global">The Assistant is taking a break for today. Please try again tomorrow!</string>
