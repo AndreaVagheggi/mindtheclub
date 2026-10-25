@@ -20,7 +20,11 @@ import java.text.DateFormat
 import java.util.Date
 import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.billing.TrialManager
+import com.bolimot.mindtheclub.chat.ChatScreen
+import com.bolimot.mindtheclub.functions.Support
+import com.bolimot.mindtheclub.functions.showToast
 import com.bolimot.mindtheclub.start.BaseActivity
+import com.bolimot.mindtheclub.tools.Contact
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 
@@ -72,6 +76,10 @@ class SubscriptionActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.licenseManageButton).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, LicenseManager.MANAGE_URL.toUri()))
+        }
+        findViewById<MaterialButton>(R.id.supportChatButton).apply {
+            visibility = if (required && !Support.isMe()) View.VISIBLE else View.GONE
+            setOnClickListener { openSupportChat() }
         }
         findViewById<MaterialButton>(R.id.licenseActivateButton).setOnClickListener {
             activateLicense()
@@ -204,6 +212,35 @@ class SubscriptionActivity : BaseActivity() {
                 LicenseManager.Status.NETWORK_ERROR -> R.string.license_network_error
             }))
             if (status == LicenseManager.Status.VALID) renderState()
+        }
+    }
+
+    /**
+     * A user locked out by the expired trial cannot reach Options, so the MTC team is offered here.
+     * Connected: open the chat (exempt from the gate). Still connecting: say so. Never added: the
+     * same disclosure as in Options, then connect.
+     */
+    private fun openSupportChat() {
+        lifecycleScope.launch {
+            val peer = Support.getPeer(this@SubscriptionActivity)
+            when {
+                peer == null -> Support.confirmAndConnect(this@SubscriptionActivity) { added ->
+                    if (added) showToast(getString(R.string.support_connecting), this@SubscriptionActivity)
+                }
+                peer.status == Contact.ACTIVE -> {
+                    Support.setVisible(this@SubscriptionActivity, true)
+                    startActivity(Intent(this@SubscriptionActivity, ChatScreen::class.java).apply {
+                        putExtra("userId", peer.userId)
+                        putExtra("name", peer.name)
+                        putExtra("bio", peer.bio)
+                        putExtra("picture", peer.picture)
+                    })
+                }
+                else -> {
+                    Support.setVisible(this@SubscriptionActivity, true)
+                    showToast(getString(R.string.support_connecting), this@SubscriptionActivity)
+                }
+            }
         }
     }
 

@@ -264,6 +264,15 @@
     <string name="assistant_disclosure_accept">Entendi</string>
     <string name="assistant_enable_title">Ativar o Clubby?</string>
     <string name="assistant_enable_accept">Ativar</string>
+
+    <!-- Chat with the MTC team (support contact) -->
+    <string name="show_support">Conversar com a equipe MTC</string>
+    <string name="show_support_help">Adiciona a equipe do MindTheClub aos seus contatos, para que você possa nos fazer perguntas, relatar um problema ou compartilhar ideias. Ao desativar, o contato fica oculto; a conversa é mantida e volta quando você ativar de novo.</string>
+    <string name="support_dialog_title">Conversar com a equipe MTC?</string>
+    <string name="support_dialog_text">Isto adiciona a equipe do MindTheClub aos seus contatos, como um contato normal.\n\n• O chat é peer-to-peer e criptografado de ponta a ponta, como todos os seus outros chats.\n• A equipe verá seu nome de perfil, sua bio e sua foto, como qualquer contato. Nada mais: nem seus outros chats, nem seus contatos.\n• Uma pessoa de verdade responde, normalmente em até 48 horas.\n\nVocê pode ocultar o contato de novo a qualquer momento desativando esta opção.</string>
+    <string name="support_dialog_add">Adicionar</string>
+    <string name="support_welcome">Olá! Aqui é a equipe do MindTheClub. Escreva para nós aqui para ajuda, dúvidas ou ideias. Uma pessoa de verdade lê cada mensagem, e normalmente respondemos em até 48 horas.</string>
+    <string name="support_connecting">Conectando à equipe MTC. O chat estará disponível em instantes.</string>
     <string name="assistant_text_only">Só consigo ler mensagens de texto. Escreva algo para mim!</string>
     <string name="assistant_limit_user">Você atingiu o limite de mensagens de hoje para o Assistente. Volte amanhã!</string>
     <string name="assistant_limit_global">O Assistente está descansando por hoje. Tente novamente amanhã!</string>

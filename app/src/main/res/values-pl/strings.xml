@@ -265,6 +265,15 @@
     <string name="assistant_disclosure_accept">Rozumiem</string>
     <string name="assistant_enable_title">Włączyć Clubby\'ego?</string>
     <string name="assistant_enable_accept">Włącz</string>
+
+    <!-- Chat with the MTC team (support contact) -->
+    <string name="show_support">Czat z zespołem MTC</string>
+    <string name="show_support_help">Dodaje zespół MindTheClub do twoich kontaktów, abyś mógł zadawać nam pytania, zgłaszać problemy lub dzielić się pomysłami. Po wyłączeniu kontakt zostaje ukryty; rozmowa jest zachowana i wraca po ponownym włączeniu.</string>
+    <string name="support_dialog_title">Czatować z zespołem MTC?</string>
+    <string name="support_dialog_text">To doda zespół MindTheClub do twoich kontaktów jako zwykły kontakt.\n\n• Czat jest peer-to-peer i szyfrowany end-to-end, jak wszystkie twoje pozostałe czaty.\n• Zespół zobaczy twoją nazwę profilu, bio i zdjęcie, jak każdy kontakt. Nic więcej: ani twoich innych czatów, ani twoich kontaktów.\n• Odpowiada prawdziwa osoba, zwykle w ciągu 48 godzin.\n\nW każdej chwili możesz ponownie ukryć kontakt, wyłączając tę opcję.</string>
+    <string name="support_dialog_add">Dodaj</string>
+    <string name="support_welcome">Cześć! Tu zespół MindTheClub. Napisz do nas tutaj, jeśli potrzebujesz pomocy, masz pytania lub pomysły. Każdą wiadomość czyta prawdziwa osoba, a zwykle odpowiadamy w ciągu 48 godzin.</string>
+    <string name="support_connecting">Łączenie z zespołem MTC. Czat będzie dostępny za chwilę.</string>
     <string name="assistant_text_only">Potrafię czytać tylko wiadomości tekstowe. Napisz mi coś!</string>
     <string name="assistant_limit_user">Osiągnięto dzisiejszy limit wiadomości do Asystenta. Wróć jutro!</string>
     <string name="assistant_limit_global">Asystent ma dziś przerwę. Spróbuj ponownie jutro!</string>

@@ -139,6 +139,15 @@
                 android:layout_height="wrap_content"
                 android:text="@string/sub_manage" />
 
+            <!-- Shown only when the trial has expired: the MTC team stays reachable. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/supportChatButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:text="@string/show_support" />
+
             <!-- Licence code bought outside Google Play. -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/licenseCard"

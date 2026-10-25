@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.getPeerViewModel
@@ -89,6 +90,7 @@ class SelectPeersForGroup : BaseActivity(), PeersAdapter.OnItemClickListener {
                         val allowed = includedUserIds.isEmpty() || peer.userId in includedUserIds
                         allowed && peer.userId !in excludedUserIds && !peer.userId.startsWith("group")
                                 && !AiAssistant.isAssistant(peer.userId)
+                                && !Support.isSupport(peer.userId)
                                 && !NoteToSelf.isNoteToSelf(peer.userId) && peer.status == Contact.ACTIVE
                     }
                 }

@@ -220,6 +220,52 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/showSupportRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/mtc_logo_icon"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/show_support"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_text" />
+
+                <ImageView
+                    android:id="@+id/showSupportHelpIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/help_outline"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/show_support" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/showSupportSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/show_support" />
+
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="56dp"

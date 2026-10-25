@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.PeersAdapter
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.peer.Peer
@@ -64,12 +65,13 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
     private var isTransparent = false
     private var clubbyRow: View? = null
     private var noteToSelfRow: View? = null
+    private var supportShown = false
 
     override fun onItemClick(peer: Peer) {
         debugLine("onItemClick", "Peer clicked")
 
         if (peersAdapter.isAnyPeerSelected()) {
-            if (peer.userId.startsWith("group")) return
+            if (peer.userId.startsWith("group") || Support.isSupport(peer.userId)) return
             peersAdapter.toggleSelection(peer.userId)
             return
         }
@@ -102,6 +104,14 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         isTransparent = false
 
         peersAdapter.notifyDataSetChanged()
+
+        // The list filter reads the MTC team option only when paging data is emitted: after the
+        // option changed in Options, reload so the row appears or disappears.
+        val supportNowShown = Support.isVisible(requireContext())
+        if (supportNowShown != supportShown) {
+            supportShown = supportNowShown
+            peersAdapter.refresh()
+        }
 
         refreshPinnedRows()
 
@@ -216,7 +226,8 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
     override fun onItemLongClick(peer: Peer): Boolean {
         debugLine("onItemLongClick", "Peer long clicked")
-        if (peer.userId.startsWith("group")) return false
+        // Selection builds groups: the MTC team must never become a group member (relay load).
+        if (peer.userId.startsWith("group") || Support.isSupport(peer.userId)) return false
 
         peersAdapter.toggleSelection(peer.userId)
         if (peersAdapter.isAnyPeerSelected()) {
@@ -304,12 +315,16 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         clubbyRow = view.findViewById(R.id.clubbyRow)
         noteToSelfRow = view.findViewById(R.id.noteToSelfRow)
 
+        val appContext = requireContext().applicationContext
+        supportShown = Support.isVisible(appContext)
         lifecycleScope.launch {
             viewModel.peers
                 .collectLatest { pagingData: PagingData<Peer> ->
                     // Clubby and Note-to-myself live in the pinned rows above the list, not in it.
+                    // The MTC team is a normal row, hidden while its option is off.
                     peersAdapter.submitData(pagingData.filter {
                         !AiAssistant.isAssistant(it.userId) && !NoteToSelf.isNoteToSelf(it.userId)
+                                && (!Support.isSupport(it.userId) || Support.isVisible(appContext))
                     })
                 }
         }

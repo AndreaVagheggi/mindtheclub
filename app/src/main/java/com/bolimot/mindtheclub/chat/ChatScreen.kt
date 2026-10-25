@@ -89,6 +89,7 @@ import com.bolimot.mindtheclub.functions.extractUrl
 import com.bolimot.mindtheclub.functions.fetchWebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.NoteToSelf
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.functions.PeerIdentityChange
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerViewModel
@@ -1006,6 +1007,10 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         }
     }
 
+    /** The MTC team stays reachable when the trial has expired: that is when help is needed. */
+    override fun isSubscriptionGateExempt(): Boolean =
+        ::remoteUserId.isInitialized && Support.isSupport(remoteUserId)
+
     private fun showAssistantDisclosureIfNeeded() {
         if (getPreference(AiAssistant.DISCLOSURE_ACCEPTED_KEY, this) == "true") return
 
@@ -1344,7 +1349,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             menu?.findItem(R.id.calendar)?.isVisible = !isToggledMenu
         }
 
-        if (isAssistantChat || NoteToSelf.isNoteToSelf(remoteUserId)) {
+        // The MTC team is reached in writing only: no calls to the support phone.
+        if (isAssistantChat || NoteToSelf.isNoteToSelf(remoteUserId) || Support.isSupport(remoteUserId)) {
             menu?.findItem(R.id.phone_call)?.isVisible = false
             menu?.findItem(R.id.video_call)?.isVisible = false
         }

@@ -266,6 +266,15 @@
     <string name="assistant_disclosure_accept">Saya mengerti</string>
     <string name="assistant_enable_title">Aktifkan Clubby?</string>
     <string name="assistant_enable_accept">Aktifkan</string>
+
+    <!-- Chat with the MTC team (support contact) -->
+    <string name="show_support">Chat dengan tim MTC</string>
+    <string name="show_support_help">Menambahkan tim MindTheClub ke kontakmu, supaya kamu bisa bertanya, melaporkan masalah, atau berbagi ide. Jika dinonaktifkan, kontak ini disembunyikan; percakapanmu tetap tersimpan dan muncul lagi saat kamu mengaktifkannya kembali.</string>
+    <string name="support_dialog_title">Chat dengan tim MTC?</string>
+    <string name="support_dialog_text">Ini menambahkan tim MindTheClub ke kontakmu, sebagai kontak biasa.\n\n• Chat ini peer-to-peer dan terenkripsi end-to-end, seperti semua chatmu yang lain.\n• Tim akan melihat nama profil, bio, dan fotomu, seperti kontak lainnya. Tidak lebih: bukan chatmu yang lain, bukan kontakmu.\n• Yang menjawab adalah orang sungguhan, biasanya dalam 48 jam.\n\nKamu bisa menyembunyikan kontak ini lagi kapan saja dengan menonaktifkan opsi ini.</string>
+    <string name="support_dialog_add">Tambahkan</string>
+    <string name="support_welcome">Hai! Ini tim MindTheClub. Tulis ke kami di sini untuk bantuan, pertanyaan, atau ide. Setiap pesan dibaca oleh orang sungguhan, dan kami biasanya membalas dalam 48 jam.</string>
+    <string name="support_connecting">Menghubungkan ke tim MTC. Chat akan tersedia sebentar lagi.</string>
     <string name="assistant_text_only">Saya hanya bisa membaca pesan teks. Tulis sesuatu untuk saya!</string>
     <string name="assistant_limit_user">Kamu sudah mencapai batas pesan hari ini untuk Asisten. Kembali lagi besok!</string>
     <string name="assistant_limit_global">Asisten sedang istirahat hari ini. Silakan coba lagi besok!</string>

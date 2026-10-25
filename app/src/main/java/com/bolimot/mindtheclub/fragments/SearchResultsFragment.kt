@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bolimot.mindtheclub.R
 import com.bolimot.mindtheclub.adapters.SearchItem
 import com.bolimot.mindtheclub.assistant.AiAssistant
+import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.adapters.SearchResultsAdapter
 import com.bolimot.mindtheclub.chat.ChatScreen
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
@@ -96,11 +97,13 @@ class SearchResultsFragment : Fragment() {
 
         val clubbyHidden = !AiAssistant.isVisible(context)
         val noteToSelfHidden = !NoteToSelf.isVisible(context)
+        val supportHidden = !Support.isVisible(context)
 
         // --- Contacts section ---
         val matchingPeers = peerDao.searchPeers(query)
             .filterNot { clubbyHidden && AiAssistant.isAssistant(it.userId) }
             .filterNot { noteToSelfHidden && NoteToSelf.isNoteToSelf(it.userId) }
+            .filterNot { supportHidden && Support.isSupport(it.userId) }
         if (matchingPeers.isNotEmpty()) {
             items.add(SearchItem.SectionHeader(getString(R.string.contacts_header)))
             matchingPeers.forEach { peer ->
@@ -114,6 +117,8 @@ class SearchResultsFragment : Fragment() {
                     (AiAssistant.isAssistant(it.fromUserId) || AiAssistant.isAssistant(it.toUserId)) }
             .filterNot { noteToSelfHidden &&
                     (NoteToSelf.isNoteToSelf(it.fromUserId) || NoteToSelf.isNoteToSelf(it.toUserId)) }
+            .filterNot { supportHidden &&
+                    (Support.isSupport(it.fromUserId) || Support.isSupport(it.toUserId)) }
         if (matchingMessages.isNotEmpty()) {
             items.add(SearchItem.SectionHeader(getString(R.string.messages_header)))
 
