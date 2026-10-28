@@ -48,6 +48,8 @@ class MessageViewModel(
         }
         .cachedIn(viewModelScope)
 
+    fun reloadMessages() = repository.reloadMessages()
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }

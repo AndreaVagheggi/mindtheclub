@@ -44,6 +44,8 @@ class PeerViewModel(application: Application, private val repository: PeerReposi
 
     val peers: Flow<PagingData<Peer>> = repository.getPeers().cachedIn(viewModelScope)
 
+    fun reloadPeers() = repository.reloadPeers()
+
     suspend fun addNewPeer(peer: Peer): Boolean = withContext(Dispatchers.IO) {
         repository.addNewPeer(peer)
     }

@@ -63,7 +63,7 @@
     <string name="share_qr_code">Udostępnij kod QR</string>
     <string name="add_club">Dodaj</string>
     <string name="cancel_club">Anuluj</string>
-    <string name="share_message">Cześć! Korzystam z MindTheClub. Kliknij poniższy link: jeśli masz już aplikację, doda mnie do twoich kontaktów, a jeśli nie — pozwoli ci ją pobrać.</string>
+    <string name="share_message">Cześć! Korzystam z MindTheClub. Kliknij poniższy link: jeśli masz już aplikację, doda mnie do twoich kontaktów, a jeśli nie, pozwoli ci ją pobrać.</string>
     <string name="join_message">Dołącz do mnie w MindTheClub!</string>
     <string name="share_via">Udostępnij przez…</string>
     <string name="this_is_you">To ty!</string>
@@ -206,27 +206,27 @@
     <string name="invite_share_other">Udostępnij przez inne aplikacje</string>
     <string name="contacts_permission_needed">Uprawnienie do kontaktów jest potrzebne, aby wyświetlić twoją książkę adresową</string>
     <string name="no_sms_app">Nie znaleziono aplikacji do wysyłania wiadomości</string>
-    <string name="bluetooth_transport_help">Gdy ta opcja jest włączona, MindTheClub może dostarczać wiadomości bezpośrednio przez Bluetooth do kontaktu w pobliżu — bez internetu, Wi-Fi ani danych komórkowych. Przydaje się, gdy jesteś offline lub poza zasięgiem. Druga osoba również musi mieć włączony Bluetooth i urządzenie sparowane z twoim.</string>
+    <string name="bluetooth_transport_help">Gdy ta opcja jest włączona, MindTheClub może dostarczać wiadomości bezpośrednio przez Bluetooth do kontaktu w pobliżu, bez internetu, Wi-Fi ani danych komórkowych. Przydaje się, gdy jesteś offline lub poza zasięgiem. Druga osoba również musi mieć włączony Bluetooth i urządzenie sparowane z twoim.</string>
     <string name="auto_invite_mode_help">Gdy ta opcja jest włączona, każdy, kto zeskanuje twój kod QR lub kliknie twój link z zaproszeniem, zostaje zaakceptowany automatycznie i od razu dodany do twojej listy kontaktów jako oczekujący. Takie prośby nie pojawiają się już na ekranie Nowe prośby o kontakt do ręcznego zatwierdzenia. Wyłącz tę opcję, jeśli wolisz samodzielnie przeglądać i akceptować każdą prośbę.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">Witaj w Klubie!</string>
-    <string name="onboarding_subtitle">Prywatne wiadomości, tylko między tobą a osobami, które wybierzesz. Wybierz imię, aby zacząć — zawsze możesz je później zmienić.</string>
+    <string name="onboarding_subtitle">Prywatne wiadomości, tylko między tobą a osobami, które wybierzesz. Wybierz imię, aby zacząć. Zawsze możesz je później zmienić.</string>
     <string name="onboarding_next">Dalej</string>
 
     <!-- Onboarding: profile (picture + bio) -->
     <string name="onboarding_profile_title">Zrób to po swojemu</string>
-    <string name="onboarding_profile_subtitle">Dodaj zdjęcie profilowe i krótkie bio, aby inni cię rozpoznali. Oba są opcjonalne — kliknij Dalej, aby pominąć; możesz je dodać w każdej chwili.</string>
+    <string name="onboarding_profile_subtitle">Dodaj zdjęcie profilowe i krótkie bio, aby inni cię rozpoznali. Oba są opcjonalne. Kliknij Dalej, aby pominąć. Możesz je dodać w każdej chwili.</string>
 
     <!-- Onboarding: invite friends -->
     <string name="onboarding_invite_title">Lepiej ze znajomymi</string>
-    <string name="onboarding_invite_subtitle">MindTheClub łączy cię bezpośrednio z osobami, które zaprosisz — i z nikim innym. Wyślij pierwsze zaproszenie, aby zacząć rozmawiać: to jedyny krok, który uruchamia rozmowę.</string>
+    <string name="onboarding_invite_subtitle">MindTheClub łączy cię bezpośrednio z osobami, które zaprosisz, i z nikim innym. Wyślij pierwsze zaproszenie, aby zacząć rozmawiać: to jedyny krok, który uruchamia rozmowę.</string>
     <string name="onboarding_invite_skip">Pomiń na razie</string>
 
     <!-- Onboarding: permission priming -->
     <string name="onboarding_perm_title">Zanim zaczniesz</string>
     <string name="onboarding_perm_calls_title">Połączenia głosowe i wideo</string>
-    <string name="onboarding_perm_calls_body">MindTheClub potrzebuje dostępu do mikrofonu i aparatu, abyście mogli rozmawiać i widzieć się podczas połączeń. Jeśli zezwolisz teraz, połączenia będą po prostu działać — bez próśb o zgodę w trakcie rozmowy.</string>
+    <string name="onboarding_perm_calls_body">MindTheClub potrzebuje dostępu do mikrofonu i aparatu, abyście mogli rozmawiać i widzieć się podczas połączeń. Jeśli zezwolisz teraz, połączenia będą po prostu działać, bez próśb o zgodę w trakcie rozmowy.</string>
     <string name="onboarding_perm_notif_title">Powiadomienia</string>
     <string name="onboarding_perm_notif_body">Zezwól na powiadomienia, aby nie przegapić żadnej nowej wiadomości ani połączenia przychodzącego.</string>
     <string name="onboarding_perm_allow">Zezwól na dostęp</string>
@@ -238,7 +238,7 @@
     <string name="storage_permission_required">Do załączania multimediów wymagany jest dostęp do twoich zdjęć i filmów</string>
 
     <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
-    <string name="notif_banner_text">Powiadomienia są wyłączone — nie otrzymasz alertu, gdy nadejdą nowe wiadomości.</string>
+    <string name="notif_banner_text">Powiadomienia są wyłączone. Nie otrzymasz alertu, gdy nadejdą nowe wiadomości.</string>
     <string name="notif_banner_enable">Włącz</string>
     <string name="permissions_title">Uprawnienia aplikacji</string>
     <string name="perm_notifications">Powiadomienia</string>
@@ -248,7 +248,7 @@
     <string name="perm_contacts">Kontakty</string>
     <string name="perm_bluetooth">Bluetooth</string>
     <string name="perm_status_ok">Zezwolono</string>
-    <string name="perm_status_off">Wyłączone — kliknij, aby naprawić</string>
+    <string name="perm_status_off">Wyłączone, kliknij, aby naprawić</string>
     <string name="perm_call_needs_mic">Do wykonywania połączeń potrzebny jest dostęp do mikrofonu. Włącz go w Ustawieniach.</string>
     <string name="perm_call_needs_camera">Do połączeń wideo potrzebny jest dostęp do aparatu i mikrofonu. Włącz je w Ustawieniach.</string>
     <string name="open_settings">Otwórz Ustawienia</string>
@@ -278,18 +278,18 @@
     <string name="assistant_text_only">Potrafię czytać tylko wiadomości tekstowe. Napisz mi coś!</string>
     <string name="assistant_limit_user">Osiągnięto dzisiejszy limit wiadomości do Asystenta. Wróć jutro!</string>
     <string name="assistant_limit_global">Asystent ma dziś przerwę. Spróbuj ponownie jutro!</string>
-    <string name="assistant_error_network">Nie udało się ze mną połączyć — sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="assistant_error_network">Nie udało się ze mną połączyć. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="assistant_error_generic">Coś poszło nie tak po mojej stronie. Spróbuj ponownie za chwilę.</string>
 
     <!-- Onboarding: battery restriction screen -->
     <string name="onboarding_battery_title">Jeszcze jedna wskazówka</string>
-    <string name="onboarding_battery_body">Wszystko gotowe! Aby aplikacja działała jak najpłynniej, możesz pozwolić MindTheClub swobodnie działać w tle — zużywa bardzo mało baterii. Całkowicie opcjonalne, możesz to zmienić w każdej chwili.</string>
+    <string name="onboarding_battery_body">Wszystko gotowe! Aby aplikacja działała jak najpłynniej, możesz pozwolić MindTheClub swobodnie działać w tle. Zużywa bardzo mało baterii. Całkowicie opcjonalne, możesz to zmienić w każdej chwili.</string>
     <string name="onboarding_battery_open_settings">Jasne, pokaż</string>
     <string name="onboarding_battery_skip">Może później</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Notatka do siebie</string>
-    <string name="note_to_self_bio">Twoja prywatna przestrzeń — notatki, zdjęcia i pliki, przechowywane tylko na tym telefonie</string>
+    <string name="note_to_self_bio">Twoja prywatna przestrzeń: notatki, zdjęcia i pliki, przechowywane tylko na tym telefonie</string>
     <string name="show_note_to_self_help">„Notatka do siebie” to twoja prywatna przestrzeń: czat z samym sobą na notatki, zdjęcia i pliki, przechowywane tylko na tym telefonie. Gdy ta opcja jest wyłączona, znika z twojej listy kontaktów i z wyników wyszukiwania. Twoje notatki zostają zachowane i wracają, gdy tylko włączysz opcję ponownie.</string>
 
     <!-- Subscription / billing -->

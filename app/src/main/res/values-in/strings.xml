@@ -240,7 +240,7 @@
     <string name="storage_permission_required">Akses ke foto dan video Anda diperlukan untuk melampirkan media</string>
 
     <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
-    <string name="notif_banner_text">Notifikasi nonaktif — Anda tidak akan diberi tahu saat pesan baru masuk.</string>
+    <string name="notif_banner_text">Notifikasi nonaktif. Anda tidak akan diberi tahu saat pesan baru masuk.</string>
     <string name="notif_banner_enable">Aktifkan</string>
     <string name="permissions_title">Izin aplikasi</string>
     <string name="perm_notifications">Notifikasi</string>
@@ -250,7 +250,7 @@
     <string name="perm_contacts">Kontak</string>
     <string name="perm_bluetooth">Bluetooth</string>
     <string name="perm_status_ok">Diizinkan</string>
-    <string name="perm_status_off">Nonaktif — ketuk untuk memperbaiki</string>
+    <string name="perm_status_off">Nonaktif, ketuk untuk memperbaiki</string>
     <string name="perm_call_needs_mic">Akses mikrofon diperlukan untuk panggilan. Aktifkan di Setelan.</string>
     <string name="perm_call_needs_camera">Akses kamera dan mikrofon diperlukan untuk panggilan video. Aktifkan di Setelan.</string>
     <string name="open_settings">Buka Setelan</string>
@@ -279,18 +279,18 @@
     <string name="assistant_text_only">Saya hanya bisa membaca pesan teks. Tulis sesuatu untuk saya!</string>
     <string name="assistant_limit_user">Kamu sudah mencapai batas pesan hari ini untuk Asisten. Kembali lagi besok!</string>
     <string name="assistant_limit_global">Asisten sedang istirahat hari ini. Silakan coba lagi besok!</string>
-    <string name="assistant_error_network">Saya tidak dapat dihubungi — periksa koneksimu dan coba lagi.</string>
+    <string name="assistant_error_network">Saya tidak dapat dihubungi. Periksa koneksimu dan coba lagi.</string>
     <string name="assistant_error_generic">Ada yang salah di pihak saya. Coba lagi sebentar lagi.</string>
 
     <!-- Onboarding: battery restriction screen -->
     <string name="onboarding_battery_title">Satu tips singkat</string>
-    <string name="onboarding_battery_body">Semua sudah siap! Untuk pengalaman paling mulus, kamu bisa membiarkan MindTheClub berjalan bebas di latar belakang — dayanya sangat kecil. Sepenuhnya opsional, dan bisa diubah kapan saja.</string>
+    <string name="onboarding_battery_body">Semua sudah siap! Untuk pengalaman paling mulus, kamu bisa membiarkan MindTheClub berjalan bebas di latar belakang. Dayanya sangat kecil. Sepenuhnya opsional, dan bisa diubah kapan saja.</string>
     <string name="onboarding_battery_open_settings">Baik, tunjukkan</string>
     <string name="onboarding_battery_skip">Mungkin nanti</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Catatan untuk saya</string>
-    <string name="note_to_self_bio">Ruang pribadimu — catatan, foto, dan file, disimpan hanya di ponsel ini</string>
+    <string name="note_to_self_bio">Ruang pribadimu: catatan, foto, dan file, disimpan hanya di ponsel ini</string>
     <string name="show_note_to_self_help">"Catatan untuk saya" adalah ruang pribadimu: chat dengan dirimu sendiri untuk catatan, foto, dan file, disimpan hanya di ponsel ini. Saat opsi ini mati, chat ini hilang dari daftar kontak dan hasil pencarian. Catatanmu tetap tersimpan dan kembali begitu kamu menyalakannya lagi.</string>
 
     <!-- Subscription / billing -->

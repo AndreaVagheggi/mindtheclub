@@ -49,6 +49,8 @@ object NoteToSelf {
             if (existing != null) {
                 if (existing.name != name) peerDao.updatePeerName(USER_ID, name)
                 if (existing.picture != picture) peerDao.updatePeerPicture(USER_ID, picture)
+                val bio = context.getString(R.string.note_to_self_bio)
+                if (existing.bio != bio) peerDao.updatePeerProfile(USER_ID, name, bio, picture)
                 return
             }
 

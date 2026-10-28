@@ -239,7 +239,7 @@
     <string name="storage_permission_required">Access to your photos and videos is required to attach media</string>
 
     <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
-    <string name="notif_banner_text">Notifications are off — you won\'t be alerted when new messages arrive.</string>
+    <string name="notif_banner_text">Notifications are off. You won\'t be alerted when new messages arrive.</string>
     <string name="notif_banner_enable">Enable</string>
     <string name="permissions_title">App permissions</string>
     <string name="perm_notifications">Notifications</string>
@@ -249,7 +249,7 @@
     <string name="perm_contacts">Contacts</string>
     <string name="perm_bluetooth">Bluetooth</string>
     <string name="perm_status_ok">Allowed</string>
-    <string name="perm_status_off">Off — tap to fix</string>
+    <string name="perm_status_off">Off, tap to fix</string>
     <string name="perm_call_needs_mic">Microphone access is needed to make calls. Please enable it in Settings.</string>
     <string name="perm_call_needs_camera">Camera and microphone access are needed for video calls. Please enable them in Settings.</string>
     <string name="open_settings">Open Settings</string>
@@ -278,18 +278,18 @@
     <string name="assistant_text_only">I can only read text messages. Please write me something!</string>
     <string name="assistant_limit_user">You\'ve reached today\'s message limit for the Assistant. Come back tomorrow!</string>
     <string name="assistant_limit_global">The Assistant is taking a break for today. Please try again tomorrow!</string>
-    <string name="assistant_error_network">I couldn\'t be reached — please check your connection and try again.</string>
+    <string name="assistant_error_network">I couldn\'t be reached. Please check your connection and try again.</string>
     <string name="assistant_error_generic">Something went wrong on my side. Please try again in a moment.</string>
 
     <!-- Onboarding: battery restriction screen -->
     <string name="onboarding_battery_title">One quick tip</string>
-    <string name="onboarding_battery_body">You\'re all set! For the snappiest experience, you can let MindTheClub run freely in the background — it uses very little battery. Totally optional, and you can change it anytime.</string>
+    <string name="onboarding_battery_body">You\'re all set! For the snappiest experience, you can let MindTheClub run freely in the background. It uses very little battery. Totally optional, and you can change it anytime.</string>
     <string name="onboarding_battery_open_settings">Sure, show me</string>
     <string name="onboarding_battery_skip">Maybe later</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Note to myself</string>
-    <string name="note_to_self_bio">Your private space — notes, photos and files, stored only on this phone</string>
+    <string name="note_to_self_bio">Your private space: notes, photos and files, stored only on this phone</string>
     <string name="show_note_to_self_help">Note to myself is your private space: a chat with yourself for notes, photos and files, stored only on this phone. When this is off, it disappears from your contact list and from search results. Your notes are kept and come back as soon as you turn it on again.</string>
 
     <!-- Subscription / billing -->
