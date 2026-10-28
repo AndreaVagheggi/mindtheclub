@@ -238,7 +238,7 @@
     <string name="storage_permission_required">O acesso às suas fotos e vídeos é necessário para anexar mídia</string>
 
     <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
-    <string name="notif_banner_text">As notificações estão desativadas — você não será avisado quando chegarem novas mensagens.</string>
+    <string name="notif_banner_text">As notificações estão desativadas. Você não será avisado quando chegarem novas mensagens.</string>
     <string name="notif_banner_enable">Ativar</string>
     <string name="permissions_title">Permissões do aplicativo</string>
     <string name="perm_notifications">Notificações</string>
@@ -248,7 +248,7 @@
     <string name="perm_contacts">Contatos</string>
     <string name="perm_bluetooth">Bluetooth</string>
     <string name="perm_status_ok">Permitido</string>
-    <string name="perm_status_off">Desativado — toque para corrigir</string>
+    <string name="perm_status_off">Desativado, toque para corrigir</string>
     <string name="perm_call_needs_mic">O acesso ao microfone é necessário para fazer chamadas. Ative-o nas Configurações.</string>
     <string name="perm_call_needs_camera">O acesso à câmera e ao microfone é necessário para chamadas de vídeo. Ative-os nas Configurações.</string>
     <string name="open_settings">Abrir Configurações</string>
@@ -277,18 +277,18 @@
     <string name="assistant_text_only">Só consigo ler mensagens de texto. Escreva algo para mim!</string>
     <string name="assistant_limit_user">Você atingiu o limite de mensagens de hoje para o Assistente. Volte amanhã!</string>
     <string name="assistant_limit_global">O Assistente está descansando por hoje. Tente novamente amanhã!</string>
-    <string name="assistant_error_network">Não foi possível me contatar — verifique sua conexão e tente novamente.</string>
+    <string name="assistant_error_network">Não foi possível me contatar. Verifique sua conexão e tente novamente.</string>
     <string name="assistant_error_generic">Algo deu errado do meu lado. Tente novamente em instantes.</string>
 
     <!-- Onboarding: battery restriction screen -->
     <string name="onboarding_battery_title">Uma dica rápida</string>
-    <string name="onboarding_battery_body">Tudo pronto! Para a melhor experiência, você pode deixar o MindTheClub rodar livremente em segundo plano — ele usa pouquíssima bateria. Totalmente opcional e você pode mudar quando quiser.</string>
+    <string name="onboarding_battery_body">Tudo pronto! Para a melhor experiência, você pode deixar o MindTheClub rodar livremente em segundo plano. Ele usa pouquíssima bateria. Totalmente opcional e você pode mudar quando quiser.</string>
     <string name="onboarding_battery_open_settings">Claro, me mostre</string>
     <string name="onboarding_battery_skip">Talvez depois</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Nota para mim</string>
-    <string name="note_to_self_bio">Seu espaço privado — notas, fotos e arquivos, guardados apenas neste telefone</string>
+    <string name="note_to_self_bio">Seu espaço privado: notas, fotos e arquivos, guardados apenas neste telefone</string>
     <string name="show_note_to_self_help">"Nota para mim" é o seu espaço privado: um chat com você mesmo para notas, fotos e arquivos, guardados apenas neste telefone. Quando esta opção está desativada, ele desaparece da sua lista de contatos e dos resultados de busca. Suas notas são mantidas e voltam assim que você ativar a opção novamente.</string>
 
     <!-- Subscription / billing -->

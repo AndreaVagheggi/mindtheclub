@@ -30,6 +30,15 @@ class PeerRepository(private val peerDao: PeerDao) {
         ).flow
     }
 
+    /**
+     * Reloads the contact list. Use this, never PagingDataAdapter.refresh(): refresh() makes the
+     * factory above invalidate a source that is still valid, which triggers another generation,
+     * which invalidates the next one, forever (ANR on the main thread).
+     */
+    fun reloadPeers() {
+        currentPagingSource?.invalidate()
+    }
+
     suspend fun markAsBlocked(userId: String): Boolean {
         val result = peerDao.markAsBlocked(userId) > 0
         if (result) currentPagingSource?.invalidate()

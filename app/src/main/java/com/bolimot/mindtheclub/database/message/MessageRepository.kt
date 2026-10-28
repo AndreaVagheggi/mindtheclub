@@ -63,6 +63,15 @@ class MessageRepository(private val messageDao: MessageDao) {
         ).flow
     }
 
+    /**
+     * Reloads the chat. Use this, never PagingDataAdapter.refresh(): refresh() makes the factory
+     * above invalidate a source that is still valid, which triggers another generation, which
+     * invalidates the next one, forever (ANR on the main thread).
+     */
+    fun reloadMessages() {
+        currentPagingSource?.invalidate()
+    }
+
     fun getFilteredMessages(
         myUserId: String,
         remoteUserId: String,

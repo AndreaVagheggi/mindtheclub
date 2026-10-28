@@ -539,10 +539,6 @@ class MessagesAdapter(private val listener: OnItemClickListener,
         }
     }
 
-    fun refreshAdapter(){
-        this.refresh()
-    }
-
     fun getSelectedMessagesIds(): List<String> {
         return selectedMessages.map { it[0] }
     }

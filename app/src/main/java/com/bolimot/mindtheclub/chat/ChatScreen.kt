@@ -1635,7 +1635,8 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         getPeersResult.launch(intent)
 
                         messagesAdapter.removeSelection()
-                        messagesAdapter.refreshAdapter()
+                        // Not messagesAdapter.refresh(): see MessageRepository.reloadMessages().
+                        messageViewModel.reloadMessages()
 
                         toggleMenu(false)
 

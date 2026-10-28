@@ -107,11 +107,12 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         peersAdapter.notifyDataSetChanged()
 
         // The list filter reads the MTC team option only when paging data is emitted: after the
-        // option changed in Options, reload so the row appears or disappears.
+        // option changed in Options, reload so the row appears or disappears. Not
+        // peersAdapter.refresh(): see PeerRepository.reloadPeers().
         val supportNowShown = Support.isVisible(requireContext())
         if (supportNowShown != supportShown) {
             supportShown = supportNowShown
-            peersAdapter.refresh()
+            viewModel.reloadPeers()
         }
 
         refreshPinnedRows()

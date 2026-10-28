@@ -238,7 +238,7 @@
     <string name="storage_permission_required">Für das Anhängen von Medien ist Zugriff auf deine Fotos und Videos erforderlich</string>
 
     <!-- Permission recovery (notifications banner, MyProfile section, call guard) -->
-    <string name="notif_banner_text">Benachrichtigungen sind aus — du wirst bei neuen Nachrichten nicht benachrichtigt.</string>
+    <string name="notif_banner_text">Benachrichtigungen sind aus. Du wirst bei neuen Nachrichten nicht benachrichtigt.</string>
     <string name="notif_banner_enable">Aktivieren</string>
     <string name="permissions_title">App-Berechtigungen</string>
     <string name="perm_notifications">Benachrichtigungen</string>
@@ -248,7 +248,7 @@
     <string name="perm_contacts">Kontakte</string>
     <string name="perm_bluetooth">Bluetooth</string>
     <string name="perm_status_ok">Erlaubt</string>
-    <string name="perm_status_off">Aus — zum Beheben tippen</string>
+    <string name="perm_status_off">Aus, zum Beheben tippen</string>
     <string name="perm_call_needs_mic">Für Anrufe wird Zugriff auf das Mikrofon benötigt. Bitte in den Einstellungen aktivieren.</string>
     <string name="perm_call_needs_camera">Für Videoanrufe wird Zugriff auf Kamera und Mikrofon benötigt. Bitte in den Einstellungen aktivieren.</string>
     <string name="open_settings">Einstellungen öffnen</string>
@@ -278,18 +278,18 @@
     <string name="assistant_text_only">Ich kann nur Textnachrichten lesen. Schreib mir etwas!</string>
     <string name="assistant_limit_user">Du hast das heutige Nachrichtenlimit für den Assistenten erreicht. Komm morgen wieder!</string>
     <string name="assistant_limit_global">Der Assistent macht heute Pause. Bitte versuche es morgen erneut!</string>
-    <string name="assistant_error_network">Ich war nicht erreichbar — bitte prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="assistant_error_network">Ich war nicht erreichbar. Bitte prüfe deine Verbindung und versuche es erneut.</string>
     <string name="assistant_error_generic">Bei mir ist etwas schiefgelaufen. Bitte versuche es gleich noch einmal.</string>
 
     <!-- Onboarding: battery restriction screen -->
     <string name="onboarding_battery_title">Ein kurzer Tipp</string>
-    <string name="onboarding_battery_body">Alles bereit! Für das flüssigste Erlebnis kannst du MindTheClub im Hintergrund frei laufen lassen — es verbraucht sehr wenig Akku. Völlig optional und jederzeit änderbar.</string>
+    <string name="onboarding_battery_body">Alles bereit! Für das flüssigste Erlebnis kannst du MindTheClub im Hintergrund frei laufen lassen. Es verbraucht sehr wenig Akku. Völlig optional und jederzeit änderbar.</string>
     <string name="onboarding_battery_open_settings">Klar, zeig mir</string>
     <string name="onboarding_battery_skip">Vielleicht später</string>
 
     <!-- Note to myself -->
     <string name="note_to_self">Notiz an mich</string>
-    <string name="note_to_self_bio">Dein privater Bereich — Notizen, Fotos und Dateien, nur auf diesem Telefon gespeichert</string>
+    <string name="note_to_self_bio">Dein privater Bereich: Notizen, Fotos und Dateien, nur auf diesem Telefon gespeichert</string>
     <string name="show_note_to_self_help">„Notiz an mich" ist dein privater Bereich: ein Chat mit dir selbst für Notizen, Fotos und Dateien, nur auf diesem Telefon gespeichert. Wenn diese Option aus ist, verschwindet er aus deiner Kontaktliste und aus den Suchergebnissen. Deine Notizen bleiben erhalten und sind wieder da, sobald du die Option erneut einschaltest.</string>
 
     <!-- Subscription / billing -->
