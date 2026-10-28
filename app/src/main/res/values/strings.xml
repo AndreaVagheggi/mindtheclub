@@ -203,6 +203,7 @@
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Other apps</string>
     <string name="contact_list_empty">Your contact list is empty</string>
+    <string name="empty_list_help">Need help? Meet Clubby, our AI support, or chat with the MindTheClub team. <u>Find them in Options.</u></string>
     <string name="invite_share_other">Share with other apps</string>
     <string name="contacts_permission_needed">Contacts permission is needed to show your address book</string>
     <string name="no_sms_app">No messaging app found</string>
@@ -256,12 +257,12 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
-    <string name="show_clubby">Show Clubby</string>
-    <string name="show_clubby_help">Clubby is the built-in AI assistant. When this is off, Clubby disappears from your contact list and from search results. Your conversation is kept and comes back as soon as you turn it on again.</string>
-    <string name="assistant_bio">AI assistant — messages in this chat are processed by an AI model, not peer-to-peer</string>
-    <string name="assistant_welcome">Hi! I\'m Clubby, your virtual friend. You can ask me anything while your friends join MindTheClub. Unlike every other chat in this app, my replies come from an AI model in the cloud — nothing here is peer-to-peer. Your other conversations stay fully private, as always.</string>
+    <string name="show_clubby">Clubby, AI support</string>
+    <string name="show_clubby_help">Clubby is the AI support of MindTheClub: it answers your questions about using the app, and you can also chat with it. When this is off, Clubby disappears from your contact list and from search results. Your conversation is kept and comes back as soon as you turn it on again.</string>
+    <string name="assistant_bio">AI support for MindTheClub. Messages in this chat are processed by an AI model, not peer-to-peer.</string>
+    <string name="assistant_welcome">Hi! I\'m Clubby, the AI support of MindTheClub. Ask me anything about using the app: adding contacts, groups, calls, backups and more. Unlike every other chat in this app, my replies come from an AI model in the cloud, so nothing here is peer-to-peer. Your other conversations stay fully private, as always.</string>
     <string name="assistant_disclosure_title">Before you chat with the Assistant</string>
-    <string name="assistant_disclosure_text">Clubby is an AI assistant you can chat with while your friends join MindTheClub.\n\nHow it works:\n• Clubby runs on Llama 3.1, an open AI model made by Meta, hosted by Cloudflare.\n• What you write to Clubby, together with your last few messages for context, is sent to Cloudflare to generate a reply. This chat is NOT peer-to-peer and NOT end-to-end encrypted.\n• Clubby does not know who you are. It never receives your name, your contacts or your MindTheClub ID, only a random code used to count the daily message limit.\n• Cloudflare does not keep your messages after replying and does not use them to train AI models. MindTheClub does not store or read them either.\n• Clubby cannot see your other chats, contacts or files. They stay private and peer-to-peer, as always.\n\nClubby is an AI and can make mistakes. Don\'t share sensitive personal information with it. You can turn Clubby off again at any time.</string>
+    <string name="assistant_disclosure_text">Clubby is the AI support of MindTheClub. Ask it how to use the app: adding contacts, groups, calls, backups, privacy and more. You can also chat with it about anything else.\n\nHow it works:\n• Clubby runs on Llama 3.1, an open AI model made by Meta, hosted by Cloudflare.\n• What you write to Clubby, together with your last few messages for context, is sent to Cloudflare to generate a reply. This chat is NOT peer-to-peer and NOT end-to-end encrypted.\n• Clubby does not know who you are. It never receives your name, your contacts or your MindTheClub ID, only a random code used to count the daily message limit.\n• Cloudflare does not keep your messages after replying and does not use them to train AI models. MindTheClub does not store or read them either.\n• Clubby cannot see your other chats, contacts or files. They stay private and peer-to-peer, as always.\n\nClubby is an AI and can make mistakes. Don\'t share sensitive personal information with it. You can turn Clubby off again at any time.</string>
     <string name="assistant_disclosure_accept">I understand</string>
     <string name="assistant_enable_title">Turn on Clubby?</string>
     <string name="assistant_enable_accept">Turn on</string>

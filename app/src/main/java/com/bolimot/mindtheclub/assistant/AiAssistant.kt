@@ -93,12 +93,12 @@ object AiAssistant {
             val existing = peerDao.getPeer(USER_ID)
             if (existing != null) {
                 // Identity rebrand (name/avatar changed in an app update): refresh in place.
+                val bio = context.getString(R.string.assistant_bio)
                 if (existing.name != name) {
-                    peerDao.updatePeerProfile(
-                        USER_ID, name,
-                        context.getString(R.string.assistant_bio),
-                        savedAvatarUri(context)
-                    )
+                    peerDao.updatePeerProfile(USER_ID, name, bio, savedAvatarUri(context))
+                } else if (existing.bio != bio) {
+                    // New description (or a language change): picture left as it is.
+                    peerDao.updatePeerProfile(USER_ID, name, bio, existing.picture)
                 }
                 return
             }

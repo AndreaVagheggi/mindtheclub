@@ -204,6 +204,7 @@
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Aplikasi lain</string>
     <string name="contact_list_empty">Daftar kontak Anda kosong</string>
+    <string name="empty_list_help">Butuh bantuan? Kenali Clubby, dukungan AI kami, atau chat dengan tim MindTheClub. <u>Temukan di Opsi.</u></string>
     <string name="invite_share_other">Bagikan dengan aplikasi lain</string>
     <string name="contacts_permission_needed">Izin kontak diperlukan untuk menampilkan buku alamat Anda</string>
     <string name="no_sms_app">Tidak ada aplikasi pesan yang ditemukan</string>
@@ -257,12 +258,12 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
-    <string name="show_clubby">Tampilkan Clubby</string>
-    <string name="show_clubby_help">Clubby adalah asisten AI bawaan. Saat opsi ini mati, Clubby hilang dari daftar kontak dan hasil pencarian. Percakapanmu tetap tersimpan dan kembali begitu kamu menyalakannya lagi.</string>
-    <string name="assistant_bio">Asisten AI — pesan di chat ini diproses oleh model AI, bukan peer-to-peer</string>
-    <string name="assistant_welcome">Hai! Saya Clubby, teman virtualmu. Kamu bisa bertanya apa saja sambil menunggu teman-temanmu bergabung ke MindTheClub. Berbeda dengan semua chat lain di aplikasi ini, jawaban saya berasal dari model AI di cloud — tidak ada yang peer-to-peer di sini. Percakapanmu yang lain tetap sepenuhnya privat, seperti biasa.</string>
+    <string name="show_clubby">Clubby, dukungan AI</string>
+    <string name="show_clubby_help">Clubby adalah dukungan AI dari MindTheClub: Clubby menjawab pertanyaanmu tentang cara memakai aplikasi, dan kamu juga bisa mengobrol dengannya. Saat opsi ini mati, Clubby hilang dari daftar kontak dan hasil pencarian. Percakapanmu tetap tersimpan dan kembali begitu kamu menyalakannya lagi.</string>
+    <string name="assistant_bio">Dukungan AI untuk MindTheClub. Pesan di chat ini diproses oleh model AI, bukan peer-to-peer.</string>
+    <string name="assistant_welcome">Hai! Saya Clubby, dukungan AI dari MindTheClub. Tanyakan apa saja tentang cara memakai aplikasi ini: menambah kontak, grup, panggilan, cadangan, dan lainnya. Berbeda dengan semua chat lain di aplikasi ini, jawaban saya berasal dari model AI di cloud, jadi tidak ada yang peer-to-peer di sini. Percakapanmu yang lain tetap sepenuhnya privat, seperti biasa.</string>
     <string name="assistant_disclosure_title">Sebelum mengobrol dengan Asisten</string>
-    <string name="assistant_disclosure_text">Clubby adalah asisten AI yang bisa kamu ajak ngobrol sambil menunggu teman-temanmu bergabung ke MindTheClub.\n\nCara kerjanya:\n• Clubby menggunakan Llama 3.1, model AI terbuka buatan Meta yang di-host oleh Cloudflare.\n• Apa yang kamu tulis ke Clubby, bersama beberapa pesan terakhirmu sebagai konteks, dikirim ke Cloudflare untuk menghasilkan balasan. Chat ini BUKAN peer-to-peer dan TIDAK terenkripsi end-to-end.\n• Clubby tidak tahu siapa kamu. Clubby tidak pernah menerima namamu, kontakmu, atau ID MindTheClub-mu, hanya kode acak yang dipakai untuk menghitung batas pesan harian.\n• Cloudflare tidak menyimpan pesanmu setelah membalas dan tidak menggunakannya untuk melatih model AI. MindTheClub juga tidak menyimpan atau membacanya.\n• Clubby tidak bisa melihat chat, kontak, atau filemu yang lain. Semuanya tetap privat dan peer-to-peer, seperti biasa.\n\nClubby adalah AI dan bisa membuat kesalahan. Jangan bagikan informasi pribadi yang sensitif dengan Clubby. Kamu bisa menonaktifkan Clubby kapan saja.</string>
+    <string name="assistant_disclosure_text">Clubby adalah dukungan AI dari MindTheClub. Tanyakan cara memakai aplikasi: menambah kontak, grup, panggilan, cadangan, privasi, dan lainnya. Kamu juga bisa mengobrol dengan Clubby tentang hal lain.\n\nCara kerjanya:\n• Clubby menggunakan Llama 3.1, model AI terbuka buatan Meta yang di-host oleh Cloudflare.\n• Apa yang kamu tulis ke Clubby, bersama beberapa pesan terakhirmu sebagai konteks, dikirim ke Cloudflare untuk menghasilkan balasan. Chat ini BUKAN peer-to-peer dan TIDAK terenkripsi end-to-end.\n• Clubby tidak tahu siapa kamu. Clubby tidak pernah menerima namamu, kontakmu, atau ID MindTheClub-mu, hanya kode acak yang dipakai untuk menghitung batas pesan harian.\n• Cloudflare tidak menyimpan pesanmu setelah membalas dan tidak menggunakannya untuk melatih model AI. MindTheClub juga tidak menyimpan atau membacanya.\n• Clubby tidak bisa melihat chat, kontak, atau filemu yang lain. Semuanya tetap privat dan peer-to-peer, seperti biasa.\n\nClubby adalah AI dan bisa membuat kesalahan. Jangan bagikan informasi pribadi yang sensitif dengan Clubby. Kamu bisa menonaktifkan Clubby kapan saja.</string>
     <string name="assistant_disclosure_accept">Saya mengerti</string>
     <string name="assistant_enable_title">Aktifkan Clubby?</string>
     <string name="assistant_enable_accept">Aktifkan</string>
