@@ -55,6 +55,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import androidx.paging.LoadState
 import com.bolimot.mindtheclub.views.InviteActivity
+import com.bolimot.mindtheclub.views.OptionsActivity
 
 class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDialog.BlockPeerListener {
 
@@ -331,6 +332,14 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
         val inviteFriendButton = view.findViewById<View>(R.id.inviteFriendButton)
         val emptyListText = view.findViewById<View>(R.id.emptyListText)
+        val emptyListHelp = view.findViewById<View>(R.id.emptyListHelp)
+
+        // Same screen the toolbar gear opens, where Clubby and the MTC team are switched on.
+        emptyListHelp.setOnClickListener {
+            startActivity(Intent(requireContext(), OptionsActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
 
         inviteFriendButton.setOnClickListener {
             val name = MySelf.name()?.trim() ?: ""
@@ -355,6 +364,7 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
                 val visibility = if (isEmpty) View.VISIBLE else View.GONE
                 inviteFriendButton.visibility = visibility
                 emptyListText.visibility = visibility
+                emptyListHelp.visibility = visibility
 
                 // Peer table changes (a new message bumps lastMessageAt) land here too: keep the
                 // pinned rows' previews in sync.

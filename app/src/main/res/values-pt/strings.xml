@@ -202,6 +202,7 @@
     <string name="invite_tab_sms">SMS</string>
     <string name="invite_tab_share">Outros apps</string>
     <string name="contact_list_empty">Sua lista de contatos está vazia</string>
+    <string name="empty_list_help">Precisa de ajuda? Conheça o Clubby, nosso suporte com IA, ou converse com a equipe do MindTheClub. <u>Você os encontra em Opções.</u></string>
     <string name="invite_share_other">Compartilhar com outros apps</string>
     <string name="contacts_permission_needed">A permissão de contatos é necessária para mostrar sua agenda</string>
     <string name="no_sms_app">Nenhum app de mensagens encontrado</string>
@@ -255,12 +256,12 @@
 
     <!-- AI Assistant -->
     <string name="assistant_name">Clubby</string>
-    <string name="show_clubby">Mostrar o Clubby</string>
-    <string name="show_clubby_help">O Clubby é o assistente de IA integrado. Quando esta opção está desativada, o Clubby desaparece da sua lista de contatos e dos resultados de busca. Sua conversa é mantida e volta assim que você ativar a opção novamente.</string>
-    <string name="assistant_bio">Assistente de IA — as mensagens deste chat são processadas por um modelo de IA, não são peer-to-peer</string>
-    <string name="assistant_welcome">Olá! Sou o Clubby, seu amigo virtual. Você pode me perguntar qualquer coisa enquanto seus amigos entram no MindTheClub. Diferente de qualquer outro chat deste app, minhas respostas vêm de um modelo de IA na nuvem — nada aqui é peer-to-peer. Suas outras conversas continuam totalmente privadas, como sempre.</string>
+    <string name="show_clubby">Clubby, suporte com IA</string>
+    <string name="show_clubby_help">O Clubby é o suporte com IA do MindTheClub: ele responde às suas perguntas sobre como usar o app, e você também pode conversar com ele. Quando esta opção está desativada, o Clubby desaparece da sua lista de contatos e dos resultados de busca. Sua conversa é mantida e volta assim que você ativar a opção novamente.</string>
+    <string name="assistant_bio">Suporte com IA do MindTheClub. As mensagens deste chat são processadas por um modelo de IA, não são peer-to-peer.</string>
+    <string name="assistant_welcome">Olá! Sou o Clubby, o suporte com IA do MindTheClub. Pergunte o que quiser sobre como usar o app: adicionar contatos, grupos, chamadas, backups e muito mais. Diferente de qualquer outro chat deste app, minhas respostas vêm de um modelo de IA na nuvem, então nada aqui é peer-to-peer. Suas outras conversas continuam totalmente privadas, como sempre.</string>
     <string name="assistant_disclosure_title">Antes de conversar com o Assistente</string>
-    <string name="assistant_disclosure_text">O Clubby é um assistente de IA com quem você pode conversar enquanto seus amigos chegam ao MindTheClub.\n\nComo funciona:\n• O Clubby usa o Llama 3.1, um modelo de IA aberto criado pela Meta e hospedado pela Cloudflare.\n• O que você escreve para o Clubby, junto com suas últimas mensagens como contexto, é enviado à Cloudflare para gerar uma resposta. Este chat NÃO é peer-to-peer e NÃO é criptografado de ponta a ponta.\n• O Clubby não sabe quem você é. Ele nunca recebe seu nome, seus contatos ou seu ID do MindTheClub, apenas um código aleatório usado para contar o limite diário de mensagens.\n• A Cloudflare não guarda suas mensagens depois de responder e não as usa para treinar modelos de IA. O MindTheClub também não as guarda nem as lê.\n• O Clubby não pode ver suas outras conversas, contatos ou arquivos. Eles continuam privados e peer-to-peer, como sempre.\n\nO Clubby é uma IA e pode errar. Não compartilhe informações pessoais sensíveis com o Clubby. Você pode desativar o Clubby a qualquer momento.</string>
+    <string name="assistant_disclosure_text">O Clubby é o suporte com IA do MindTheClub. Pergunte a ele como usar o app: adicionar contatos, grupos, chamadas, backups, privacidade e muito mais. Você também pode conversar com ele sobre qualquer outro assunto.\n\nComo funciona:\n• O Clubby usa o Llama 3.1, um modelo de IA aberto criado pela Meta e hospedado pela Cloudflare.\n• O que você escreve para o Clubby, junto com suas últimas mensagens como contexto, é enviado à Cloudflare para gerar uma resposta. Este chat NÃO é peer-to-peer e NÃO é criptografado de ponta a ponta.\n• O Clubby não sabe quem você é. Ele nunca recebe seu nome, seus contatos ou seu ID do MindTheClub, apenas um código aleatório usado para contar o limite diário de mensagens.\n• A Cloudflare não guarda suas mensagens depois de responder e não as usa para treinar modelos de IA. O MindTheClub também não as guarda nem as lê.\n• O Clubby não pode ver suas outras conversas, contatos ou arquivos. Eles continuam privados e peer-to-peer, como sempre.\n\nO Clubby é uma IA e pode errar. Não compartilhe informações pessoais sensíveis com o Clubby. Você pode desativar o Clubby a qualquer momento.</string>
     <string name="assistant_disclosure_accept">Entendi</string>
     <string name="assistant_enable_title">Ativar o Clubby?</string>
     <string name="assistant_enable_accept">Ativar</string>
