@@ -142,6 +142,11 @@ import com.bolimot.mindtheclub.views.PeerView
 import com.bolimot.mindtheclub.views.VideoTab
 import com.bolimot.mindtheclub.voip.startCall
 import com.bumptech.glide.Glide
+import android.graphics.drawable.Drawable
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -1479,14 +1484,34 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         findViewById<CardView>(R.id.chat_insert).visibility = View.VISIBLE
 
         val imageView = findViewById<ImageView>(R.id.chat_imageAttached)
+        imageView.clearAnimation()
 
+        // No picture or a picture that does not load: title and description only, no placeholder.
+        if (imageUrl.isBlank()) {
+            hideWebPreviewImage(imageView)
+            return
+        }
         Glide.with(this@ChatScreen)
             .load(imageUrl)
-            .placeholder(R.drawable.image)
-            .error(R.drawable.error)
+            .listener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
+                    hideWebPreviewImage(imageView)
+                    return true
+                }
+                override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean = false
+            })
             .into(imageView)
+    }
 
-        imageView.clearAnimation()
+    /** The close button over the picture would sit on the title: use the plain one instead. */
+    private fun hideWebPreviewImage(imageView: ImageView) {
+        Glide.with(this@ChatScreen).clear(imageView)
+        imageView.visibility = View.GONE
+        findViewById<ImageButton>(R.id.close_with_background).visibility = View.GONE
+        findViewById<ImageButton>(R.id.close).apply {
+            visibility = View.VISIBLE
+            setOnClickListener { dismissWebPreview() }
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -1735,9 +1760,17 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         findViewById<ImageView>(R.id.chat_imageAttached).visibility = View.GONE
                     }
                     it.type == Type.WEB -> {
-                        Glide.with(this@ChatScreen)
-                            .load(safeUrl(selectedMessage.replyId))
-                            .into(findViewById(R.id.chat_imageAttached))
+                        val webImage = safeUrl(selectedMessage.replyId)
+                        if (webImage == null) {
+                            // Link without a picture: same layout as a text reply.
+                            findViewById<ImageView>(R.id.chat_imageAttached).visibility = View.GONE
+                            findViewById<ImageButton>(R.id.close_with_background).visibility = View.GONE
+                            findViewById<ImageButton>(R.id.close).visibility = View.VISIBLE
+                        } else {
+                            Glide.with(this@ChatScreen)
+                                .load(webImage)
+                                .into(findViewById(R.id.chat_imageAttached))
+                        }
                     }
                     it.type == Type.CONTACT -> {
                         val peer = Json.decodeFromString<Peer>(it.text)

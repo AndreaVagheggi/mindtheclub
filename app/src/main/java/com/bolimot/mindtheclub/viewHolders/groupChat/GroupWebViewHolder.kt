@@ -37,7 +37,11 @@ class GroupWebViewHolder(itemView: View, private val listener: MessagesAdapter.O
     private var lastBoundMessageId: String? = null
     private var needsScrollAdjust = false
     private val imageLoadListener = object : RequestListener<Drawable> {
-        override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean = false
+        // A site picture that does not load: no picture at all, just link, title and description.
+        override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
+            itemView.findViewById<ImageView>(R.id.image).visibility = View.GONE
+            return true
+        }
         override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
             if (needsScrollAdjust) {
                 needsScrollAdjust = false
@@ -67,30 +71,27 @@ class GroupWebViewHolder(itemView: View, private val listener: MessagesAdapter.O
                 needsScrollAdjust = it.messageId != lastBoundMessageId
                 lastBoundMessageId = it.messageId
                 try {
-                    val imageToLoad = safeUrl(it.replyId) ?: R.drawable.image
+                    val imageToLoad = safeUrl(it.replyId)
                     val imageView = itemView.findViewById<ImageView>(R.id.image)
 
-                    val defaultHeight = ViewGroup.LayoutParams.WRAP_CONTENT
-                    val params = imageView.layoutParams
-                    params.height = defaultHeight
-                    imageView.layoutParams = params
-                    imageView.requestLayout()
+                    if (imageToLoad == null) {
+                        // The site has no picture: link, title and description only.
+                        Glide.with(itemView.context).clear(imageView)
+                        imageView.visibility = View.GONE
+                    } else {
+                        imageView.visibility = View.VISIBLE
 
-                    if (imageToLoad == Icon.TIKTOK || imageToLoad == Icon.YOUTUBE || imageToLoad == Icon.INSTAGRAM) {
-                        val param = imageView.layoutParams
-                        param.height = 300
-                        imageView.layoutParams = param
+                        val params = imageView.layoutParams
+                        params.height = if (imageToLoad == Icon.TIKTOK || imageToLoad == Icon.YOUTUBE || imageToLoad == Icon.INSTAGRAM) {
+                            300
+                        } else {
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        }
+                        imageView.layoutParams = params
                         imageView.requestLayout()
 
                         Glide.with(itemView.context)
                             .load(imageToLoad)
-                            .listener(imageLoadListener)
-                            .into(imageView)
-                    } else {
-                        Glide.with(itemView.context)
-                            .load(imageToLoad)
-                            .placeholder(R.drawable.image)
-                            .error(R.drawable.error)
                             .listener(imageLoadListener)
                             .into(imageView)
                     }
