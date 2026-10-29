@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.chat.ChatScreen
+import com.bolimot.mindtheclub.chat.SendFile
 import com.bolimot.mindtheclub.chat.SendGif
 import com.bolimot.mindtheclub.chat.SendImage
 import com.bolimot.mindtheclub.chat.SendVideo
@@ -77,6 +78,15 @@ fun incomingSharedContent(type: String?, uri: String?, text: String?, selectedPe
                         context.startActivity(intent)
                     }
                 }
+            }
+        }
+        Type.FILE -> {
+            if(!uri.isNullOrEmpty()) {
+                val intent = Intent(context, SendFile::class.java).apply {
+                    putExtra("filePath", uri)
+                    putExtra("userId", selectedPeers.joinToString(","))
+                }
+                context.startActivity(intent)
             }
         }
         Type.GIF -> {

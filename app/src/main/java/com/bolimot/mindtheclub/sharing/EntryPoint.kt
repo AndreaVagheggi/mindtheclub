@@ -6,11 +6,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.functions.copyUri
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.decodeQRCode
 import com.bolimot.mindtheclub.functions.extractUrl
+import com.bolimot.mindtheclub.functions.getFileDetails
+import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.start.MainActivity
 import com.bolimot.mindtheclub.tools.Share
 import com.bolimot.mindtheclub.tools.Type
@@ -18,6 +21,7 @@ import com.bolimot.mindtheclub.views.AppTab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class EntryPoint : AppCompatActivity() {
     private var myUri: Uri? = null
@@ -55,11 +59,19 @@ class EntryPoint : AppCompatActivity() {
             }
         }
 
+        val loweredType = type.lowercase()
+        val isMedia = listOf("gif", "video", "image", "audio").any { it in loweredType }
+        val isSharedText = "text" in loweredType && !text.isNullOrEmpty()
+        // Anything else that comes with a stream is a document (PDF, ticket, Office file...)
+        val isFile = uri != null && !isMedia && !isSharedText
+
         val myCopiedUri = withContext(Dispatchers.IO) {
             if (uri != null) {
                 if (!canAccessUri(uri)) {
                     debugLine("handleSendIntent", "Cannot access the provided URI.")
                     null
+                } else if (isFile) {
+                    copySharedFile(uri)
                 } else {
                     copyUri(uri, this@EntryPoint)
                 }
@@ -76,8 +88,8 @@ class EntryPoint : AppCompatActivity() {
         myUri = myCopiedUri
 
         debugLine("EntryPoint", "Received intent with type: $type, uri: $myUri, text: $text")
-        val loweredType = type.lowercase()
         when {
+            isFile -> startMainApp(myUri, Type.FILE)
             "gif" in loweredType -> startMainApp(myUri, Type.GIF)
             "video" in loweredType -> startMainApp(myUri, Type.VIDEO)
             "image" in loweredType -> handleProfile(intent)
@@ -96,6 +108,28 @@ class EntryPoint : AppCompatActivity() {
                 debugLine("EntryPoint", "Unsupported MIME type: $type")
                 finish()
             }
+        }
+    }
+
+    /**
+     * Copies a shared document keeping its original name (copyUri renames it to a guid), so
+     * SendFile shows and sends "ticket.pdf". The read grant ends with this activity, hence the copy.
+     */
+    private fun copySharedFile(uri: Uri): Uri? {
+        val name = getFileDetails(contentResolver, uri).fullName
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .takeIf { it.isNotBlank() && it != "Unknown" }
+            ?: return copyUri(uri, this)
+        return try {
+            val dir = File(filesDir, "shared_in/${guid()}").apply { mkdirs() }
+            val file = File(dir, name)
+            val copied = contentResolver.openInputStream(uri)?.use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (copied == null) null else FileProvider.getUriForFile(this, "$packageName.provider", file)
+        } catch (e: Exception) {
+            debugLine("copySharedFile", "Exception: ${e.message}")
+            null
         }
     }
 
