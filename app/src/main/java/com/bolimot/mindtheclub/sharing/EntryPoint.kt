@@ -116,9 +116,16 @@ class EntryPoint : AppCompatActivity() {
      * SendFile shows and sends "ticket.pdf". The read grant ends with this activity, hence the copy.
      */
     private fun copySharedFile(uri: Uri): Uri? {
-        val name = getFileDetails(contentResolver, uri).fullName
-            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-            .takeIf { it.isNotBlank() && it != "Unknown" }
+        // Some providers refuse the name query (SecurityException, IllegalArgumentException):
+        // uncaught here it would crash the share. Without a name, fall back to a guid copy.
+        val name = try {
+            getFileDetails(contentResolver, uri).fullName
+        } catch (e: Exception) {
+            debugLine("copySharedFile", "Name query failed: ${e.message}")
+            null
+        }
+            ?.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            ?.takeIf { it.isNotBlank() && it != "Unknown" }
             ?: return copyUri(uri, this)
         return try {
             val dir = File(filesDir, "shared_in/${guid()}").apply { mkdirs() }

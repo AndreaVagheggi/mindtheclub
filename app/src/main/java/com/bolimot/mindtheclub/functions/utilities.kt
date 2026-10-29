@@ -303,7 +303,9 @@ fun getFileDetails(contentResolver: ContentResolver, uri: Uri): FileDetails {
                 if (it.moveToFirst()) {
                     val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     if (nameIndex != -1) {
-                        fullName = it.getString(nameIndex)
+                        // Some providers (Huawei file manager, Android 9) return a null name:
+                        // keep "Unknown" instead of crashing on it below.
+                        it.getString(nameIndex)?.takeIf { name -> name.isNotBlank() }?.let { name -> fullName = name }
                     }
 
                     val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
@@ -311,6 +313,13 @@ fun getFileDetails(contentResolver: ContentResolver, uri: Uri): FileDetails {
                         size = it.getLong(sizeIndex)
                     }
                 }
+            }
+            // No name from the provider: these URIs usually end with the file name itself.
+            if (fullName == "Unknown") {
+                uri.lastPathSegment
+                    ?.substringAfterLast('/')?.substringAfterLast(':')
+                    ?.takeIf { it.contains(".") }
+                    ?.let { fullName = it }
             }
         }
         "file" -> {
@@ -410,8 +419,18 @@ fun isFileType(type: String?): Boolean {
 
 fun getFileDetailFromType(type: String?): List<String>{
     // [0] = file name, [1] = extension, [2] = size
+    // Read from the right: the name is free text and may itself contain commas
+    // ("Biglietto, Roma.pdf"), extension and size never do. Same wire format as before.
     if(type == null) return emptyList()
-    return splitToList(type.substring(4))
+    val csv = type.substring(4)
+    val sizeCut = csv.lastIndexOf(',')
+    val extensionCut = if (sizeCut > 0) csv.lastIndexOf(',', sizeCut - 1) else -1
+    if (extensionCut < 0) return splitToList(csv)
+    return listOf(
+        csv.substring(0, extensionCut).trim(),
+        csv.substring(extensionCut + 1, sizeCut).trim(),
+        csv.substring(sizeCut + 1).trim()
+    )
 }
 
 fun typeHasImageAttached(type: String?): Boolean{

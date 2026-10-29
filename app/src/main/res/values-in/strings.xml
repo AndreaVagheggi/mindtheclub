@@ -159,6 +159,8 @@
     <!-- Folder of this language on www.mindtheclub.com, empty for English -->
     <string name="website_lang_path">id/</string>
     <string name="no_browser_found">Tidak ada browser untuk membuka halaman ini.</string>
+    <string name="no_app_to_open_file">Tidak ada aplikasi di ponsel ini yang bisa membuka file ini</string>
+    <string name="file_not_available">File ini sudah tidak ada di ponsel ini</string>
     <string name="options">Opsi</string>
     <string name="version">Versi</string>
     <string name="messages_header">Pesan</string>

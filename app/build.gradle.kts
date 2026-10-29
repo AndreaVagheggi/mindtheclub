@@ -88,7 +88,7 @@ val isTestBuild = releaseLogging || noPay ||
 //
 // Bump baseVersionCode by TWO each cycle, keeping it even, so the odd number
 // stays reserved for that cycle's tester build.
-val baseVersionCode = 1080
+val baseVersionCode = 1082
 val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
 
 // Both commands build the SAME build type, so without this they would both write
@@ -156,7 +156,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
-        versionName = "Release 1.80" +
+        versionName = "Release 1.82" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
