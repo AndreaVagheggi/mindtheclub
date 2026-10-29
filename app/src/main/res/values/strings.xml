@@ -158,6 +158,8 @@
     <!-- Folder of this language on www.mindtheclub.com, empty for English -->
     <string name="website_lang_path"></string>
     <string name="no_browser_found">No browser found to open this page.</string>
+    <string name="no_app_to_open_file">No app on this phone can open this file</string>
+    <string name="file_not_available">This file is no longer on this phone</string>
     <string name="options">Options</string>
     <string name="version">Version</string>
     <string name="messages_header">Messages</string>

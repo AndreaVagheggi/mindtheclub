@@ -98,6 +98,9 @@ import com.bolimot.mindtheclub.functions.getPreference
 import com.bolimot.mindtheclub.database.reaction.ReactionManager
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.functions.isFileType
+import com.bolimot.mindtheclub.functions.makeContent
+import android.content.ActivityNotFoundException
+import android.webkit.MimeTypeMap
 import com.bolimot.mindtheclub.functions.loadBitmap
 import com.bolimot.mindtheclub.functions.safeUrl
 import com.bolimot.mindtheclub.functions.SENT_IMAGE_QUALITY
@@ -1858,10 +1861,84 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                 startActivity(intent)
             }
 
+            if (isFileType(message.type)) {
+                openFileMessage(message)
+            }
+
             if(message.subType == SubType.REPLY){
                 scrollToOriginalMessage(message.replyId)
             }
 
+        }
+    }
+
+    /**
+     * Opens a file message in another app. A plain ACTION_VIEW, not a chooser, so Android shows
+     * its own "Just once / Always" sheet, as WhatsApp does.
+     */
+    private fun openFileMessage(message: Message) {
+        if (message.uri.isBlank()) return
+        val uri = try {
+            makeContent(message.uri, this)
+        } catch (e: Exception) {
+            debugLine("openFileMessage", "No content uri for ${message.uri}: ${e.message}")
+            showToast(getString(R.string.file_not_available), this)
+            return
+        }
+        // Sent files live in our private storage, received ones in Downloads: the user may have
+        // deleted the latter.
+        val readable = try {
+            contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+        } catch (e: Exception) {
+            false
+        }
+        if (!readable) {
+            showToast(getString(R.string.file_not_available), this)
+            return
+        }
+        val detail = getFileDetailFromType(message.type)
+        val extension = detail.getOrNull(1)?.lowercase() ?: ""
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+            ?: contentResolver.getType(uri)
+            ?: "*/*"
+
+        lifecycleScope.launch {
+            // The stored copy has a code name (guid when sent, content hash when received): the
+            // viewer gets a temporary copy under the real name, falling back to the original.
+            val toOpen = withContext(Dispatchers.IO) {
+                copyWithRealName(uri, detail.getOrNull(0))
+            } ?: uri
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(toOpen, mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            try {
+                startActivity(intent)
+            } catch (e: ActivityNotFoundException) {
+                showToast(getString(R.string.no_app_to_open_file), this@ChatScreen)
+            } catch (e: SecurityException) {
+                debugLine("openFileMessage", "SecurityException: ${e.message}")
+                showToast(getString(R.string.file_not_available), this@ChatScreen)
+            }
+        }
+    }
+
+    /** One copy at a time in files/open_with: the previous one is removed before each open. */
+    private fun copyWithRealName(source: Uri, realName: String?): Uri? {
+        val name = realName?.replace(Regex("[\\\\/:*?\"<>|]"), "_")?.trim()
+            ?.takeIf { it.isNotEmpty() && it != "Unknown" } ?: return null
+        return try {
+            val dir = File(filesDir, "open_with")
+            dir.deleteRecursively()
+            dir.mkdirs()
+            val target = File(dir, name)
+            val copied = contentResolver.openInputStream(source)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (copied == null) null else FileProvider.getUriForFile(this, "$packageName.provider", target)
+        } catch (e: Exception) {
+            debugLine("openFileMessage", "Copy with real name failed: ${e.message}")
+            null
         }
     }
 
