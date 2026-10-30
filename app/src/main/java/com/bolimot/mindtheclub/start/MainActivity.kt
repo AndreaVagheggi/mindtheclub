@@ -47,6 +47,13 @@ class MainActivity : BaseActivity() {
         sharing = i.getStringExtra("sharing")
         text = i.getStringExtra("text")
 
+        // Every intent describes itself: an invite read from an earlier link must not ride
+        // along with a later share or launch.
+        inviteUserId = null
+        inviteName = null
+        inviteBio = null
+        inviteFingerprint = null
+
         if (i.action == Intent.ACTION_VIEW && i.data != null) {
             val data = i.data!!
             // Licence code from the payment confirmation page: kept until AppTab opens the
@@ -113,7 +120,8 @@ class MainActivity : BaseActivity() {
 
         getParameters(intent)
 
-        checkAndRequestPermissions()
+        // No startApplication() here: onResume always follows onNewIntent and runs it. Calling
+        // it twice started AppTab twice, i.e. two "add this contact?" dialogs for one link.
     }
 
     private fun checkAndRequestPermissions() {
@@ -217,6 +225,10 @@ class MainActivity : BaseActivity() {
                     putExtra("fingerprint", inviteFingerprint)
                     flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
+                // Consumed: a later resume of this screen must not ask again. A new tap on the
+                // link sets them again (getParameters).
+                inviteUserId = null
+                inviteName = null
                 startActivity(inviteIntent)
                 return
             }

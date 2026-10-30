@@ -39,6 +39,7 @@ class WebViewHolder(itemView: View, private val listener: MessagesAdapter.OnItem
         // A site picture that does not load: no picture at all, just link, title and description.
         override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
             itemView.findViewById<ImageView>(R.id.image).visibility = View.GONE
+            updateInsertVisibility()
             return true
         }
         override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
@@ -122,6 +123,8 @@ class WebViewHolder(itemView: View, private val listener: MessagesAdapter.OnItem
                     textAttached.visibility = View.VISIBLE
                 }
 
+                updateInsertVisibility()
+
                 status = itemView.findViewById(R.id.status)
                 selectableView = itemView.findViewById(R.id.selectable_area)
                 reaction = itemView.findViewById(R.id.emoji)
@@ -195,6 +198,13 @@ class WebViewHolder(itemView: View, private val listener: MessagesAdapter.OnItem
         } catch (ex: Exception) {
             debugLine("bind", "Exception: ${ex.message}")
         }
+    }
+
+    /** The grey preview card shows only when it has something in it: picture, title or description. */
+    private fun updateInsertVisibility() {
+        val hasContent = listOf(R.id.image, R.id.nameAttached, R.id.textAttached)
+            .any { id -> itemView.findViewById<View>(id).visibility == View.VISIBLE }
+        itemView.findViewById<View>(R.id.insert).visibility = if (hasContent) View.VISIBLE else View.GONE
     }
 
     fun updateStatus(newStatus: String) {
