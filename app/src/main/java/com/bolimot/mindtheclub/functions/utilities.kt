@@ -291,6 +291,16 @@ fun hasInternetConnectivity(context: Context): Boolean {
             capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 }
 
+/** One column of the first row, or null if the provider refuses or leaves it empty. */
+private fun queryFirstString(contentResolver: ContentResolver, uri: Uri, column: String): String? =
+    try {
+        contentResolver.query(uri, arrayOf(column), null, null, null)?.use { c ->
+            if (c.moveToFirst() && c.getColumnIndex(column) != -1) c.getString(c.getColumnIndex(column)) else null
+        }?.takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        null
+    }
+
 fun getFileDetails(contentResolver: ContentResolver, uri: Uri): FileDetails {
     var fullName = "Unknown"
     var size: Long = 0
@@ -298,7 +308,12 @@ fun getFileDetails(contentResolver: ContentResolver, uri: Uri): FileDetails {
 
     when (uri.scheme) {
         "content" -> {
-            val cursor: Cursor? = contentResolver.query(uri, null, null, null, null)
+            val cursor: Cursor? = try {
+                contentResolver.query(uri, null, null, null, null)
+            } catch (e: Exception) {
+                debugLine("getFileDetails", "Query refused for $uri: ${e.message}")
+                null
+            }
             cursor?.use {
                 if (it.moveToFirst()) {
                     val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -314,13 +329,24 @@ fun getFileDetails(contentResolver: ContentResolver, uri: Uri): FileDetails {
                     }
                 }
             }
-            // No name from the provider: these URIs usually end with the file name itself.
+            // No name from the provider: ask for the name column explicitly (some providers fill
+            // it only when requested), then the file path some still expose, then the address.
+            if (fullName == "Unknown") {
+                queryFirstString(contentResolver, uri, OpenableColumns.DISPLAY_NAME)
+                    ?.let { fullName = it }
+            }
+            if (fullName == "Unknown") {
+                queryFirstString(contentResolver, uri, "_data")
+                    ?.substringAfterLast('/')?.takeIf { it.contains(".") }
+                    ?.let { fullName = it }
+            }
             if (fullName == "Unknown") {
                 uri.lastPathSegment
                     ?.substringAfterLast('/')?.substringAfterLast(':')
                     ?.takeIf { it.contains(".") }
                     ?.let { fullName = it }
             }
+            debugLine("getFileDetails", "uri=$uri name=$fullName size=$size")
         }
         "file" -> {
             val file = File(uri.path!!)
