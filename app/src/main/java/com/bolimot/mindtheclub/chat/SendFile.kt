@@ -50,7 +50,13 @@ class SendFile : BaseActivity() {
         if(selectedPeerUserIds.isEmpty()) return
 
         val uri: Uri = filePath.toUri()
-        val detail = getFileDetails(contentResolver, uri)
+        // A forward sends our stored copy, whose name is a code: the real name comes with the
+        // request, from the original message.
+        val detail = getFileDetails(contentResolver, uri).let { found ->
+            val realName = intent?.getStringExtra("fileName")?.takeIf { it.isNotBlank() && it != "Unknown" }
+            if (realName == null) found
+            else found.copy(fullName = realName, extension = realName.substringAfterLast('.', found.extension))
+        }
         val detailCSV = "${detail.fullName},${detail.extension},${detail.size}"
 
         val uriToSend = copyUri(uri, this)

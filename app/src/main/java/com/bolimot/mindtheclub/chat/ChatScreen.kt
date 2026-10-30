@@ -1700,11 +1700,13 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                         Type.AUDIO -> {
                             shareContent(selectedMessage.uri, this@ChatScreen, "audio/m4a")
                         }
-                        Type.FILE -> {
-                            shareContent(selectedMessage.uri, this@ChatScreen)
-                        }
                         Type.WEB -> {
                             shareContent(selectedMessage.text, this@ChatScreen, "text/plain")
+                        }
+                        else -> {
+                            // A file message's type is "file" plus name, extension and size, so
+                            // it never equals Type.FILE: this branch is the one that serves it.
+                            if (isFileType(messageType)) shareFileMessage(selectedMessage)
                         }
                     }
 
@@ -1923,12 +1925,44 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
         }
     }
 
-    /** One copy at a time in files/open_with: the previous one is removed before each open. */
-    private fun copyWithRealName(source: Uri, realName: String?): Uri? {
+    /** Shares a file message to another app under its real name, not the stored copy's code. */
+    private suspend fun shareFileMessage(message: Message) {
+        val source = try {
+            makeContent(message.uri, this)
+        } catch (e: Exception) {
+            showToast(getString(R.string.file_not_available), this)
+            return
+        }
+        val detail = getFileDetailFromType(message.type)
+        val named = withContext(Dispatchers.IO) {
+            copyWithRealName(source, detail.getOrNull(0), "share_out")
+        }
+        if (named == null && withContext(Dispatchers.IO) {
+                runCatching { contentResolver.openAssetFileDescriptor(source, "r")?.use { true } }.getOrNull() != true
+            }) {
+            showToast(getString(R.string.file_not_available), this)
+            return
+        }
+        val mimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(detail.getOrNull(1)?.lowercase() ?: "")
+            ?: contentResolver.getType(source)
+            ?: "*/*"
+        // Built here rather than with shareContent(): that one treats text/plain as text to
+        // paste, which would send a .txt file's address instead of the file.
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, named ?: source)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, getString(R.string.share_via)))
+    }
+
+    /** One copy at a time per [folder] in files/: the previous one is removed first. */
+    private fun copyWithRealName(source: Uri, realName: String?, folder: String = "open_with"): Uri? {
         val name = realName?.replace(Regex("[\\\\/:*?\"<>|]"), "_")?.trim()
             ?.takeIf { it.isNotEmpty() && it != "Unknown" } ?: return null
         return try {
-            val dir = File(filesDir, "open_with")
+            val dir = File(filesDir, folder)
             dir.deleteRecursively()
             dir.mkdirs()
             val target = File(dir, name)
@@ -2283,6 +2317,7 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
                     if(isFileType(type)){
                         val intent = Intent(this, SendFile::class.java).apply {
                             putExtra("filePath", messageToForward!!.uri)
+                            putExtra("fileName", getFileDetailFromType(messageToForward!!.type).getOrNull(0))
                             putExtra("messageToForward", textToForward)
                             putExtra("fromName", nameToForward)
                             putExtra("userId", selectedPeers.joinToString(","))

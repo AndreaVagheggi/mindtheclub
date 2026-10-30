@@ -177,7 +177,17 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
 
+        <!-- The invite and licence links land here, in a throwaway task, so that every tap
+             reaches MainActivity: see LinkEntryActivity. -->
+        <activity
+            android:name=".start.LinkEntryActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
 
