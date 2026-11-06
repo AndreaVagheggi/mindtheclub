@@ -717,6 +717,20 @@ class ChatScreen : BaseActivity(), MessagesAdapter.OnItemClickListener {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 if (!initialLoadComplete) return
 
+                // The typer's message has landed: drop the typing bubble in this same layout
+                // pass. Left to the sender's stopTyping, which arrives a moment later, the
+                // message first slid in above the bubble pushing the chat up, then the bubble
+                // vanished and the chat fell back down: the "flip" (Romy, 5 Nov 2026).
+                if (positionStart == 0) {
+                    messagesAdapter.peek(0)
+                        ?.takeIf { it.fromUserId != MySelf.userId() }
+                        ?.let { incoming ->
+                            typingIndicatorAdapter.stopTyping(
+                                incoming.originalSenderId?.takeIf { it.isNotEmpty() } ?: incoming.fromUserId
+                            )
+                        }
+                }
+
                 if (positionStart == 0 && isAtBottom) {
                     recyclerView.post {
                         recyclerView.smoothScrollToPosition(0)

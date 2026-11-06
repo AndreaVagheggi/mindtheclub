@@ -119,3 +119,12 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+# ===== MEDIA3 (video compression): no class merging =====
+# R8 horizontal class merging fused Media3 Transformer classes with unrelated ones and
+# inserted a check-cast to android.media.metrics.LogSessionId (API 31+) on a path that
+# runs on every device. ART before Android 12 resolves a cast's class even for a null
+# value, so every video compression crashed on Android 11 and older
+# (NoClassDefFoundError, Poco X3 NFC, 2 Nov 2026). Known R8 bug, androidx/media#2535.
+# Keeping the classes stops the merging; names are still obfuscated and unused code
+# still removed.
+-keep,allowobfuscation,allowshrinking class androidx.media3.**
