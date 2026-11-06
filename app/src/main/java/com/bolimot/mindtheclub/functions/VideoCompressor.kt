@@ -196,7 +196,28 @@ object VideoCompressor {
             produced.delete()
             return@withContext null
         }
-        produced
+        withContext(Dispatchers.IO) { keepForGood(context, produced) }
+    }
+
+    /**
+     * Moves a finished transcode out of the cache, next to the sent photos (filesDir). The sent
+     * message points at this file for good, while the cache is emptied by purgeStaleOutputs after
+     * 24 hours and by Android when space runs low: the sender then saw "Media not available" the
+     * day after (2 Nov 2026). If the move fails the cache copy is still sent.
+     */
+    private fun keepForGood(context: Context, produced: File): File {
+        val kept = File(context.filesDir, "video_${guid()}.mp4")
+        return try {
+            if (!produced.renameTo(kept)) {
+                produced.copyTo(kept, overwrite = true)
+                produced.delete()
+            }
+            kept
+        } catch (e: Exception) {
+            debugLine(TAG, "Cannot move the transcode out of the cache: ${e.message}")
+            kept.delete()
+            produced
+        }
     }
 
     private fun percentOf(part: Long, whole: Long): Int =
