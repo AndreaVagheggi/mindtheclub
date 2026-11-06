@@ -48,6 +48,11 @@ class DataSyncService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
 
+    /** Set in onDestroy: jobs of a destroyed instance must stop watching and must not stop
+     *  or unlock anything again, which by then may belong to a newer instance. */
+    @Volatile
+    private var destroyed = false
+
     companion object {
         const val ACTION_START_SYNC = "com.bolimot.mindtheclub.ACTION_START_SYNC"
         const val EXTRA_CHANNEL_ID = "EXTRA_CHANNEL_ID"
@@ -245,7 +250,9 @@ class DataSyncService : Service() {
                 debugLine(tag, "WebRTC Exception: ${e.message}")
             } finally {
                 val remaining = activeJobs.decrementAndGet()
-                if (remaining <= 0) {
+                if (destroyed) {
+                    debugLine(tag, "Job of a stopped service instance finished")
+                } else if (remaining <= 0) {
                     releaseWakeLock()
                     stopSelf()
                 } else {
@@ -312,6 +319,11 @@ class DataSyncService : Service() {
 
         while (System.currentTimeMillis() - startTime < MAX_SYNC_MS) {
             delay(POLL_INTERVAL_MS)
+
+            if (destroyed) {
+                debugLine(tag, "Service stopped (shortService timeout), watcher ends")
+                break
+            }
 
             // Il canale e' ancora vivo?
             val client = ConnectionManager.instance.getExistingClient(remoteUserId)
@@ -383,7 +395,38 @@ class DataSyncService : Service() {
         debugLine(tag, "Sync monitoring ended after ${elapsed}s")
     }
 
+    /**
+     * Android 14+: a shortService gets about 3 minutes from startForeground, then this is
+     * called and the service has a few seconds to stop, or the system raises an ANR even with
+     * the app on screen (5 and 6 Nov 2026, a long chat kept "still sending" alive past 3 min).
+     * MAX_SYNC_MS cannot outlast that limit, so stop here. The WebRTC connection belongs to
+     * ConnectionManager, not to this service: the transfer itself carries on, only the
+     * background protection ends, as the system would end it anyway.
+     */
+    override fun onTimeout(startId: Int) {
+        stopOnTimeout()
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopOnTimeout()
+    }
+
+    private fun stopOnTimeout() {
+        debugLine(tag, "shortService timeout reached, stopping (jobs still running: ${activeJobs.get()})")
+        // Nothing is cancelled: a connection being set up right now must not be cut halfway.
+        // The watchers see [destroyed] at their next poll and end on their own.
+        releaseWakeLock()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        stopSelf()
+    }
+
     override fun onDestroy() {
+        destroyed = true
         debugLine(tag, "NOTIF_CLEARED id=$NOTIFICATION_ID source=DataSyncService")
         debugLine(tag, "Service destroyed")
         // Belt and braces: the normal release happens when the last job ends, questo copre
