@@ -127,4 +127,11 @@
 # (NoClassDefFoundError, Poco X3 NFC, 2 Nov 2026). Known R8 bug, androidx/media#2535.
 # Keeping the classes stops the merging; names are still obfuscated and unused code
 # still removed.
--keep,allowobfuscation,allowshrinking class androidx.media3.**
+# Members too (8 Nov 2026): with only the classes kept, R8 still rewrote method bodies.
+# It inlined GlProgram's delegating constructor into GlProgram(Context, String, String);
+# on Android 11 and older that rewritten constructor hands a corrupt Context to
+# Util.loadAsset, and every compression died with SIGSEGV in the effect thread (Huawei
+# Android 9 and Poco Android 11, identical traces; fine on Android 14 and 16). Members
+# kept without allowoptimization are neither inlined nor rewritten; still renamed and,
+# when unused, removed.
+-keep,allowobfuscation,allowshrinking class androidx.media3.** { *; }

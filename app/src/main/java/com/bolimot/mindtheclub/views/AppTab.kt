@@ -59,6 +59,8 @@ import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Share
 import com.bolimot.mindtheclub.viewModel.PeerViewModel
 import com.bolimot.mindtheclub.voip.ManagedTelecom
+import com.bolimot.mindtheclub.functions.Support
+import com.bolimot.mindtheclub.functions.openWebsitePage
 import com.bolimot.mindtheclub.voip.isCallInProgress
 import com.bolimot.mindtheclub.webrtc.ConnectionManager
 import com.google.android.material.appbar.MaterialToolbar
@@ -100,6 +102,9 @@ class AppTab : BaseActivity() {
         // Once per process, i.e. once per app start: the notice below must not reappear on
         // every return to this screen.
         private var noPushNoticeShown: Boolean = false
+
+        private const val FEEDBACK_PROMPT_SHOWN_KEY = "feedbackPromptShown"
+        private const val FEEDBACK_AFTER_DAYS = 10L
     }
 
     private fun getParameters(i: Intent){
@@ -274,6 +279,8 @@ class AppTab : BaseActivity() {
         }
 
         if (!startedForCallOnly) {
+            // Read before maybeConsumePendingInvite clears it: that dialog opens asynchronously.
+            val invitePending = !getPreference(PREF_PENDING_INVITE_SEED, this).isNullOrEmpty()
             maybeConsumePendingInvite()
 
             // Keeps the cached entitlement fresh (a purchase made on another device). The
@@ -283,11 +290,15 @@ class AppTab : BaseActivity() {
             // Licence bought outside Play: renewals picked up at most once a day.
             lifecycleScope.launch { com.bolimot.mindtheclub.billing.LicenseManager.refresh(this@AppTab) }
             // A code that arrived through the /license link: straight to the screen that activates it.
-            if (com.bolimot.mindtheclub.billing.LicenseManager.hasPendingCode(this)) {
+            val licencePending = com.bolimot.mindtheclub.billing.LicenseManager.hasPendingCode(this)
+            if (licencePending) {
                 startActivity(Intent(this, SubscriptionActivity::class.java))
             }
-            maybeShowTrialStartedDialog()
-            maybeShowNoPushServicesNotice()
+            val trialDialog = maybeShowTrialStartedDialog()
+            val noPushDialog = maybeShowNoPushServicesNotice()
+            if (!invitePending && !licencePending && !trialDialog && !noPushDialog) {
+                maybeAskForFeedback()
+            }
         }
 
         updateNotificationsBanner()
@@ -301,12 +312,47 @@ class AppTab : BaseActivity() {
      * started (it starts on a background thread when the first message is sent, so it cannot
      * show a dialog itself).
      */
-    private fun maybeShowTrialStartedDialog() {
-        if (!TrialManager.consumeStartNotice(this)) return
+    private fun maybeShowTrialStartedDialog(): Boolean {
+        if (!TrialManager.consumeStartNotice(this)) return false
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.trial_started_title)
             .setMessage(SubscriptionCopy.trialStartedBody(this))
             .setPositiveButton(R.string.close, null)
+            .setCancelable(true)
+            .show()
+        return true
+    }
+
+    /**
+     * Asks for feedback once in the app's life, FEEDBACK_AFTER_DAYS after installation. Shown
+     * once whatever the answer, even dismissed. Never on top of another dialog, never on the
+     * expired-trial path (the gate comes first there), a call, a share or the support phone.
+     */
+    private fun maybeAskForFeedback() {
+        if (getPreference(FEEDBACK_PROMPT_SHOWN_KEY, this) == "true") return
+        if (Support.isMe() || !BillingManager.hasAccess(this)) return
+        if (intent?.getStringExtra("sharing") != null) return
+        if (ManagedTelecom.pendingCallFlow.value != null || isCallInProgress()) return
+        if (supportFragmentManager.fragments.any { it is androidx.fragment.app.DialogFragment }) return
+
+        val installedAt = try {
+            packageManager.getPackageInfo(packageName, 0).firstInstallTime
+        } catch (e: Exception) {
+            return
+        }
+        val days = (System.currentTimeMillis() - installedAt) / (24L * 60 * 60 * 1000)
+        if (days < FEEDBACK_AFTER_DAYS) return
+
+        // Marked before showing: whatever happens next, it never comes back.
+        setPreference(FEEDBACK_PROMPT_SHOWN_KEY, "true", this)
+        debugLine("AppTab", "Feedback prompt shown, installed $days days ago")
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.feedback_prompt_title)
+            .setMessage(R.string.feedback_prompt_body)
+            .setPositiveButton(R.string.feedback_prompt_yes) { _, _ ->
+                openWebsitePage(this, "contact.html")
+            }
+            .setNegativeButton(R.string.feedback_prompt_no, null)
             .setCancelable(true)
             .show()
     }
@@ -321,9 +367,10 @@ class AppTab : BaseActivity() {
      * anyway, and a Play user must never see this by mistake.
      */
     // mtcx: the wake-up is UnifiedPush, so what matters is a distributor, not Play Services.
-    private fun maybeShowNoPushServicesNotice() {
-        if (noPushNoticeShown) return
-        if (com.bolimot.mindtheclub.push.UnifiedPushSetup.hasDistributor(this)) return
+    // Returns true when shown, like the Play version: the feedback prompt never stacks on it.
+    private fun maybeShowNoPushServicesNotice(): Boolean {
+        if (noPushNoticeShown) return false
+        if (com.bolimot.mindtheclub.push.UnifiedPushSetup.hasDistributor(this)) return false
 
         noPushNoticeShown = true
         debugLine("AppTab", "No UnifiedPush distributor installed, showing notice")
@@ -332,6 +379,7 @@ class AppTab : BaseActivity() {
             .setPositiveButton(R.string.close, null)
             .setCancelable(true)
             .show()
+        return true
     }
 
     /** Countdown shown only in the last days of an unsubscribed trial. */

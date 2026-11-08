@@ -156,6 +156,10 @@
     <string name="menu_how_mtc_works">Cara kerja MTC</string>
     <string name="menu_feedback">Beri kami masukan!</string>
     <string name="about_feedback_link">Bantu kami meningkatkan MindTheClub, kirimkan masukanmu</string>
+    <string name="feedback_prompt_title">Pendapatmu penting bagi kami</string>
+    <string name="feedback_prompt_body">Bisakah kamu meluangkan 2 menit untuk memberi tahu kami pendapatmu tentang MindTheClub?</string>
+    <string name="feedback_prompt_yes">Beri masukan</string>
+    <string name="feedback_prompt_no">Tidak, terima kasih</string>
     <!-- Folder of this language on www.mindtheclub.com, empty for English -->
     <string name="website_lang_path">id/</string>
     <string name="no_browser_found">Tidak ada browser untuk membuka halaman ini.</string>

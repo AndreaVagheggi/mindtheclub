@@ -2,7 +2,6 @@ package com.bolimot.mindtheclub.views
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
@@ -15,7 +14,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.bolimot.mindtheclub.BuildConfig
 import com.bolimot.mindtheclub.R
@@ -216,12 +214,7 @@ class OptionsActivity : BaseActivity() {
     /** Opens a landing page in the app's language: website_lang_path holds the site folder of
      *  each locale ("" for English, "id/" for values-in). */
     private fun openWebsitePage(page: String) {
-        val url = "https://www.mindtheclub.com/" + getString(R.string.website_lang_path) + page
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-        } catch (e: ActivityNotFoundException) {
-            showToast(getString(R.string.no_browser_found), this)
-        }
+        com.bolimot.mindtheclub.functions.openWebsitePage(this, page)
     }
 
     private fun showHelpDialog(title: String, message: String) {
