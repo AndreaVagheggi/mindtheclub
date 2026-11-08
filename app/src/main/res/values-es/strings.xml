@@ -154,6 +154,10 @@
     <string name="menu_how_mtc_works">Cómo funciona MTC</string>
     <string name="menu_feedback">¡Danos tu opinión!</string>
     <string name="about_feedback_link">Ayúdanos a mejorar MindTheClub, envíanos tu opinión</string>
+    <string name="feedback_prompt_title">Tu opinión nos importa</string>
+    <string name="feedback_prompt_body">¿Tienes 2 minutos para contarnos qué te parece MindTheClub?</string>
+    <string name="feedback_prompt_yes">Dar mi opinión</string>
+    <string name="feedback_prompt_no">No, gracias</string>
     <!-- Folder of this language on www.mindtheclub.com, empty for English -->
     <string name="website_lang_path">es/</string>
     <string name="no_browser_found">No se encontró ningún navegador para abrir esta página.</string>
