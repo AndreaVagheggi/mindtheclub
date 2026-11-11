@@ -3,9 +3,10 @@ package com.bolimot.mindtheclub.works
 // DESKTOP: this is the App's InboxRecoveryWorker.kt with these differences:
 //
 //   - PASS 1 (complete sets whose processing never ran). The App re-triggers assembly through
-//     AssembleMessageWorker and deletes stale profile and reaction chunks. On the PC only a
-//     TEXT is processed, by calling fullMessageReceivedEvent directly (a text needs no
-//     assembly). Every other type is LEFT ALONE, chunks included: they are complete sets the
+//     AssembleMessageWorker and deletes stale profile and reaction chunks. On the PC a TEXT is
+//     processed by calling fullMessageReceivedEvent directly (a text needs no assembly) and an
+//     IMAGE through AssembleMessageWorker, as in the App. Every other type is LEFT ALONE,
+//     chunks included: they are complete sets the
 //     PC cannot process yet and has deliberately not confirmed, so the sender still holds
 //     them. Deleting them here would make the PC ask for them again at every announcement;
 //   - pickRecoverySource (asking a group member that holds a complete copy) is gone: the PC
@@ -90,13 +91,19 @@ class InboxRecoveryWorker(
 
                     val type = firstChunk.type
                     // DESKTOP: see the top of the file.
-                    if (type != Type.TEXT) {
-                        debugLine(TAG, "Complete $type set $messageId waits for the PC to support it, left alone")
-                        continue
+                    when (type) {
+                        Type.TEXT -> {
+                            debugLine(TAG, "Re-triggering processing for $messageId ($type)")
+                            fullMessageReceivedEvent(messageId)
+                        }
+                        Type.IMAGE -> {
+                            // As in the App: assembly runs as its own unique work, so repeated
+                            // triggers for one message collapse into a single run.
+                            debugLine(TAG, "Re-triggering assembly for $messageId ($type)")
+                            AssembleMessageWorker.enqueue(applicationContext, messageId)
+                        }
+                        else -> debugLine(TAG, "Complete $type set $messageId waits for the PC to support it, left alone")
                     }
-
-                    debugLine(TAG, "Re-triggering processing for $messageId ($type)")
-                    fullMessageReceivedEvent(messageId)
                 } catch (e: Exception) {
                     debugLine(TAG, "Failed to recover $messageId: ${e.message}")
                 }

@@ -11,12 +11,14 @@ import com.bolimot.mindtheclub.desktop.backup.BackupImporter
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.engine.Engine
 import com.bolimot.mindtheclub.desktop.engine.Outgoing
+import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Status
+import com.bolimot.mindtheclub.tools.Type
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -192,6 +194,21 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
+    /** Sends the picture in [file] to the open chat, with [caption] under it (may be empty). */
+    fun sendImage(file: File, caption: String) {
+        val to = selectedUserId ?: return
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (Outgoing.sendImage(to, file, caption.trim()) == null) warning = Strings.SEND_FAILED
+            } catch (e: MediaFiles.Refused) {
+                warning = Strings.PHOTO_UNREADABLE
+            } catch (e: Throwable) {
+                warning = "${Strings.SEND_FAILED} ${e.message}"
+            }
+            reload()
+        }
+    }
+
     fun dismissWarning() {
         warning = null
     }
@@ -254,8 +271,13 @@ class AppState(private val scope: CoroutineScope) {
     fun isMine(message: Message): Boolean = message.fromUserId == myUserId
 
     /** What a message shows as its one line: the text, or the kind of content. */
-    fun previewOf(message: Message): String =
-        if (message.type == "text") message.text.replace('\n', ' ') else "[${message.type}]"
+    fun previewOf(message: Message): String = when {
+        message.status == Status.RECEIVING -> Strings.RECEIVING
+        message.type == Type.TEXT -> message.text.replace('\n', ' ')
+        message.type == Type.IMAGE ->
+            if (message.text.isBlank()) Strings.PHOTO else "${Strings.PHOTO}: ${message.text.replace('\n', ' ')}"
+        else -> "[${message.type}]"
+    }
 
     /** The status under one of our own messages, as stored: the phone's words, or Seen. */
     fun statusOf(message: Message): String =

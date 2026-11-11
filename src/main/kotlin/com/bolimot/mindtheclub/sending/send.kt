@@ -10,19 +10,24 @@ package com.bolimot.mindtheclub.sending
 //     PC submits at once; with no network the dispatch fails and its own retries take over;
 //   - the batch tables are reached through BatchDb, and the status text "sent" comes from
 //     DesktopStrings, in the phone's language;
-//   - sendMessageWork builds the SINGLE CHUNK batch only: a text, or anything else whose
-//     content is not a local file. Chunking a media file needs Android's ContentResolver and
-//     is not on the PC yet; such a message is refused here, loudly, before any table is built.
+//   - sendMessageWork chunks ONE kind of local file, a single image, read with java.io where
+//     the App goes through Android's ContentResolver. Chunk size, table size and the Base64
+//     text of each chunk are the App's. Every other content that is a local file (video,
+//     albums, files) is not on the PC yet and is refused here, loudly, before any table is
+//     built; a text, or anything else whose content is not a local file, is one chunk as in
+//     the App.
 
 import android.content.Context
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.outbox.Outbox
 import com.bolimot.mindtheclub.desktop.engine.DesktopStrings
+import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.storage.BatchDb
 import com.bolimot.mindtheclub.desktop.storage.Prefs
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.batchContentCoordinates
 import com.bolimot.mindtheclub.functions.batchTablesExists
+import com.bolimot.mindtheclub.functions.countBatchChunks
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.debugLine2
 import com.bolimot.mindtheclub.functions.deleteBatchTables
@@ -36,6 +41,19 @@ import com.bolimot.mindtheclub.works.submitSendMessageWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Base64
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import kotlin.math.ceil
+
+private val batchBuildLock = ReentrantLock()
+
+// DESKTOP: android.util.Base64.encodeToString(bytes, Base64.DEFAULT), byte for byte: lines of 76
+// characters, each ended by a line feed, the last one included. The receiver does not care
+// (it skips line breaks), but this way a chunk built on the PC is the chunk the phone builds.
+private val chunkEncoder: Base64.Encoder = Base64.getMimeEncoder(76, byteArrayOf('\n'.code.toByte()))
+
+private fun encodeChunk(bytes: ByteArray): String = chunkEncoder.encodeToString(bytes) + "\n"
 
 fun sendMessage(message: MessageData) {
     if (message.toUserId.startsWith("group")) {
@@ -152,20 +170,146 @@ fun sendMessageWork(
         return true
     }
 
+    // Raw bytes per chunk. On the wire each becomes about 4/3 of this after Base64, plus the
+    // Outbox metadata, so 40 KB here is roughly 55 KB queued. Small on purpose: a relayed path
+    // has a fraction of the bandwidth of a direct one, and large chunks built a standing send
+    // queue there that starved the connectivity checks (see the App's file).
+    val chunkSize = 40000
+    val maxChunksPerTable = 100
+    var tableCounter = 1
+
     try {
         val isRemoteUri = message.uri?.lowercase()?.startsWith("http") == true
         val hasMedia = !message.uri.isNullOrEmpty() && message.uri != "null"
                 && message.uri != NO_PICTURE
                 && message.type != Type.REACTION && !isRemoteUri
 
-        // DESKTOP: a message whose content is a local file. Returning true ends the work
-        // without a retry, as the App does for an empty media: retrying cannot help.
-        if (hasMedia && message.type != Type.TEXT) {
+        // DESKTOP: a content that is a local file and is not a single image. Returning true
+        // ends the work without a retry, as the App does for an empty media: retrying cannot help.
+        if (hasMedia && message.type != Type.TEXT && message.type != Type.IMAGE) {
             debugLine2("sendMediaMessage", "Media of type ${message.type} cannot be sent from the PC yet: ${message.messageId} not sent")
             return true
         }
 
-        if (!batchTablesExists(message.messageId)) {
+        // DESKTOP: the image file, when this message is an image and its file is on this PC.
+        // An image message that came with the phone's backup has no file here (the backup
+        // carries names, not bytes), so its file is null.
+        val sendsImage = hasMedia && message.type == Type.IMAGE
+        val mediaFile = if (sendsImage) MediaFiles.fileOfUri(message.uri) else null
+
+        if (batchTablesExists(message.messageId) && mediaFile != null) {
+            val expectedChunks = if (mediaFile.length() > 0) ceil(mediaFile.length().toDouble() / chunkSize).toInt() else 0
+            if (expectedChunks > 0) {
+                val actualChunks = countBatchChunks(message.messageId)
+                if (actualChunks < expectedChunks) {
+                    debugLine("sendMediaMessage", "Incomplete batch tables: $actualChunks/$expectedChunks, rebuilding")
+                    deleteBatchTables(message.messageId)
+                }
+            }
+        }
+
+        if (!batchTablesExists(message.messageId) && sendsImage) {
+            if (mediaFile == null) {
+                debugLine2("sendMediaMessage", "The image of ${message.messageId} is not on this PC: not sent")
+                return true
+            }
+
+            val totalNumberOfChunks = if (mediaFile.length() > 0) {
+                ceil(mediaFile.length().toDouble() / chunkSize).toInt()
+            } else {
+                0
+            }
+
+            if (totalNumberOfChunks == 0) {
+                debugLine("sendMediaMessage", "Media is empty")
+                return true
+            }
+
+            debugLine("sendMediaMessage", "Chunks to send: $totalNumberOfChunks")
+
+            batchBuildLock.withLock {
+                mediaFile.inputStream().use { stream ->
+                    var chunksInCurrentTable = 0
+                    var currentChunkIndex = 1
+                    val outboxChunks = mutableListOf<Outbox>()
+
+                    val buffer = ByteArray(chunkSize)
+
+                    while (true) {
+                        // DESKTOP: readNBytes fills the buffer unless the file ends, so every
+                        // chunk but the last is exactly chunkSize and the count matches the total.
+                        val bytesRead = stream.readNBytes(buffer, 0, chunkSize)
+                        if (bytesRead <= 0) break
+
+                        if (chunksInCurrentTable >= maxChunksPerTable) {
+                            val tableName = "batch${message.messageId}${tableCounter}"
+                            if (createBatch(tableName, context)) {
+                                insertBatch(context, tableName, outboxChunks)
+                            } else {
+                                debugLine("sendMediaMessage", "Failed to create batch")
+                                return false
+                            }
+                            outboxChunks.clear()
+                            tableCounter++
+                            chunksInCurrentTable = 0
+                        }
+
+                        val chunkData = if (bytesRead < chunkSize) buffer.copyOf(bytesRead) else buffer
+                        val encodedString = encodeChunk(chunkData)
+                        val text = message.text?.ifEmpty { "" } ?: ""
+
+                        outboxChunks.add(
+                            Outbox(
+                                0,
+                                message.toUserId,
+                                message.messageId,
+                                message.replyId,
+                                message.groupId,
+                                message.groupSize,
+                                "batch${message.messageId}${tableCounter}",
+                                currentChunkIndex,
+                                totalNumberOfChunks,
+                                text,
+                                message.textAttached,
+                                message.nameAttached,
+                                encodedString,
+                                message.type,
+                                message.subType,
+                                message.date,
+                                false,
+                                message.chatGroupId,
+                                message.originalSenderId
+                            )
+                        )
+
+                        currentChunkIndex++
+                        chunksInCurrentTable++
+                    }
+
+                    if (outboxChunks.isNotEmpty()) {
+                        val tableName = "batch${message.messageId}${tableCounter}"
+                        if (createBatch(tableName, context)) {
+                            insertBatch(context, tableName, outboxChunks)
+                        } else {
+                            debugLine("sendMediaMessage", "Failed to create batch")
+                            return false
+                        }
+                    }
+
+                    scope.launch {
+                        val messageId = message.groupId.ifEmpty { message.messageId }
+                        getMessageRepository(context).updateStatus(
+                            messageId,
+                            DesktopStrings.sent()
+                        )
+                    }
+                }
+            }
+        }
+
+        // DESKTOP: "&& !sendsImage". An image never goes out as a single chunk carrying its
+        // file name: if its tables are not there at this point, nothing is built.
+        if (!batchTablesExists(message.messageId) && !sendsImage) {
             val tableName = "batch${message.messageId}1"
             val outboxChunks = mutableListOf<Outbox>()
 

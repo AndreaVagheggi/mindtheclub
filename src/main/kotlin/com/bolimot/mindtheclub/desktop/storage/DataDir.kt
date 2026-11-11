@@ -13,6 +13,9 @@ import java.io.File
  *   identity.bin    the identity keyset, sealed by Windows (KeyVault)
  *   prefs\          the small key-value files that are SharedPreferences on the phone (Prefs)
  *   pictures\       profile pictures, ours and our contacts'
+ *   media\          the images exchanged on this PC, each named after the SHA-256 of its bytes
+ *                   (desktop/media/MediaFiles.kt)
+ *   files\          scratch files of the engine (android/content/Context.kt, filesDir)
  *
  * For a test with a separate folder, start the program with -Dmtc.dataDir=<path>.
  */
@@ -34,6 +37,8 @@ object DataDir {
     fun prefs(): File = File(root(), "prefs").apply { mkdirs() }
 
     fun pictures(): File = File(root(), "pictures").apply { mkdirs() }
+
+    fun media(): File = File(root(), "media").apply { mkdirs() }
 
     /** Empties a sub folder (not the root): used by a load that replaces everything. */
     fun clear(dir: File) {

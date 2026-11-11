@@ -7,6 +7,9 @@ package com.bolimot.mindtheclub.functions
 
 import android.content.Context
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 import java.util.UUID
 
 fun setPreference(key: String, value: String, context: Context) {
@@ -40,3 +43,21 @@ fun stringToListInt(str: String): List<Int> {
  * dispatch and is retried by the same ladder that covers an unreachable peer.
  */
 fun hasNetworkAvailable(context: Context): Boolean = true
+
+/** The App's function, unchanged: the name a media file is kept under is the hash of its bytes. */
+suspend fun computeSha256(inputStream: java.io.InputStream): String? = withContext(Dispatchers.IO) {
+    try {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(8192)
+        var bytesRead: Int
+        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            digest.update(buffer, 0, bytesRead)
+        }
+        digest.digest().joinToString("") { "%02x".format(it) }
+    } catch (e: Exception) {
+        debugLine("computeSha256", "Failed: ${e.message}")
+        null
+    } finally {
+        inputStream.close()
+    }
+}

@@ -44,6 +44,13 @@ object Strings {
     const val SEND = "Send"
     const val SEEN = "Seen"
 
+    const val PHOTO = "Photo"
+    const val SEND_PHOTO_TITLE = "Send photo"
+    const val CAPTION_HINT = "Add a caption"
+    const val RECEIVING = "Receiving…"
+    const val MEDIA_NOT_AVAILABLE = "Media not available"
+    const val PHOTO_UNREADABLE = "This picture cannot be read. Use a JPEG, PNG, BMP or GIF file."
+
     const val RETURN_TO_PHONE = "Return to phone"
     const val RETURN_TITLE = "Return to phone"
     const val RETURN_TEXT =

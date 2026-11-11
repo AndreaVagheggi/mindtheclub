@@ -18,6 +18,7 @@ import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
+import com.bolimot.mindtheclub.works.AssembleMessageWorker
 import kotlinx.serialization.json.Json
 
 private val jsonParser = Json { ignoreUnknownKeys = true }
@@ -245,9 +246,14 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
         if (expectedChunksNo > 1) {
             // Multi chunk (media) assembly takes seconds and must survive doze: run it under
             // WorkManager, like every other part of the send path.
-            // DESKTOP: AssembleMessageWorker not called. Media assembly is not on the PC yet: the
-            // complete set stays in the Inbox, unconfirmed, so the sender keeps its copy.
-            debugLine("inboxCheckMessageComplete", "Media assembly not on the PC yet, $messageId left in the Inbox")
+            // DESKTOP: only an image is assembled. For every other multi chunk content (video,
+            // albums, files) assembly is not on the PC yet: the complete set stays in the Inbox,
+            // unconfirmed, so the sender keeps its copy.
+            if (type == Type.IMAGE) {
+                AssembleMessageWorker.enqueue(App.context(), messageId)
+            } else {
+                debugLine("inboxCheckMessageComplete", "Assembly of $type is not on the PC yet, $messageId left in the Inbox")
+            }
         } else {
             // Single chunk messages (text, reactions) assemble instantly: keep the original
             // inline path untouched.

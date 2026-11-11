@@ -56,6 +56,8 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.engine.Engine
+import com.bolimot.mindtheclub.tools.Status
+import com.bolimot.mindtheclub.tools.Type
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -265,6 +267,8 @@ private fun Conversation(state: AppState) {
     }
 
     var draft by remember(state.selectedUserId) { mutableStateOf("") }
+    // The picture chosen with the Photo button, shown for confirmation before it is sent.
+    var photo by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     val listState = rememberLazyListState()
 
     // Stay at the newest message, as a chat does, when the conversation opens or grows.
@@ -300,6 +304,10 @@ private fun Conversation(state: AppState) {
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            OutlinedButton(onClick = { chooseFile(save = false, suggested = PICTURE_FILES)?.let { photo = it } }) {
+                Text(Strings.PHOTO)
+            }
+            Spacer(Modifier.width(8.dp))
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
@@ -319,6 +327,20 @@ private fun Conversation(state: AppState) {
             Button(enabled = draft.isNotBlank(), onClick = { send() }) { Text(Strings.SEND) }
         }
     }
+
+    photo?.let { file ->
+        SendPhotoDialog(
+            file = file,
+            // What is already written in the message box becomes the caption, as on the phone.
+            initialCaption = draft,
+            onSend = { caption ->
+                state.sendImage(file, caption)
+                draft = ""
+                photo = null
+            },
+            onClose = { photo = null }
+        )
+    }
 }
 
 @Composable
@@ -334,7 +356,19 @@ private fun Bubble(state: AppState, message: Message) {
             modifier = Modifier.widthIn(max = 480.dp)
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(state.previewOf(message).takeIf { message.type != "text" } ?: message.text)
+                when {
+                    // A content still arriving: the engine replaces this row when it is complete.
+                    message.status == Status.RECEIVING -> Text(Strings.RECEIVING)
+                    message.type == Type.IMAGE -> {
+                        MessagePicture(message)
+                        if (message.text.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(message.text)
+                        }
+                    }
+                    message.type == Type.TEXT -> Text(message.text)
+                    else -> Text(state.previewOf(message))
+                }
                 Spacer(Modifier.height(2.dp))
                 val time = formatTime(message.date)
                 Text(
@@ -411,6 +445,9 @@ private fun ReturnToPhoneDialog(state: AppState, onClose: () -> Unit) {
         }
     )
 }
+
+/** What the Photo button offers: the kinds of picture Java reads. On Windows a pattern in the name box filters the list. */
+private const val PICTURE_FILES = "*.jpg;*.jpeg;*.png;*.bmp;*.gif"
 
 /** The system's own file window. Null when the user cancels. */
 private fun chooseFile(save: Boolean, suggested: String?): File? {

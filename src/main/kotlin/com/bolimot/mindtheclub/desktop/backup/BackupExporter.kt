@@ -3,6 +3,7 @@ package com.bolimot.mindtheclub.desktop.backup
 import com.bolimot.mindtheclub.backup.BackupData
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.desktop.crypto.IdentityKeys
+import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.desktop.storage.Prefs
 import kotlinx.serialization.json.Json
@@ -27,8 +28,9 @@ import java.util.Base64
  *   - what was deleted on the PC is still on the phone.
  * Closing that gap needs the phone to REPLACE, which is the direct handover, not this file.
  *
- * Not carried, because the phone's format has no place for them: the Inbox (content still
- * arriving), the batch tables and the recovery ladders. A message still in flight when the PC
+ * Not carried, because the phone's format has no place for them: the pictures exchanged on the
+ * PC (their names travel, their bytes do not: on the phone those bubbles have no picture), the
+ * Inbox (content still arriving), the batch tables and the recovery ladders. A message still in flight when the PC
  * hands back is recovered by the ordinary means: its sender announces it again and the phone
  * asks for it.
  */
@@ -76,6 +78,14 @@ object BackupExporter {
         val mediaFileNames = HashMap<String, String>()
         for (messageId in mediaNamesPrefs.keys()) {
             mediaNamesPrefs.getString(messageId)?.let { mediaFileNames[messageId] = it }
+        }
+        // The pictures exchanged on this PC, by the same rule the phone applies to its own
+        // (BackupManager.createBackup): the name of the file, never its bytes. The phone looks
+        // for a file of that name in its public folders and, not finding it, leaves the bubble
+        // pointing at this PC's file, where it is found again when the identity comes back here.
+        for (message in messages) {
+            val file = MediaFiles.fileOfUri(message.uri) ?: continue
+            if (MediaFiles.isKept(file)) mediaFileNames[message.messageId] = file.name
         }
 
         val backup = BackupData(

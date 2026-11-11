@@ -1,10 +1,13 @@
 package com.bolimot.mindtheclub.desktop.engine
 
 import com.bolimot.mindtheclub.dataModels.MessageData
+import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.message.Message
+import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.storage.BatchDb
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.getImageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -13,6 +16,7 @@ import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
+import java.io.File
 
 /**
  * What the user interface calls to send: the PC's counterpart of the send functions in the
@@ -54,6 +58,54 @@ object Outgoing {
 
         if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
         sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /**
+     * sendManager.sendObject with Type.IMAGE, for a 1:1 chat. [source] is the picture the user
+     * chose, anywhere on the disk; what is sent is the copy MediaFiles prepares from it, as the
+     * phone sends the copy saveBitmapFromUri makes and never the gallery original.
+     *
+     * Throws MediaFiles.Refused when the picture cannot be read. Returns the saved message, or
+     * null when it could not be saved.
+     */
+    suspend fun sendImage(toUserId: String, source: File, caption: String): Message? {
+        val myUserId = MySelf.userId() ?: return null
+
+        val prepared = MediaFiles.prepareForSending(source)
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = caption,
+            textAttached = null,
+            nameAttached = null,
+            uri = prepared.toURI().toString(),
+            type = Type.IMAGE,
+            subType = "",
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+
+        // sendManager.addObjectForBrowsing: the row the phone's gallery of a chat is built from.
+        try {
+            val imageDao = getImageDao(App.context())
+            if (imageDao.countByFilename(prepared.name, message.toUserId, message.messageId) == 0) {
+                imageDao.insert(Image(0, message.messageId, message.uri, message.date, "", message.toUserId))
+            }
+        } catch (e: Exception) {
+            debugLine("Outgoing", "Image row not written for ${message.messageId}: ${e.message}")
+        }
         return message
     }
 

@@ -65,6 +65,9 @@ object BackupImporter {
             throw Refused("La chiave di identita' del backup non e' leggibile: ${e.message}")
         }
 
+        // Whose content is on this PC now, read before it is removed (see the media folder below).
+        val previousUserId = Prefs.of("default").getString("myUserId")
+
         // From here on the PC's previous content is gone.
         if (!DatabaseProvider.deleteFiles()) {
             throw Refused("Il database e' in uso da un'altra copia del programma: chiudila e riprova.")
@@ -77,6 +80,12 @@ object BackupImporter {
         android.content.DesktopSharedPreferences.forgetAll()
         com.bolimot.mindtheclub.crypto.KeyManager.forget()
         DataDir.clear(DataDir.pictures())
+        // The pictures exchanged on this PC stay when the SAME identity comes back: the phone
+        // never had their bytes, and the messages in its backup still point at these files.
+        // Another identity's pictures are removed with the rest of its content.
+        if (previousUserId != null && previousUserId != backup.userId) {
+            DataDir.clear(DataDir.media())
+        }
 
         // The key first: without it the rest is somebody's data and nobody's identity.
         KeyVault.store(keyset)

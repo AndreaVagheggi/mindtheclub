@@ -4,9 +4,9 @@ package com.bolimot.mindtheclub.receiving
 // keeps the App's structure and order (the processing claim, the read that tolerates a missing
 // row, the blocked sender, the content check, then the type), with these differences:
 //
-//   - ONLY TEXT IS PROCESSED. Every other type (image, video, files, albums, profile, reaction,
-//     sticker, gif, link, audio, contact) is left exactly where it is: its chunks stay in the
-//     Inbox and nothing is confirmed, so the sender keeps its copy and goes on announcing it.
+//   - ONLY TEXT AND SINGLE IMAGES ARE PROCESSED. Every other type (video, files, albums, profile,
+//     reaction, sticker, gif, link, audio, contact) is left exactly where it is: its chunks stay
+//     in the Inbox and nothing is confirmed, so the sender keeps its copy and goes on announcing it.
 //     Confirming a content this program cannot save would make the sender delete it
 //     (docs/arch/transport.md section 2). When the identity goes back to the phone the phone
 //     asks for it again and gets it.
@@ -67,9 +67,17 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
         val type = message.type
 
         // DESKTOP: see the note at the top. Nothing is deleted and nothing is confirmed.
-        if (type != Type.TEXT) {
+        if (type != Type.TEXT && type != Type.IMAGE) {
             debugLine("receivedEvent", "Type $type is not on the PC yet: $messageId stays in the Inbox, unconfirmed")
             return false
+        }
+
+        // As in the App: a media content is assembled by its own receive function, straight
+        // from the chunks, and never passes through getFullMessage below.
+        if (type == Type.IMAGE) {
+            debugLine("receivedEvent", "Message received, type = $type")
+            receiveImage(messageId, "", message.text, fromUserId)
+            return true
         }
 
         val content = getFullMessage(message, inboxDao, type)
