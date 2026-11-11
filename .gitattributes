@@ -1,0 +1,7 @@
+# Every file is stored byte for byte, with no line ending conversion.
+#
+# The engine files copied from the app must stay IDENTICAL to the app's, and confronta.bat
+# checks that by comparing fingerprints. The app's files do not all use the same line ending,
+# so letting git convert them would make a fresh clone differ from the app without anything
+# having changed.
+* -text
