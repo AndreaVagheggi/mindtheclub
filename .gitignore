@@ -1,0 +1,9 @@
+.gradle/
+build/
+.idea/
+.kotlin/
+*.iml
+local.properties
+
+# A backup carries the identity's PRIVATE key. Never commit one, not even a test one.
+*.mtcbackup
