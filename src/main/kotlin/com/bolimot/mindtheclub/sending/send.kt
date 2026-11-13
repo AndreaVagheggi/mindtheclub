@@ -10,10 +10,11 @@ package com.bolimot.mindtheclub.sending
 //     PC submits at once; with no network the dispatch fails and its own retries take over;
 //   - the batch tables are reached through BatchDb, and the status text "sent" comes from
 //     DesktopStrings, in the phone's language;
-//   - sendMessageWork chunks ONE kind of local file, a single image, read with java.io where
-//     the App goes through Android's ContentResolver. Chunk size, table size and the Base64
-//     text of each chunk are the App's. Every other content that is a local file (video,
-//     albums, files) is not on the PC yet and is refused here, loudly, before any table is
+//   - sendMessageWork chunks three kinds of local file (a single image, a file, the picture
+//     of a shared contact), read with java.io where the App goes through Android's
+//     ContentResolver. Chunk size, table size and the Base64 text of each chunk are the
+//     App's. Every other content that is a local file (video, albums, audio) is not on
+//     the PC yet and is refused here, loudly, before any table is
 //     built; a text, or anything else whose content is not a local file, is one chunk as in
 //     the App.
 
@@ -32,6 +33,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.debugLine2
 import com.bolimot.mindtheclub.functions.deleteBatchTables
 import com.bolimot.mindtheclub.functions.getMessageRepository
+import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.reconcileBatchTotalNo
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.NO_PICTURE
@@ -184,18 +186,20 @@ fun sendMessageWork(
                 && message.uri != NO_PICTURE
                 && message.type != Type.REACTION && !isRemoteUri
 
-        // DESKTOP: a content that is a local file and is not a single image. Returning true
-        // ends the work without a retry, as the App does for an empty media: retrying cannot help.
-        if (hasMedia && message.type != Type.TEXT && message.type != Type.IMAGE) {
+        // DESKTOP: the kinds of local file the PC sends: a single image, a file, and the picture
+        // of a shared contact. Any other content that is a local file (video, albums, audio) is
+        // refused. Returning true ends the work without a retry, as the App does for an empty
+        // media: retrying cannot help.
+        val sendableFile = message.type == Type.IMAGE || message.type == Type.CONTACT || isFileType(message.type)
+        if (hasMedia && message.type != Type.TEXT && !sendableFile) {
             debugLine2("sendMediaMessage", "Media of type ${message.type} cannot be sent from the PC yet: ${message.messageId} not sent")
             return true
         }
 
-        // DESKTOP: the image file, when this message is an image and its file is on this PC.
-        // An image message that came with the phone's backup has no file here (the backup
-        // carries names, not bytes), so its file is null.
-        val sendsImage = hasMedia && message.type == Type.IMAGE
-        val mediaFile = if (sendsImage) MediaFiles.fileOfUri(message.uri) else null
+        // DESKTOP: the file itself, when it is on this PC. A message that came with the phone's
+        // backup has no file here (the backup carries names, not bytes), so its file is null.
+        val sendsFile = hasMedia && sendableFile
+        val mediaFile = if (sendsFile) MediaFiles.fileOfUri(message.uri) else null
 
         if (batchTablesExists(message.messageId) && mediaFile != null) {
             val expectedChunks = if (mediaFile.length() > 0) ceil(mediaFile.length().toDouble() / chunkSize).toInt() else 0
@@ -208,9 +212,9 @@ fun sendMessageWork(
             }
         }
 
-        if (!batchTablesExists(message.messageId) && sendsImage) {
+        if (!batchTablesExists(message.messageId) && sendsFile) {
             if (mediaFile == null) {
-                debugLine2("sendMediaMessage", "The image of ${message.messageId} is not on this PC: not sent")
+                debugLine2("sendMediaMessage", "The file of ${message.messageId} is not on this PC: not sent")
                 return true
             }
 
@@ -307,9 +311,9 @@ fun sendMessageWork(
             }
         }
 
-        // DESKTOP: "&& !sendsImage". An image never goes out as a single chunk carrying its
+        // DESKTOP: "&& !sendsFile". A file never goes out as a single chunk carrying its
         // file name: if its tables are not there at this point, nothing is built.
-        if (!batchTablesExists(message.messageId) && !sendsImage) {
+        if (!batchTablesExists(message.messageId) && !sendsFile) {
             val tableName = "batch${message.messageId}1"
             val outboxChunks = mutableListOf<Outbox>()
 

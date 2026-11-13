@@ -12,6 +12,7 @@ import com.bolimot.mindtheclub.functions.getBlockedUserRepository
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
+import com.bolimot.mindtheclub.functions.isOnThePc
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.processor.MessageProcessor
 import com.bolimot.mindtheclub.start.App
@@ -246,10 +247,13 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
         if (expectedChunksNo > 1) {
             // Multi chunk (media) assembly takes seconds and must survive doze: run it under
             // WorkManager, like every other part of the send path.
-            // DESKTOP: only an image is assembled. For every other multi chunk content (video,
-            // albums, files) assembly is not on the PC yet: the complete set stays in the Inbox,
+            // DESKTOP: only the types the PC processes are assembled (isOnThePc: text, image,
+            // file, contact). A text has more than one chunk when it REPLIES to a picture: the
+            // phone sends the preview of the quoted picture as its content, chunked like any
+            // media (send.kt in the App, hasMedia). For every other multi chunk content (video,
+            // albums, audio) assembly is not on the PC yet: the complete set stays in the Inbox,
             // unconfirmed, so the sender keeps its copy.
-            if (type == Type.IMAGE) {
+            if (isOnThePc(type)) {
                 AssembleMessageWorker.enqueue(App.context(), messageId)
             } else {
                 debugLine("inboxCheckMessageComplete", "Assembly of $type is not on the PC yet, $messageId left in the Inbox")

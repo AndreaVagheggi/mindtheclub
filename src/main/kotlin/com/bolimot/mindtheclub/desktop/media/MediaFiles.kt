@@ -63,6 +63,38 @@ object MediaFiles {
     /** The picture of an image message, if this PC has it. */
     fun fileFor(message: Message): File? = fileOfUri(message.uri)
 
+    /**
+     * An extension that is safe to put in a file name on this disk. The extension of a received
+     * file is text written by the sender: left as it is, "../x" or "a\b" would name a file
+     * outside the media folder. Letters and digits only, at most ten; "bin" when nothing is left.
+     */
+    fun safeExtension(extension: String): String {
+        val cleaned = extension.filter { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' }.take(10).lowercase()
+        return cleaned.ifEmpty { "bin" }
+    }
+
+    /**
+     * Copies a file the user chose into the media folder, named after the hash of its bytes
+     * plus its extension, and returns the copy. What the phone's copyUri does before a file is
+     * sent: the message then points at a copy of its own, and the original can be moved or
+     * deleted without breaking a later resend.
+     */
+    suspend fun keepCopyForSending(source: File): File = withContext(Dispatchers.IO) {
+        if (!source.isFile) throw Refused("no such file")
+        val temp = File(App.context().filesDir, "outgoing_${guid()}.bin")
+        try {
+            Files.copy(source.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            val hash = computeSha256(temp.inputStream()) ?: throw Refused("the file could not be read back")
+            keep(temp, "$hash.${safeExtension(source.extension)}")
+        } catch (e: Refused) {
+            temp.delete()
+            throw e
+        } catch (e: Exception) {
+            temp.delete()
+            throw Refused("${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
     /** Whether [file] is one of the files this PC keeps (and not, say, a picture elsewhere on disk). */
     fun isKept(file: File): Boolean = file.parentFile?.absoluteFile == dir().absoluteFile
 

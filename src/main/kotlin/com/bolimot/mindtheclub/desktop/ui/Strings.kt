@@ -44,6 +44,24 @@ object Strings {
     const val SEND = "Send"
     const val SEEN = "Seen"
 
+    const val YOU = "You"
+    const val FORWARDED = "forwarded"
+
+    // A file and a shared contact, in the App's own words.
+    const val SEND_FILE_TITLE = "Send file"
+    const val FILE_UNREADABLE = "This file cannot be read."
+    const val CONTACTS = "Contacts"
+    const val VIEW_PROFILE = "View Profile"
+    const val ADD_CONTACT = "Add Contact"
+    const val NO_CONTACTS_TO_SHARE = "There are no other contacts to share."
+
+    // The paperclip and its four choices, in the App's own words.
+    const val ATTACH = "Attachment"
+    const val IMAGES = "Images"
+    const val VIDEO = "Video"
+    const val FILE = "File"
+    const val CONTACT = "Contact"
+
     const val PHOTO = "Photo"
     const val SEND_PHOTO_TITLE = "Send photo"
     const val CAPTION_HINT = "Add a caption"

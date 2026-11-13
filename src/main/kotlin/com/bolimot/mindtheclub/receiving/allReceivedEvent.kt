@@ -4,9 +4,10 @@ package com.bolimot.mindtheclub.receiving
 // keeps the App's structure and order (the processing claim, the read that tolerates a missing
 // row, the blocked sender, the content check, then the type), with these differences:
 //
-//   - ONLY TEXT AND SINGLE IMAGES ARE PROCESSED. Every other type (video, files, albums, profile,
-//     reaction, sticker, gif, link, audio, contact) is left exactly where it is: its chunks stay
-//     in the Inbox and nothing is confirmed, so the sender keeps its copy and goes on announcing it.
+//   - ONLY TEXT, SINGLE IMAGES, FILES AND CONTACTS ARE PROCESSED (isOnThePc). Every other type
+//     (video, albums, profile, reaction, sticker, gif, link, audio) is left exactly where it is:
+//     its chunks stay in the Inbox and nothing is confirmed, so the sender keeps its copy and
+//     goes on announcing it.
 //     Confirming a content this program cannot save would make the sender delete it
 //     (docs/arch/transport.md section 2). When the identity goes back to the phone the phone
 //     asks for it again and gets it.
@@ -23,6 +24,8 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
 import com.bolimot.mindtheclub.functions.getInboxDao
+import com.bolimot.mindtheclub.functions.isFileType
+import com.bolimot.mindtheclub.functions.isOnThePc
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.App
@@ -67,16 +70,19 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
         val type = message.type
 
         // DESKTOP: see the note at the top. Nothing is deleted and nothing is confirmed.
-        if (type != Type.TEXT && type != Type.IMAGE) {
+        if (!isOnThePc(type)) {
             debugLine("receivedEvent", "Type $type is not on the PC yet: $messageId stays in the Inbox, unconfirmed")
             return false
         }
 
         // As in the App: a media content is assembled by its own receive function, straight
         // from the chunks, and never passes through getFullMessage below.
-        if (type == Type.IMAGE) {
+        if (type == Type.IMAGE || isFileType(type)) {
             debugLine("receivedEvent", "Message received, type = $type")
-            receiveImage(messageId, "", message.text, fromUserId)
+            when (type) {
+                Type.IMAGE -> receiveImage(messageId, "", message.text, fromUserId)
+                else -> receiveObject(messageId, "", message.text, fromUserId, type)
+            }
             return true
         }
 
@@ -94,18 +100,23 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
 
         debugLine("receivedEvent", "Message received, type = $type")
 
-        // DESKTOP: for a text the assembled file is only the proof that the chunk is readable;
-        // the text itself is in the Inbox row. Removed here so the scratch folder does not fill
-        // with empty files.
-        if (content.startsWith("file:")) {
-            try {
-                File(java.net.URI(content)).delete()
-            } catch (e: Exception) {
-                // Not worth a log line.
+        when (type) {
+            Type.TEXT -> {
+                // DESKTOP: for a text the assembled file is only the proof that the chunks are
+                // readable; the text itself is in the Inbox row. Removed here so the scratch
+                // folder does not fill with files nothing will read.
+                if (content.startsWith("file:")) {
+                    try {
+                        File(java.net.URI(content)).delete()
+                    } catch (e: Exception) {
+                        // Not worth a log line.
+                    }
+                }
+                receiveText(messageId)
             }
+            // The assembled file is the contact's picture: receiveObject keeps it.
+            Type.CONTACT -> receiveObject(messageId, content, message.text, fromUserId, type)
         }
-
-        receiveText(messageId)
         return true
     } finally {
         activeProcessing.remove(messageId)

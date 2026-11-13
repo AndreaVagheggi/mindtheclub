@@ -4,16 +4,21 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,12 +29,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.tools.SubType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
@@ -94,6 +103,56 @@ internal fun MessagePicture(message: Message) {
             // A picture received or sent on the phone: the backup carries its name, not its bytes.
             PictureState.Missing -> Text(Strings.MEDIA_NOT_AVAILABLE, style = MaterialTheme.typography.bodySmall)
             PictureState.Loading -> {}
+        }
+    }
+}
+
+/**
+ * The quote at the top of a bubble: the message this one replies to, or the one it forwards.
+ * What the phone draws in its "reply container": who wrote it, its text and, when the quoted
+ * message is a picture, a small copy of that picture on the right.
+ */
+@Composable
+internal fun MessageQuote(state: AppState, message: Message) {
+    val picture by produceState<ImageBitmap?>(null, message.messageId, message.replyId) {
+        value = withContext(Dispatchers.IO) {
+            state.quotedPictureOf(message)?.let { Thumbnails.of(it) }
+        }
+    }
+    val name = state.quotedNameOf(message)
+    val text = message.textAttached ?: ""
+
+    Surface(
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                if (message.subType == SubType.FORWARD) {
+                    Text(Strings.FORWARDED, style = MaterialTheme.typography.labelSmall)
+                }
+                if (name.isNotEmpty()) {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (text.isNotEmpty()) {
+                    Text(text, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            picture?.let { bitmap ->
+                Spacer(Modifier.width(8.dp))
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(6.dp))
+                )
+            }
         }
     }
 }

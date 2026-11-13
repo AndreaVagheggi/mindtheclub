@@ -56,8 +56,10 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.engine.Engine
+import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
+import kotlinx.coroutines.delay
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -267,9 +269,23 @@ private fun Conversation(state: AppState) {
     }
 
     var draft by remember(state.selectedUserId) { mutableStateOf("") }
-    // The picture chosen with the Photo button, shown for confirmation before it is sent.
+    // The picture chosen under the paperclip's Images, shown for confirmation before it is sent.
     var photo by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
+    // The file chosen under the paperclip's File, shown for confirmation before it is sent.
+    var fileToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
+    // Whether the list opened by the paperclip's Contact is on screen.
+    var pickingContacts by remember(state.selectedUserId) { mutableStateOf(false) }
+    // Whether the paperclip's bar is open.
+    var attaching by remember(state.selectedUserId) { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    // Left open with no choice made, the bar closes by itself, as on the phone.
+    LaunchedEffect(attaching) {
+        if (attaching) {
+            delay(ATTACH_BAR_HIDE_DELAY_MS)
+            attaching = false
+        }
+    }
 
     // Stay at the newest message, as a chat does, when the conversation opens or grows.
     LaunchedEffect(state.selectedUserId, state.messages.size) {
@@ -289,14 +305,37 @@ private fun Conversation(state: AppState) {
         )
         HorizontalDivider()
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(state.messages, key = { it.messageId }) { message ->
-                Bubble(state, message)
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(state.messages, key = { it.messageId }) { message ->
+                    Bubble(state, message)
+                }
             }
+
+            // The paperclip's bar, over the bottom of the conversation and just above the
+            // message box. Every choice closes it. Video does nothing else for now: a video
+            // cannot be sent from the PC yet.
+            AttachBar(
+                visible = attaching,
+                onImages = {
+                    attaching = false
+                    chooseFile(save = false, suggested = PICTURE_FILES)?.let { photo = it }
+                },
+                onVideo = { attaching = false },
+                onFile = {
+                    attaching = false
+                    chooseFile(save = false, suggested = null)?.let { fileToSend = it }
+                },
+                onContact = {
+                    attaching = false
+                    pickingContacts = true
+                },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
+            )
         }
 
         HorizontalDivider()
@@ -304,14 +343,12 @@ private fun Conversation(state: AppState) {
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = { chooseFile(save = false, suggested = PICTURE_FILES)?.let { photo = it } }) {
-                Text(Strings.PHOTO)
-            }
-            Spacer(Modifier.width(8.dp))
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
                 placeholder = { Text(Strings.MESSAGE_HINT) },
+                // The paperclip, inside the box at its end, as on the phone.
+                trailingIcon = { AttachButton(onClick = { attaching = !attaching }) },
                 maxLines = 4,
                 modifier = Modifier.weight(1f).onPreviewKeyEvent { event ->
                     // Enter sends, Shift+Enter makes a new line.
@@ -341,6 +378,30 @@ private fun Conversation(state: AppState) {
             onClose = { photo = null }
         )
     }
+
+    fileToSend?.let { file ->
+        SendFileDialog(
+            file = file,
+            initialCaption = draft,
+            onSend = { caption ->
+                state.sendFile(file, caption)
+                draft = ""
+                fileToSend = null
+            },
+            onClose = { fileToSend = null }
+        )
+    }
+
+    if (pickingContacts) {
+        ContactPickerDialog(
+            contacts = state.shareableContacts(),
+            onSend = { userIds ->
+                state.sendContacts(userIds)
+                pickingContacts = false
+            },
+            onClose = { pickingContacts = false }
+        )
+    }
 }
 
 @Composable
@@ -356,6 +417,11 @@ private fun Bubble(state: AppState, message: Message) {
             modifier = Modifier.widthIn(max = 480.dp)
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                // The message this one replies to, or forwards, drawn above it as on the phone.
+                if (message.status != Status.RECEIVING && state.hasQuote(message)) {
+                    MessageQuote(state, message)
+                    Spacer(Modifier.height(6.dp))
+                }
                 when {
                     // A content still arriving: the engine replaces this row when it is complete.
                     message.status == Status.RECEIVING -> Text(Strings.RECEIVING)
@@ -366,6 +432,16 @@ private fun Bubble(state: AppState, message: Message) {
                             Text(message.text)
                         }
                     }
+                    isFileType(message.type) -> {
+                        MessageFile(state, message)
+                        if (message.text.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            // As wide as the file's card, as on the phone.
+                            Text(message.text, modifier = Modifier.width(180.dp))
+                        }
+                    }
+                    // A shared contact shows its card and no text: the text is the contact's record.
+                    message.type == Type.CONTACT -> MessageContact(state, message)
                     message.type == Type.TEXT -> Text(message.text)
                     else -> Text(state.previewOf(message))
                 }
@@ -446,7 +522,7 @@ private fun ReturnToPhoneDialog(state: AppState, onClose: () -> Unit) {
     )
 }
 
-/** What the Photo button offers: the kinds of picture Java reads. On Windows a pattern in the name box filters the list. */
+/** What the paperclip's Images offers: the kinds of picture Java reads. On Windows a pattern in the name box filters the list. */
 private const val PICTURE_FILES = "*.jpg;*.jpeg;*.png;*.bmp;*.gif"
 
 /** The system's own file window. Null when the user cancels. */

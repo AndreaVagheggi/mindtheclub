@@ -7,6 +7,7 @@ package com.bolimot.mindtheclub.functions
 
 import android.content.Context
 import androidx.core.content.edit
+import com.bolimot.mindtheclub.tools.Type
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
@@ -43,6 +44,54 @@ fun stringToListInt(str: String): List<Int> {
  * dispatch and is retried by the same ladder that covers an unreachable peer.
  */
 fun hasNetworkAvailable(context: Context): Boolean = true
+
+// The App's four functions about files, unchanged. A file message carries its details in its
+// TYPE: "file<name>,<extension>,<size>".
+
+fun splitToList(csvString: String): List<String> {
+    return csvString.split(",").map { it.trim() }
+}
+
+fun formatFileSize(sizeInBytes: Long): String {
+    val oneKB = 1024
+    val oneMB = oneKB * 1024
+    val oneGB = oneMB * 1024
+
+    return when {
+        sizeInBytes >= oneGB -> "${sizeInBytes / oneGB} GB"
+        sizeInBytes >= oneMB -> "${sizeInBytes / oneMB} MB"
+        sizeInBytes >= oneKB -> "${sizeInBytes / oneKB} KB"
+        else -> "$sizeInBytes Bytes"
+    }
+}
+
+fun isFileType(type: String?): Boolean {
+    return type?.take(4) == Type.FILE
+}
+
+fun getFileDetailFromType(type: String?): List<String>{
+    // [0] = file name, [1] = extension, [2] = size
+    // Read from the right: the name is free text and may itself contain commas
+    // ("Biglietto, Roma.pdf"), extension and size never do. Same wire format as before.
+    if(type == null) return emptyList()
+    val csv = type.substring(4)
+    val sizeCut = csv.lastIndexOf(',')
+    val extensionCut = if (sizeCut > 0) csv.lastIndexOf(',', sizeCut - 1) else -1
+    if (extensionCut < 0) return splitToList(csv)
+    return listOf(
+        csv.substring(0, extensionCut).trim(),
+        csv.substring(extensionCut + 1, sizeCut).trim(),
+        csv.substring(sizeCut + 1).trim()
+    )
+}
+
+/**
+ * DESKTOP: the kinds of content this PC processes. Every other kind stays in the Inbox,
+ * unconfirmed, so its sender keeps its copy (see receiving/allReceivedEvent.kt).
+ */
+fun isOnThePc(type: String?): Boolean {
+    return type == Type.TEXT || type == Type.IMAGE || type == Type.CONTACT || isFileType(type)
+}
 
 /** The App's function, unchanged: the name a media file is kept under is the hash of its bytes. */
 suspend fun computeSha256(inputStream: java.io.InputStream): String? = withContext(Dispatchers.IO) {

@@ -4,7 +4,8 @@ package com.bolimot.mindtheclub.works
 //
 //   - PASS 1 (complete sets whose processing never ran). The App re-triggers assembly through
 //     AssembleMessageWorker and deletes stale profile and reaction chunks. On the PC a TEXT is
-//     processed by calling fullMessageReceivedEvent directly (a text needs no assembly) and an
+//     processed by calling fullMessageReceivedEvent directly (nothing of a text is kept as a
+//     file, even when it carries the preview of a quoted picture) and an
 //     IMAGE through AssembleMessageWorker, as in the App. Every other type is LEFT ALONE,
 //     chunks included: they are complete sets the
 //     PC cannot process yet and has deliberately not confirmed, so the sender still holds
@@ -26,6 +27,7 @@ import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
+import com.bolimot.mindtheclub.functions.isOnThePc
 import com.bolimot.mindtheclub.receiving.fullMessageReceivedEvent
 import com.bolimot.mindtheclub.receiving.isProcessingActive
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
@@ -91,12 +93,13 @@ class InboxRecoveryWorker(
 
                     val type = firstChunk.type
                     // DESKTOP: see the top of the file.
-                    when (type) {
-                        Type.TEXT -> {
+                    when {
+                        type == Type.TEXT -> {
                             debugLine(TAG, "Re-triggering processing for $messageId ($type)")
                             fullMessageReceivedEvent(messageId)
                         }
-                        Type.IMAGE -> {
+                        // An image, a file, a contact.
+                        isOnThePc(type) -> {
                             // As in the App: assembly runs as its own unique work, so repeated
                             // triggers for one message collapse into a single run.
                             debugLine(TAG, "Re-triggering assembly for $messageId ($type)")

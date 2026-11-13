@@ -3,12 +3,14 @@ package com.bolimot.mindtheclub.desktop.engine
 import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.message.Message
+import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.storage.BatchDb
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getImageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
+import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.sendMessage
@@ -16,6 +18,7 @@ import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
+import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
@@ -106,6 +109,92 @@ object Outgoing {
         } catch (e: Exception) {
             debugLine("Outgoing", "Image row not written for ${message.messageId}: ${e.message}")
         }
+        return message
+    }
+
+    /**
+     * sendManager.sendObject with a file type, for a 1:1 chat, after the phone's SendFile
+     * screen: the message carries a copy of the file, and the file's name, extension and size
+     * travel in the TYPE of the message, "file<name>,<extension>,<size>".
+     *
+     * Throws MediaFiles.Refused when the file cannot be read. Returns the saved message, or null
+     * when it could not be saved.
+     */
+    suspend fun sendFile(toUserId: String, source: File, caption: String): Message? {
+        val myUserId = MySelf.userId() ?: return null
+
+        // getFileDetails in the App: the name as it is, the extension after the last dot.
+        val fullName = source.name
+        val extension = if (fullName.contains(".")) fullName.substringAfterLast(".", "Unknown") else "Unknown"
+        val size = source.length()
+        val detailCSV = "$fullName,$extension,$size"
+
+        val copy = MediaFiles.keepCopyForSending(source)
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = caption,
+            textAttached = null,
+            nameAttached = null,
+            uri = copy.toURI().toString(),
+            type = "${Type.FILE}$detailCSV",
+            subType = "",
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /**
+     * PeerViewModel.sendContact: shares one of the user's contacts with [toUserId]. The text of
+     * the message is the contact's record as the App writes it (the Peer row as JSON) and its
+     * content is the contact's picture, when this PC has it.
+     *
+     * Returns the saved message, or null when the contact is unknown or nothing could be saved.
+     */
+    suspend fun sendContact(toUserId: String, contactUserId: String): Message? {
+        val myUserId = MySelf.userId() ?: return null
+        val peer = getPeerDao(App.context()).getPeer(contactUserId) ?: return null
+
+        val profileString = Json.encodeToString(Peer.serializer(), peer)
+        if (profileString.isEmpty()) return null
+
+        // The picture goes out only if its file is here: a path that names nothing on this PC
+        // must never travel in its place.
+        val profilePicture = MediaFiles.fileOfUri(peer.picture)?.toURI()?.toString() ?: ""
+
+        val message = Message(
+            0,
+            myUserId,
+            toUserId,
+            guid(),
+            "",
+            "",
+            0,
+            profileString,
+            null,
+            null,
+            profilePicture,
+            Type.CONTACT,
+            null,
+            System.currentTimeMillis(),
+            "",
+            null
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
         return message
     }
 
