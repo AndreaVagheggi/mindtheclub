@@ -85,6 +85,19 @@ internal object AppIcons {
         )
     }
 
+    /** play.xml: the triangle in the middle of a video bubble. */
+    val Play: ImageVector by lazy {
+        icon("play", 960f, "M300,300 L300,660 L660,480 Z")
+    }
+
+    /** video.xml: the small camera in the corner of a video bubble. */
+    val VideoCamera: ImageVector by lazy {
+        icon(
+            "video", 24f,
+            "M17,10.5V7c0,-0.55 -0.45,-1 -1,-1H4c-0.55,0 -1,0.45 -1,1v10c0,0.55 0.45,1 1,1h12c0.55,0 1,-0.45 1,-1v-3.5l4,4v-11l-4,4z"
+        )
+    }
+
     /** contact.xml */
     val Contact: ImageVector by lazy {
         icon(

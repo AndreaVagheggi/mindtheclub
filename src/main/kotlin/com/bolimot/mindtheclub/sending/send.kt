@@ -10,10 +10,10 @@ package com.bolimot.mindtheclub.sending
 //     PC submits at once; with no network the dispatch fails and its own retries take over;
 //   - the batch tables are reached through BatchDb, and the status text "sent" comes from
 //     DesktopStrings, in the phone's language;
-//   - sendMessageWork chunks three kinds of local file (a single image, a file, the picture
+//   - sendMessageWork chunks four kinds of local file (a single image, a video, a file, the picture
 //     of a shared contact), read with java.io where the App goes through Android's
 //     ContentResolver. Chunk size, table size and the Base64 text of each chunk are the
-//     App's. Every other content that is a local file (video, albums, audio) is not on
+//     App's. Every other content that is a local file (albums, audio) is not on
 //     the PC yet and is refused here, loudly, before any table is
 //     built; a text, or anything else whose content is not a local file, is one chunk as in
 //     the App.
@@ -186,11 +186,12 @@ fun sendMessageWork(
                 && message.uri != NO_PICTURE
                 && message.type != Type.REACTION && !isRemoteUri
 
-        // DESKTOP: the kinds of local file the PC sends: a single image, a file, and the picture
-        // of a shared contact. Any other content that is a local file (video, albums, audio) is
+        // DESKTOP: the kinds of local file the PC sends: a single image, a video, a file, and the picture
+        // of a shared contact. Any other content that is a local file (albums, audio) is
         // refused. Returning true ends the work without a retry, as the App does for an empty
         // media: retrying cannot help.
-        val sendableFile = message.type == Type.IMAGE || message.type == Type.CONTACT || isFileType(message.type)
+        val sendableFile = message.type == Type.IMAGE || message.type == Type.VIDEO ||
+                message.type == Type.CONTACT || isFileType(message.type)
         if (hasMedia && message.type != Type.TEXT && !sendableFile) {
             debugLine2("sendMediaMessage", "Media of type ${message.type} cannot be sent from the PC yet: ${message.messageId} not sent")
             return true

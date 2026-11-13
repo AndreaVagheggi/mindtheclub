@@ -195,6 +195,17 @@ private fun ChatsScreen(state: AppState) {
             }
         }
 
+        if (state.videosBeingPrepared > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(12.dp))
+                Text(Strings.PREPARING_VIDEO, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            }
+        }
+
         Row(modifier = Modifier.fillMaxSize()) {
             ContactList(state, onReturnToPhone = { returning = true })
             VerticalDivider()
@@ -271,6 +282,8 @@ private fun Conversation(state: AppState) {
     var draft by remember(state.selectedUserId) { mutableStateOf("") }
     // The picture chosen under the paperclip's Images, shown for confirmation before it is sent.
     var photo by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
+    // The video chosen under the paperclip's Video, shown for confirmation before it is sent.
+    var videoToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     // The file chosen under the paperclip's File, shown for confirmation before it is sent.
     var fileToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     // Whether the list opened by the paperclip's Contact is on screen.
@@ -317,15 +330,17 @@ private fun Conversation(state: AppState) {
             }
 
             // The paperclip's bar, over the bottom of the conversation and just above the
-            // message box. Every choice closes it. Video does nothing else for now: a video
-            // cannot be sent from the PC yet.
+            // message box. Every choice closes it.
             AttachBar(
                 visible = attaching,
                 onImages = {
                     attaching = false
                     chooseFile(save = false, suggested = PICTURE_FILES)?.let { photo = it }
                 },
-                onVideo = { attaching = false },
+                onVideo = {
+                    attaching = false
+                    chooseFile(save = false, suggested = VIDEO_FILES)?.let { videoToSend = it }
+                },
                 onFile = {
                     attaching = false
                     chooseFile(save = false, suggested = null)?.let { fileToSend = it }
@@ -376,6 +391,19 @@ private fun Conversation(state: AppState) {
                 photo = null
             },
             onClose = { photo = null }
+        )
+    }
+
+    videoToSend?.let { file ->
+        SendVideoDialog(
+            file = file,
+            initialCaption = draft,
+            onSend = { caption ->
+                state.sendVideo(file, caption)
+                draft = ""
+                videoToSend = null
+            },
+            onClose = { videoToSend = null }
         )
     }
 
@@ -432,6 +460,13 @@ private fun Bubble(state: AppState, message: Message) {
                             Text(message.text)
                         }
                     }
+                    message.type == Type.VIDEO -> {
+                        MessageVideo(state, message)
+                        if (message.text.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(message.text)
+                        }
+                    }
                     isFileType(message.type) -> {
                         MessageFile(state, message)
                         if (message.text.isNotBlank()) {
@@ -466,6 +501,7 @@ private fun ReturnToPhoneDialog(state: AppState, onClose: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = { if (!working) onClose() },
+        properties = StaysOpen,
         title = { Text(Strings.RETURN_TITLE) },
         text = {
             Column {
@@ -524,6 +560,12 @@ private fun ReturnToPhoneDialog(state: AppState, onClose: () -> Unit) {
 
 /** What the paperclip's Images offers: the kinds of picture Java reads. On Windows a pattern in the name box filters the list. */
 private const val PICTURE_FILES = "*.jpg;*.jpeg;*.png;*.bmp;*.gif"
+
+/**
+ * What the paperclip's Video offers. Only the kinds a phone plays under the name ".mp4", which
+ * is the name the receiving phone gives every video (receiveVideo).
+ */
+private const val VIDEO_FILES = "*.mp4;*.mov;*.m4v;*.3gp"
 
 /** The system's own file window. Null when the user cancels. */
 private fun chooseFile(save: Boolean, suggested: String?): File? {

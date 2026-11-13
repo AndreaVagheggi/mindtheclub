@@ -47,6 +47,9 @@ object Strings {
     const val YOU = "You"
     const val FORWARDED = "forwarded"
 
+    const val SEND_VIDEO_TITLE = "Send video"
+    const val PREPARING_VIDEO = "Preparing video..."
+
     // A file and a shared contact, in the App's own words.
     const val SEND_FILE_TITLE = "Send file"
     const val FILE_UNREADABLE = "This file cannot be read."

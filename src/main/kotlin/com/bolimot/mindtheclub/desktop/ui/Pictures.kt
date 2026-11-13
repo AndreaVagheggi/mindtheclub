@@ -1,6 +1,7 @@
 package com.bolimot.mindtheclub.desktop.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -30,14 +32,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.desktop.media.VideoThumbnail
+import com.bolimot.mindtheclub.functions.formatFileSize
 import com.bolimot.mindtheclub.tools.SubType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -50,6 +56,18 @@ import java.io.File
  * A picture is never decoded on the interface thread and never at full size: what the window
  * draws is a small copy, made once and remembered.
  */
+
+/**
+ * How every dialog of the window behaves: closed by its own buttons or by Esc, never by a click
+ * outside it.
+ *
+ * Not a matter of taste. A dialog that closes on a click outside closes on the mere RELEASE of
+ * the mouse button outside it, and the dialogs shown before sending open right after the user
+ * double-clicks a file in the Windows file chooser: the release of that double-click lands on
+ * the window, outside the new dialog, and closes it before it is seen. The file was chosen and
+ * nothing happened (13 Nov 2026, the videos AI.mp4 and AI2.mp4).
+ */
+internal val StaysOpen = DialogProperties(dismissOnClickOutside = false)
 
 /** The small copies the window draws, the most recently used ones kept in memory. */
 internal object Thumbnails {
@@ -69,6 +87,107 @@ internal object Thumbnails {
         synchronized(cache) { cache[key] = bitmap }
         return bitmap
     }
+
+    /**
+     * The still picture of a video, asked of Windows (VideoThumbnail). Null when Windows has
+     * none for this file. Blocking, as above.
+     */
+    fun ofVideo(file: File): ImageBitmap? {
+        val key = "video|${file.absolutePath}|${file.length()}|${file.lastModified()}"
+        synchronized(cache) { cache[key] }?.let { return it }
+        val bitmap = VideoThumbnail.of(file, LONG_SIDE)?.toComposeImageBitmap() ?: return null
+        synchronized(cache) { cache[key] = bitmap }
+        return bitmap
+    }
+}
+
+/** What a video shows in the window: its still picture if Windows has one, and whether its file is here. */
+private class VideoFrame(val file: File?, val picture: ImageBitmap?)
+
+/**
+ * A video as the phone draws it (chat_video_in.xml): a still picture with the play triangle in
+ * the middle and a small camera in the corner. Without a picture the triangle is on black.
+ */
+@Composable
+private fun VideoBox(frame: VideoFrame?, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        frame?.picture?.let { picture ->
+            Image(
+                bitmap = picture,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        if (frame != null && frame.file == null) {
+            // A video received or sent on the phone: the backup carries its name, not its bytes.
+            Text(Strings.MEDIA_NOT_AVAILABLE, color = Color.White, style = MaterialTheme.typography.bodySmall)
+        } else {
+            Icon(AppIcons.Play, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+        }
+        Icon(
+            AppIcons.VideoCamera,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(24.dp)
+        )
+    }
+}
+
+/** The video of a video message. A click plays it in the PC's own player. */
+@Composable
+internal fun MessageVideo(state: AppState, message: Message) {
+    val frame by produceState<VideoFrame?>(null, message.messageId, message.uri) {
+        value = withContext(Dispatchers.IO) {
+            val file = MediaFiles.fileFor(message)
+            VideoFrame(file, file?.let { Thumbnails.ofVideo(it) })
+        }
+    }
+    VideoBox(
+        frame,
+        modifier = Modifier.size(width = 320.dp, height = 240.dp).clickable { state.openFile(message) }
+    )
+}
+
+/** What the phone's SendVideo screen is: the video, a caption, send or cancel. */
+@Composable
+internal fun SendVideoDialog(file: File, initialCaption: String, onSend: (String) -> Unit, onClose: () -> Unit) {
+    var caption by remember(file) { mutableStateOf(initialCaption) }
+    val frame by produceState<VideoFrame?>(null, file) {
+        value = withContext(Dispatchers.IO) { VideoFrame(file, Thumbnails.ofVideo(file)) }
+    }
+
+    AlertDialog(
+        onDismissRequest = onClose,
+        properties = StaysOpen,
+        title = { Text(Strings.SEND_VIDEO_TITLE) },
+        text = {
+            Column {
+                VideoBox(frame, modifier = Modifier.size(width = 400.dp, height = 300.dp))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${file.name}  ${formatFileSize(file.length())}",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = caption,
+                    onValueChange = { caption = it },
+                    placeholder = { Text(Strings.CAPTION_HINT) },
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSend(caption) }) { Text(Strings.SEND) }
+        },
+        dismissButton = {
+            TextButton(onClick = onClose) { Text(Strings.CANCEL) }
+        }
+    )
 }
 
 private sealed interface PictureState {
@@ -170,6 +289,7 @@ internal fun SendPhotoDialog(file: File, initialCaption: String, onSend: (String
 
     AlertDialog(
         onDismissRequest = onClose,
+        properties = StaysOpen,
         title = { Text(Strings.SEND_PHOTO_TITLE) },
         text = {
             Column {

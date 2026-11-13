@@ -108,6 +108,7 @@ internal fun SendFileDialog(file: File, initialCaption: String, onSend: (String)
 
     AlertDialog(
         onDismissRequest = onClose,
+        properties = StaysOpen,
         title = { Text(Strings.SEND_FILE_TITLE) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -205,6 +206,7 @@ internal fun ContactPickerDialog(contacts: List<ChatItem>, onSend: (List<String>
 
     AlertDialog(
         onDismissRequest = onClose,
+        properties = StaysOpen,
         title = { Text(Strings.CONTACTS) },
         text = {
             if (contacts.isEmpty()) {

@@ -2,7 +2,7 @@ package com.bolimot.mindtheclub.receiving
 
 // DESKTOP: this file is NOT a copy of the App's receiveManager.kt, which is a thousand lines
 // and mostly media: images, albums, video, files, each saved through Android's MediaStore.
-// receiveText, receiveImage and receiveObject (for a file and for a contact) are here. They keep
+// receiveText, receiveImage, receiveVideo and receiveObject (for a file and for a contact) are here. They keep
 // the App's statements in the App's order, with these differences:
 //
 //   - the notification, the sound and the "is this chat on screen" check go through
@@ -22,6 +22,7 @@ import android.content.Context
 import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.message.MessageRepository
+import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.functions.assembleChunksToTempFile
@@ -35,6 +36,7 @@ import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
+import com.bolimot.mindtheclub.functions.getVideoDao
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.markContentComplete
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -350,6 +352,149 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
         }
     } catch (e: Exception) {
         debugLine("fullMessageReceivedEvent", "Failed to receive $type: Exception: ${e.message}")
+    }
+}
+
+// DESKTOP: the App's receiveVideo, with the PC's media folder in place of the phone's public
+// Movies folder. As in the App the file is kept as "<hash>.mp4" whatever the sender's file was.
+// [content] is kept for the App's signature and is always empty here, as for receiveImage.
+suspend fun receiveVideo(messageId: String, content: String, text: String, fromUserId: String) {
+    debugLine2("fullMessageReceivedEvent", "VIDEO MESSAGE RECEIVED: $messageId")
+
+    val context = App.context()
+
+    try {
+        val messageDao = getMessageDao(context)
+        val inboxDao = getInboxDao(context)
+        val videoDao = getVideoDao(context)
+
+        val messageRepository = MessageRepository(messageDao)
+
+        val inboxMessage = inboxDao.getFirstMessage(messageId)
+
+        if (inboxMessage == null) {
+            debugLine("fullMessageReceivedEvent", "No such Video message in Inbox")
+            return
+        }
+
+        val contentKey = contentKeyOf(inboxMessage)
+
+        val messageKey = if (inboxMessage.chatGroupId != null && inboxMessage.groupId.isNotEmpty())
+            inboxMessage.groupId else messageId
+
+        val existingMessage = messageRepository.getMessage(messageKey)
+        if (existingMessage != null && existingMessage.status != Status.RECEIVING) {
+            debugLine("fullMessageReceivedEvent", "Video message already exists: $messageKey")
+            val earlyDeliveryId = inboxMessage.chatGroupId?.let {
+                computeDeliveryDocId(it, inboxMessage.originalSenderId ?: fromUserId, inboxMessage.date)
+            }
+            notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
+            if (earlyDeliveryId != null && inboxMessage.originalSenderId != null
+                && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+                notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
+            }
+            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
+            return
+        }
+
+        val originalSender = inboxMessage.originalSenderId ?: fromUserId
+
+        if (inboxMessage.chatGroupId != null && inboxMessage.originalSenderId != null) {
+            if (messageRepository.groupMessageExists(inboxMessage.chatGroupId, inboxMessage.originalSenderId, inboxMessage.date)) {
+                debugLine("receiveVideo", "Duplicate group message, skipping")
+                inboxDao.deleteByContent(contentKey)
+                dropOrphanPlaceholder(messageKey)
+                ProcessedMessageCache.markProcessed(messageId)
+                val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
+                    inboxMessage.originalSenderId, inboxMessage.date)
+                notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
+                if (inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+                    notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
+                }
+                return
+            }
+        }
+
+        // Per copy name, as in the App.
+        val tempFile = assembleChunksToTempFile(context, inboxDao, messageId, "temp_${messageId}.mp4")
+        if (tempFile == null) {
+            debugLine("receiveVideo", "Failed to assemble video from chunks")
+            return
+        }
+
+        val hash = computeSha256(tempFile.inputStream()) ?: run {
+            debugLine("receiveVideo", "Failed to compute hash for video")
+            tempFile.delete()
+            return
+        }
+        val hashFileName = "$hash.mp4"
+
+        // DESKTOP: the PC's media folder in place of MediaStore. keep() reuses a file already
+        // there under this name, which is the App's "duplicate video detected" branch.
+        val finalFile = try {
+            MediaFiles.keep(tempFile, hashFileName)
+        } catch (e: Exception) {
+            debugLine("receiveVideo", "Failed to save video to the media folder: ${e.message}")
+            tempFile.delete()
+            return
+        }
+
+        val videoPath = finalFile.toURI().toString()
+
+        val message = Message(
+            uid = 0,
+            fromUserId = inboxMessage.chatGroupId ?: originalSender,
+            toUserId = MySelf.userId()!!,
+            messageId = messageKey,
+            replyId = inboxMessage.replyId,
+            groupId = inboxMessage.groupId,
+            groupSize = inboxMessage.groupSize,
+            text = text,
+            textAttached = inboxMessage.textAttached,
+            nameAttached = inboxMessage.nameAttached,
+            uri = videoPath,
+            type = Type.VIDEO,
+            subType = inboxMessage.subType,
+            date = inboxMessage.date,
+            status = "",
+            reaction = null,
+            chatGroupId = inboxMessage.chatGroupId,
+            originalSenderId = originalSender
+        )
+
+        if (messageRepository.saveMessage(message, messageIn = true)) {
+            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+
+            inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
+
+            // VideoRepository.insertImage in the App: one row per message and file.
+            val videoOwner = inboxMessage.chatGroupId ?: inboxMessage.fromUserId
+            if (videoDao.countByFilename(hashFileName, videoOwner, messageKey) == 0) {
+                videoDao.insert(Video(0, messageKey, videoPath, inboxMessage.date, "", videoOwner))
+            }
+
+            val deliveryId = inboxMessage.chatGroupId?.let {
+                computeDeliveryDocId(it, originalSender, inboxMessage.date)
+            }
+            markContentComplete(deliveryId)
+            notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
+
+            if (deliveryId != null && inboxMessage.originalSenderId != null
+                && inboxMessage.originalSenderId != fromUserId) {
+                notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
+            }
+
+            if (!chatScreenIsInForeground(message.fromUserId)) {
+                DesktopEvents.notifyMessage(message)
+            }
+        } else {
+            debugLine("fullMessageReceivedEvent", "Failed to save video message")
+        }
+    } catch (e: Exception) {
+        debugLine("fullMessageReceivedEvent", "Failed to receive video: Exception: ${e.message}")
     }
 }
 

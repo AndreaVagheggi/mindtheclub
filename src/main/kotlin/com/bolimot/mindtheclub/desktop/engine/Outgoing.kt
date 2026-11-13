@@ -4,13 +4,16 @@ import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.desktop.media.VideoCompressor
 import com.bolimot.mindtheclub.desktop.storage.BatchDb
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getImageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerDao
+import com.bolimot.mindtheclub.functions.getVideoDao
 import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.sendMessage
@@ -108,6 +111,63 @@ object Outgoing {
             }
         } catch (e: Exception) {
             debugLine("Outgoing", "Image row not written for ${message.messageId}: ${e.message}")
+        }
+        return message
+    }
+
+    /**
+     * sendManager.sendObject with "video", for a 1:1 chat, after the phone's SendVideo screen.
+     *
+     * As on the phone, a large video is first re-encoded to 720p at 2 Mbit/s and the original
+     * is sent only when that fails or is not worth it (desktop/media/VideoCompressor.kt). This
+     * can take from seconds to minutes, and the message appears in the chat when it is done.
+     *
+     * Throws MediaFiles.Refused when the file cannot be read. Returns the saved message, or null
+     * when it could not be saved.
+     */
+    suspend fun sendVideo(toUserId: String, source: File, caption: String): Message? {
+        val myUserId = MySelf.userId() ?: return null
+
+        // What is sent is a copy in the media folder, either way; the re-encoded file is only
+        // a step towards it.
+        val compressed = VideoCompressor.compress(source)
+        val copy = try {
+            MediaFiles.keepCopyForSending(compressed ?: source)
+        } finally {
+            compressed?.delete()
+        }
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = caption,
+            textAttached = null,
+            nameAttached = null,
+            uri = copy.toURI().toString(),
+            type = Type.VIDEO,
+            subType = "",
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+
+        // sendManager.addObjectForBrowsing: the row the phone's gallery of a chat is built from.
+        try {
+            val videoDao = getVideoDao(App.context())
+            if (videoDao.countByFilename(copy.name, message.toUserId, message.messageId) == 0) {
+                videoDao.insert(Video(0, message.messageId, message.uri, message.date, "", message.toUserId))
+            }
+        } catch (e: Exception) {
+            debugLine("Outgoing", "Video row not written for ${message.messageId}: ${e.message}")
         }
         return message
     }

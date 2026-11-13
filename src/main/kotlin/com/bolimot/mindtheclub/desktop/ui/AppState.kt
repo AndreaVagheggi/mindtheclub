@@ -13,6 +13,7 @@ import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.engine.Engine
 import com.bolimot.mindtheclub.desktop.engine.Outgoing
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.desktop.media.VideoCompressor
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.getMessageRepository
@@ -82,6 +83,10 @@ class AppState(private val scope: CoroutineScope) {
 
     /** Shown as a banner when the push channel drops: signals no longer arrive. */
     var warning: String? by mutableStateOf<String?>(null)
+        private set
+
+    /** How many videos are being re-encoded right now, before they are sent. Shown as a notice. */
+    var videosBeingPrepared: Int by mutableStateOf(0)
         private set
 
     /** Shown under the form of the screen that asked for an action which failed. */
@@ -216,6 +221,27 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
+    /** Sends the video in [file] to the open chat, with [caption] under it (may be empty). */
+    fun sendVideo(file: File, caption: String) {
+        val to = selectedUserId ?: return
+        scope.launch(Dispatchers.IO) {
+            // A large video is re-encoded before it leaves, which takes a while: the window
+            // says so, as the phone's Send screen does, until the message is in the chat.
+            val preparing = VideoCompressor.mayCompress(file)
+            if (preparing) videosBeingPrepared++
+            try {
+                if (Outgoing.sendVideo(to, file, caption.trim()) == null) warning = Strings.SEND_FAILED
+            } catch (e: MediaFiles.Refused) {
+                warning = Strings.FILE_UNREADABLE
+            } catch (e: Throwable) {
+                warning = "${Strings.SEND_FAILED} ${e.message}"
+            } finally {
+                if (preparing) videosBeingPrepared--
+            }
+            reload()
+        }
+    }
+
     /** Sends [file], whatever it is, to the open chat, with [caption] under it (may be empty). */
     fun sendFile(file: File, caption: String) {
         val to = selectedUserId ?: return
@@ -259,7 +285,7 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     /**
-     * Opens the file of a file message, if this PC has it.
+     * Opens the file of a file message or of a video message, if this PC has it.
      *
      * A received file is whatever its sender chose to send, and opening a file on a PC can mean
      * RUNNING it. So only the kinds that are documents, pictures, sound and video are handed to
@@ -377,6 +403,8 @@ class AppState(private val scope: CoroutineScope) {
         message.type == Type.TEXT -> message.text.replace('\n', ' ')
         message.type == Type.IMAGE ->
             if (message.text.isBlank()) Strings.PHOTO else "${Strings.PHOTO}: ${message.text.replace('\n', ' ')}"
+        message.type == Type.VIDEO ->
+            if (message.text.isBlank()) Strings.VIDEO else "${Strings.VIDEO}: ${message.text.replace('\n', ' ')}"
         isFileType(message.type) -> "${Strings.FILE}: ${getFileDetailFromType(message.type).getOrNull(0) ?: ""}"
         message.type == Type.CONTACT -> "${Strings.CONTACT}: ${contactOf(message)?.name ?: ""}"
         else -> "[${message.type}]"
@@ -397,7 +425,7 @@ class AppState(private val scope: CoroutineScope) {
             "pdf", "txt", "csv", "rtf", "md",
             "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "tif", "tiff",
             "mp3", "m4a", "wav", "ogg", "opus", "aac", "flac",
-            "mp4", "mov", "mkv", "avi", "webm", "3gp",
+            "mp4", "mov", "m4v", "mkv", "avi", "webm", "3gp",
             "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp",
             "zip", "7z", "rar"
         )

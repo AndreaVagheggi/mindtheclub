@@ -4,8 +4,8 @@ package com.bolimot.mindtheclub.receiving
 // keeps the App's structure and order (the processing claim, the read that tolerates a missing
 // row, the blocked sender, the content check, then the type), with these differences:
 //
-//   - ONLY TEXT, SINGLE IMAGES, FILES AND CONTACTS ARE PROCESSED (isOnThePc). Every other type
-//     (video, albums, profile, reaction, sticker, gif, link, audio) is left exactly where it is:
+//   - ONLY TEXT, SINGLE IMAGES, VIDEO, FILES AND CONTACTS ARE PROCESSED (isOnThePc). Every other
+//     type (albums, profile, reaction, sticker, gif, link, audio) is left exactly where it is:
 //     its chunks stay in the Inbox and nothing is confirmed, so the sender keeps its copy and
 //     goes on announcing it.
 //     Confirming a content this program cannot save would make the sender delete it
@@ -77,9 +77,10 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
 
         // As in the App: a media content is assembled by its own receive function, straight
         // from the chunks, and never passes through getFullMessage below.
-        if (type == Type.IMAGE || isFileType(type)) {
+        if (type == Type.VIDEO || type == Type.IMAGE || isFileType(type)) {
             debugLine("receivedEvent", "Message received, type = $type")
             when (type) {
+                Type.VIDEO -> receiveVideo(messageId, "", message.text, fromUserId)
                 Type.IMAGE -> receiveImage(messageId, "", message.text, fromUserId)
                 else -> receiveObject(messageId, "", message.text, fromUserId, type)
             }
