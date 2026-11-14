@@ -41,12 +41,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +62,8 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.engine.Engine
+import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
@@ -86,7 +94,16 @@ fun main() = application {
             exitApplication()
         },
         title = Strings.APP_NAME,
-        state = rememberWindowState(width = 1000.dp, height = 700.dp)
+        state = rememberWindowState(width = 1000.dp, height = 700.dp),
+        // Esc lets go of a picked message: what the Back key does on the phone.
+        onPreviewKeyEvent = { event ->
+            if (event.type == KeyEventType.KeyDown && event.key == Key.Escape && state.selectedMessageId != null) {
+                state.clearSelection()
+                true
+            } else {
+                false
+            }
+        }
     ) {
         MaterialTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
@@ -290,7 +307,26 @@ private fun Conversation(state: AppState) {
     var pickingContacts by remember(state.selectedUserId) { mutableStateOf(false) }
     // Whether the paperclip's bar is open.
     var attaching by remember(state.selectedUserId) { mutableStateOf(false) }
+    // The message being answered: its card sits above the message box until the reply is sent
+    // or the card is closed.
+    var replyTo by remember(state.selectedUserId) { mutableStateOf<Message?>(null) }
+    // The message being forwarded, while the list of contacts to send it to is on screen.
+    var forwarding by remember(state.selectedUserId) { mutableStateOf<Message?>(null) }
+    // A picture, video or file being forwarded, shown for confirmation before it is sent.
+    var forwardPlan by remember(state.selectedUserId) { mutableStateOf<ForwardPlan?>(null) }
+    val messageBoxFocus = remember { FocusRequester() }
     val listState = rememberLazyListState()
+
+    // Choosing Reply puts the cursor in the message box, as on the phone.
+    LaunchedEffect(replyTo) {
+        if (replyTo != null) {
+            try {
+                messageBoxFocus.requestFocus()
+            } catch (e: IllegalStateException) {
+                // The box is not on screen yet: the user clicks into it.
+            }
+        }
+    }
 
     // Left open with no choice made, the bar closes by itself, as on the phone.
     LaunchedEffect(attaching) {
@@ -306,16 +342,48 @@ private fun Conversation(state: AppState) {
     }
 
     fun send() {
-        state.send(draft)
+        // Nothing written: nothing is sent, and a reply being prepared stays where it is.
+        if (draft.isBlank()) return
+        state.send(draft, replyTo)
         draft = ""
+        replyTo = null
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            state.selectedName,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
-        )
+        // The top of the conversation: the contact's name or, while a message is picked, what
+        // can be done with it, as the phone's toolbar does. Same height either way.
+        val picked = state.selectedMessage
+        if (picked == null) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    state.selectedName,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        } else {
+            SelectionBar(
+                onClose = { state.clearSelection() },
+                onReply = {
+                    replyTo = picked
+                    state.clearSelection()
+                },
+                onForward = {
+                    state.clearSelection()
+                    // A picture, video or file can be forwarded only if its file is on this PC.
+                    if (picked.type != Type.TEXT && MediaFiles.fileFor(picked) == null) {
+                        state.showWarning(Strings.MEDIA_NOT_AVAILABLE)
+                    } else {
+                        forwarding = picked
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp)
+            )
+        }
         HorizontalDivider()
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -354,6 +422,15 @@ private fun Conversation(state: AppState) {
         }
 
         HorizontalDivider()
+        // The message being answered, on its card just above the message box.
+        replyTo?.let { answered ->
+            ReplyInsert(
+                state,
+                answered,
+                onClose = { replyTo = null },
+                modifier = Modifier.padding(start = 12.dp, top = 8.dp)
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -365,7 +442,7 @@ private fun Conversation(state: AppState) {
                 // The paperclip, inside the box at its end, as on the phone.
                 trailingIcon = { AttachButton(onClick = { attaching = !attaching }) },
                 maxLines = 4,
-                modifier = Modifier.weight(1f).onPreviewKeyEvent { event ->
+                modifier = Modifier.weight(1f).focusRequester(messageBoxFocus).onPreviewKeyEvent { event ->
                     // Enter sends, Shift+Enter makes a new line.
                     if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && !event.isShiftPressed) {
                         send()
@@ -430,13 +507,99 @@ private fun Conversation(state: AppState) {
             onClose = { pickingContacts = false }
         )
     }
+
+    // Forward, first step: to whom. A text then leaves at once; a picture, a video and a file
+    // go through the screen they are sent from (ChatScreen, getPeersResult).
+    forwarding?.let { message ->
+        ContactPickerDialog(
+            contacts = state.shareableContacts(),
+            title = Strings.SELECT_CONTACTS,
+            maxSelectable = FORWARD_MAX_CONTACTS,
+            onSend = { userIds ->
+                val plan = state.planForward(message, userIds)
+                if (message.type == Type.TEXT) state.forwardText(plan) else forwardPlan = plan
+                forwarding = null
+            },
+            onClose = { forwarding = null }
+        )
+    }
+
+    // Forward, second step for a picture, a video and a file: the send screen, with the card
+    // that says whose it is and the words it came with. The cross on the card sends it bare.
+    forwardPlan?.let { plan ->
+        val file = remember(plan.message.messageId) { MediaFiles.fileFor(plan.message) }
+        if (file == null) {
+            LaunchedEffect(plan) { forwardPlan = null }
+        } else {
+            val type = plan.message.type
+            when {
+                type == Type.IMAGE -> SendPhotoDialog(
+                    file = file,
+                    initialCaption = "",
+                    onSend = { caption ->
+                        state.sendImage(file, caption, plan)
+                        forwardPlan = null
+                    },
+                    onClose = { forwardPlan = null },
+                    quoteName = plan.name,
+                    quoteText = plan.text,
+                    onDropQuote = { forwardPlan = plan.withoutQuote() }
+                )
+                type == Type.VIDEO -> SendVideoDialog(
+                    file = file,
+                    initialCaption = "",
+                    onSend = { caption ->
+                        state.sendVideo(file, caption, plan)
+                        forwardPlan = null
+                    },
+                    onClose = { forwardPlan = null },
+                    quoteName = plan.name,
+                    quoteText = plan.text,
+                    onDropQuote = { forwardPlan = plan.withoutQuote() }
+                )
+                isFileType(type) -> SendFileDialog(
+                    file = file,
+                    initialCaption = "",
+                    onSend = { caption ->
+                        state.sendFile(file, caption, plan)
+                        forwardPlan = null
+                    },
+                    onClose = { forwardPlan = null },
+                    displayName = getFileDetailFromType(type).getOrNull(0),
+                    quoteName = plan.name,
+                    quoteText = plan.text,
+                    onDropQuote = { forwardPlan = plan.withoutQuote() }
+                )
+                // Only these three are forwarded through a send screen (AppState.canReplyOrForward).
+                else -> {}
+            }
+        }
+    }
 }
 
 @Composable
 private fun Bubble(state: AppState, message: Message) {
     val mine = state.isMine(message)
+    val picked = state.selectedMessageId == message.messageId
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            // A picked message is marked across the whole row, as on the phone.
+            .background(if (picked) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
+            // The right mouse button picks a message: the PC's long press. Keyed on what
+            // decides whether the message can be picked, so a content that has finished
+            // arriving is not judged by what it was.
+            .pointerInput(message.messageId, message.status, message.type) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
+                            state.toggleSelection(message)
+                        }
+                    }
+                }
+            }
+            .padding(top = 2.dp),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
     ) {
         Surface(
@@ -477,7 +640,8 @@ private fun Bubble(state: AppState, message: Message) {
                     }
                     // A shared contact shows its card and no text: the text is the contact's record.
                     message.type == Type.CONTACT -> MessageContact(state, message)
-                    message.type == Type.TEXT -> Text(message.text)
+                    // A forwarded text has no words of its own: they are all in the quote above.
+                    message.type == Type.TEXT -> if (message.text.isNotEmpty()) Text(message.text)
                     else -> Text(state.previewOf(message))
                 }
                 Spacer(Modifier.height(2.dp))

@@ -143,6 +143,26 @@ object MediaFiles {
     }
 
     /**
+     * Keeps [image] in the media folder as a JPEG at [quality], named after the hash of its
+     * bytes like every other file here. For a picture that does not come from a file: the still
+     * frame of a video that a reply quotes (the phone's saveFirstVideoFrame).
+     */
+    suspend fun keepJpeg(image: BufferedImage, quality: Float): File = withContext(Dispatchers.IO) {
+        val temp = File(App.context().filesDir, "outgoing_${guid()}.jpg")
+        try {
+            writeJpeg(toRgbScaled(image, max(image.width, image.height)), temp, quality)
+            val hash = computeSha256(temp.inputStream()) ?: throw Refused("the file could not be read back")
+            keep(temp, "$hash.jpg")
+        } catch (e: Refused) {
+            temp.delete()
+            throw e
+        } catch (e: Exception) {
+            temp.delete()
+            throw Refused("${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
+    /**
      * A small copy of a picture for the window, no larger than [longSide]. Null when the file
      * cannot be read as an image. Blocking: call it off the interface thread.
      */

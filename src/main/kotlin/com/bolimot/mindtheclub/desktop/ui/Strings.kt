@@ -47,6 +47,11 @@ object Strings {
     const val YOU = "You"
     const val FORWARDED = "forwarded"
 
+    // What can be done with a picked message, and the list of a forward, in the App's own words.
+    const val REPLY = "Reply"
+    const val FORWARD = "Forward"
+    const val SELECT_CONTACTS = "Select contacts"
+
     const val SEND_VIDEO_TITLE = "Send video"
     const val PREPARING_VIDEO = "Preparing video..."
 

@@ -10,9 +10,9 @@ package com.bolimot.mindtheclub.sending
 //     PC submits at once; with no network the dispatch fails and its own retries take over;
 //   - the batch tables are reached through BatchDb, and the status text "sent" comes from
 //     DesktopStrings, in the phone's language;
-//   - sendMessageWork chunks four kinds of local file (a single image, a video, a file, the picture
-//     of a shared contact), read with java.io where the App goes through Android's
-//     ContentResolver. Chunk size, table size and the Base64 text of each chunk are the
+//   - sendMessageWork chunks five kinds of local file (a single image, a video, a file, the picture
+//     of a shared contact, the picture a text reply quotes), read with java.io where the App
+//     goes through Android's ContentResolver. Chunk size, table size and the Base64 text of each chunk are the
 //     App's. Every other content that is a local file (albums, audio) is not on
 //     the PC yet and is refused here, loudly, before any table is
 //     built; a text, or anything else whose content is not a local file, is one chunk as in
@@ -197,10 +197,17 @@ fun sendMessageWork(
             return true
         }
 
+        // DESKTOP: a text that replies to a picture or to a video carries, as its content, the
+        // picture it quotes (sendManager.sendText puts it in the uri), chunked like any media.
+        // The PC sends it when that picture is here. When it is not (a reply written on the
+        // phone and resumed here: the backup carries names, not bytes) the text still goes out,
+        // as one chunk with no content, and the receiver shows the quote without its picture.
+        val quotedPicture = if (hasMedia && message.type == Type.TEXT) MediaFiles.fileOfUri(message.uri) else null
+
         // DESKTOP: the file itself, when it is on this PC. A message that came with the phone's
         // backup has no file here (the backup carries names, not bytes), so its file is null.
-        val sendsFile = hasMedia && sendableFile
-        val mediaFile = if (sendsFile) MediaFiles.fileOfUri(message.uri) else null
+        val sendsFile = hasMedia && (sendableFile || quotedPicture != null)
+        val mediaFile = if (sendsFile) (quotedPicture ?: MediaFiles.fileOfUri(message.uri)) else null
 
         if (batchTablesExists(message.messageId) && mediaFile != null) {
             val expectedChunks = if (mediaFile.length() > 0) ceil(mediaFile.length().toDouble() / chunkSize).toInt() else 0
@@ -318,9 +325,9 @@ fun sendMessageWork(
             val tableName = "batch${message.messageId}1"
             val outboxChunks = mutableListOf<Outbox>()
 
-            // DESKTOP: in the App a text that replies to a picture carries the preview image as
-            // its content, chunked like any media. Previews are not built on the PC, so a text
-            // always goes out as one chunk with no content.
+            // DESKTOP: a text reaches this point only when it has no picture to carry, or when
+            // the picture it quotes is not on this PC (see quotedPicture above): either way it
+            // goes out as one chunk with no content, never with a file name in its place.
             val uri = if (message.uri.isNullOrEmpty() || message.type == Type.TEXT) "" else message.uri!!
 
             outboxChunks.add(

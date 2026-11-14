@@ -106,6 +106,24 @@ internal object AppIcons {
         )
     }
 
+    /** reply.xml: the toolbar action of a picked message. */
+    val Reply: ImageVector by lazy {
+        icon("reply", 24f, "M10,9V5l-7,7 7,7v-4.1c5,0 8.5,1.6 11,5.1 -1,-5 -4,-10 -11,-11z")
+    }
+
+    /** forward.xml: the toolbar action of a picked message. */
+    val Forward: ImageVector by lazy {
+        icon("forward", 24f, "M21,11l-6,-6v5H8c-2.76,0 -5,2.24 -5,5v4h2v-4c0,-1.65 1.35,-3 3,-3h7v5L21,11z")
+    }
+
+    /** close.xml: the cross that takes a quote away. */
+    val Close: ImageVector by lazy {
+        icon(
+            "close", 18f,
+            "M14.53,4.53l-1.06,-1.06L9,7.94 4.53,3.47 3.47,4.53 7.94,9l-4.47,4.47 1.06,1.06L9,10.06l4.47,4.47 1.06,-1.06L10.06,9z"
+        )
+    }
+
     private fun icon(name: String, viewport: Float, pathData: String): ImageVector =
         ImageVector.Builder(
             name = name,

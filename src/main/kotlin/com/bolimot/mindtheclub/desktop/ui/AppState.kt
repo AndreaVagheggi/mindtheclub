@@ -22,6 +22,7 @@ import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Status
+import com.bolimot.mindtheclub.tools.SubType
 import com.bolimot.mindtheclub.tools.Type
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +58,18 @@ class ChatItem(
     val unread: Int
 )
 
+/** A picture to draw small: the file of an image, or of a video, whose still frame is then drawn. */
+class QuotedMedia(val file: File, val isVideo: Boolean)
+
+/**
+ * A message on its way to other chats: which one, to whom, and what its bubble will quote there
+ * (the name of who wrote it and its words: nameToForward and textToForward in ChatScreen).
+ */
+class ForwardPlan(val message: Message, val toUserIds: List<String>, val name: String?, val text: String?) {
+    /** The same forward with nothing quoted: the user closed the quote on the send screen. */
+    fun withoutQuote() = ForwardPlan(message, toUserIds, null, null)
+}
+
 /**
  * Everything the window shows, and what the user can do. The screens only read this and call
  * its functions; this talks to the engine. Nothing here decides how a message travels: that is
@@ -79,6 +92,15 @@ class AppState(private val scope: CoroutineScope) {
     var selectedUserId: String? by mutableStateOf<String?>(null)
         private set
     var selectedName: String by mutableStateOf("")
+        private set
+
+    /**
+     * The message picked with the right mouse button, which is the PC's long press. While one
+     * is picked the top of the conversation shows what can be done with it, as the phone's
+     * toolbar does. One at a time: the phone picks several only to delete them or to forward
+     * pictures together, and neither is on the PC yet.
+     */
+    var selectedMessageId: String? by mutableStateOf<String?>(null)
         private set
 
     /** Shown as a banner when the push channel drops: signals no longer arrive. */
@@ -186,19 +208,63 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun select(userId: String) = scope.launch(Dispatchers.IO) {
+        selectedMessageId = null
         selectedUserId = userId
         selectedName = chats.firstOrNull { it.userId == userId }?.name ?: ""
         reload()
         markSeen(userId)
     }
 
-    fun send(text: String) {
+    // ------------------------------------------------------------ picking a message
+
+    /**
+     * Whether a message can be replied to and forwarded: ChatScreen.determineMenuRes. A text, a
+     * picture, a video and a file can; a shared contact cannot (the phone gives it the plain
+     * menu), and neither can a content still arriving.
+     */
+    fun canReplyOrForward(message: Message): Boolean =
+        message.status != Status.RECEIVING &&
+                (message.type == Type.TEXT || message.type == Type.IMAGE ||
+                        message.type == Type.VIDEO || isFileType(message.type))
+
+    /** Picks [message], or lets go of it when it is the one already picked. */
+    fun toggleSelection(message: Message) {
+        if (!canReplyOrForward(message)) return
+        selectedMessageId = if (selectedMessageId == message.messageId) null else message.messageId
+    }
+
+    fun clearSelection() {
+        selectedMessageId = null
+    }
+
+    /** The picked message, as long as it is still in the open conversation. */
+    val selectedMessage: Message?
+        get() {
+            val id = selectedMessageId ?: return null
+            return messages.firstOrNull { it.messageId == id }
+        }
+
+    // ---------------------------------------------------------------------- sending
+
+    /**
+     * Sends [text] to the open chat. With [replyTo] it is a reply to that message, built as
+     * ChatScreen.messageReply builds it: the bubble quotes the words of the answered message
+     * under the name of the chat's contact. (The App writes the contact's name even when the
+     * answered message is the user's own: the PC does the same, so that a reply written here
+     * and one written on the phone are the same message.)
+     */
+    fun send(text: String, replyTo: Message? = null) {
         val to = selectedUserId ?: return
         val body = text.trim()
         if (body.isEmpty()) return
+        val quotedName = selectedName
         scope.launch(Dispatchers.IO) {
             try {
-                Outgoing.sendText(to, body)
+                if (replyTo == null) {
+                    Outgoing.sendText(to, body)
+                } else {
+                    Outgoing.sendText(to, body, replyTo.text, quotedName, SubType.REPLY, replyTo.messageId)
+                }
             } catch (e: Throwable) {
                 warning = "${Strings.SEND_FAILED} ${e.message}"
             }
@@ -206,35 +272,53 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
-    /** Sends the picture in [file] to the open chat, with [caption] under it (may be empty). */
-    fun sendImage(file: File, caption: String) {
-        val to = selectedUserId ?: return
+    /** Where a content goes: to the chats of a forward, or to the open chat. */
+    private fun targetsOf(forward: ForwardPlan?): List<String> =
+        forward?.toUserIds ?: listOfNotNull(selectedUserId)
+
+    /**
+     * Sends the picture in [file] with [caption] under it (may be empty): to the open chat, or,
+     * with [forward], to the chats of that forward, quoting what it says.
+     */
+    fun sendImage(file: File, caption: String, forward: ForwardPlan? = null) {
+        val targets = targetsOf(forward)
+        if (targets.isEmpty()) return
         scope.launch(Dispatchers.IO) {
-            try {
-                if (Outgoing.sendImage(to, file, caption.trim()) == null) warning = Strings.SEND_FAILED
-            } catch (e: MediaFiles.Refused) {
-                warning = Strings.PHOTO_UNREADABLE
-            } catch (e: Throwable) {
-                warning = "${Strings.SEND_FAILED} ${e.message}"
+            for (to in targets) {
+                try {
+                    val sent = Outgoing.sendImage(to, file, caption.trim(), forward?.text, forward?.name)
+                    if (sent == null) warning = Strings.SEND_FAILED
+                } catch (e: MediaFiles.Refused) {
+                    warning = Strings.PHOTO_UNREADABLE
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
             }
             reload()
         }
     }
 
-    /** Sends the video in [file] to the open chat, with [caption] under it (may be empty). */
-    fun sendVideo(file: File, caption: String) {
-        val to = selectedUserId ?: return
+    /** Sends the video in [file] with [caption] under it: to the open chat, or as [forward] says. */
+    fun sendVideo(file: File, caption: String, forward: ForwardPlan? = null) {
+        val targets = targetsOf(forward)
+        if (targets.isEmpty()) return
         scope.launch(Dispatchers.IO) {
             // A large video is re-encoded before it leaves, which takes a while: the window
-            // says so, as the phone's Send screen does, until the message is in the chat.
-            val preparing = VideoCompressor.mayCompress(file)
+            // says so, as the phone's Send screen does, until the message is in the chat. A
+            // video this PC already keeps (a forward) is not re-encoded.
+            val preparing = !MediaFiles.isKept(file) && VideoCompressor.mayCompress(file)
             if (preparing) videosBeingPrepared++
             try {
-                if (Outgoing.sendVideo(to, file, caption.trim()) == null) warning = Strings.SEND_FAILED
-            } catch (e: MediaFiles.Refused) {
-                warning = Strings.FILE_UNREADABLE
-            } catch (e: Throwable) {
-                warning = "${Strings.SEND_FAILED} ${e.message}"
+                for (to in targets) {
+                    try {
+                        val sent = Outgoing.sendVideo(to, file, caption.trim(), forward?.text, forward?.name)
+                        if (sent == null) warning = Strings.SEND_FAILED
+                    } catch (e: MediaFiles.Refused) {
+                        warning = Strings.FILE_UNREADABLE
+                    } catch (e: Throwable) {
+                        warning = "${Strings.SEND_FAILED} ${e.message}"
+                    }
+                }
             } finally {
                 if (preparing) videosBeingPrepared--
             }
@@ -242,19 +326,59 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
-    /** Sends [file], whatever it is, to the open chat, with [caption] under it (may be empty). */
-    fun sendFile(file: File, caption: String) {
-        val to = selectedUserId ?: return
+    /** Sends [file], whatever it is, with [caption] under it: to the open chat, or as [forward] says. */
+    fun sendFile(file: File, caption: String, forward: ForwardPlan? = null) {
+        val targets = targetsOf(forward)
+        if (targets.isEmpty()) return
+        // A forwarded file is this PC's copy, whose name on disk is a code: its real name is
+        // the one the original message carries.
+        val realName = forward?.let { getFileDetailFromType(it.message.type).getOrNull(0) }
         scope.launch(Dispatchers.IO) {
-            try {
-                if (Outgoing.sendFile(to, file, caption.trim()) == null) warning = Strings.SEND_FAILED
-            } catch (e: MediaFiles.Refused) {
-                warning = Strings.FILE_UNREADABLE
-            } catch (e: Throwable) {
-                warning = "${Strings.SEND_FAILED} ${e.message}"
+            for (to in targets) {
+                try {
+                    val sent = Outgoing.sendFile(to, file, caption.trim(), forward?.text, forward?.name, realName)
+                    if (sent == null) warning = Strings.SEND_FAILED
+                } catch (e: MediaFiles.Refused) {
+                    warning = Strings.FILE_UNREADABLE
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
             }
             reload()
         }
+    }
+
+    // -------------------------------------------------------------------- forwarding
+
+    /**
+     * What the bubble of a forwarded [message] will quote: ChatScreen, R.id.forward. A message
+     * that was itself forwarded keeps the name and the words it came with; any other is quoted
+     * under the name of the chat's contact, with its own text.
+     */
+    fun planForward(message: Message, toUserIds: List<String>): ForwardPlan =
+        if (message.subType == SubType.FORWARD) {
+            ForwardPlan(message, toUserIds, message.nameAttached, message.textAttached)
+        } else {
+            ForwardPlan(message, toUserIds, selectedName, message.text)
+        }
+
+    /** Forwards a text to the chats of [plan], one message each (ChatScreen, getPeersResult). */
+    fun forwardText(plan: ForwardPlan) {
+        scope.launch(Dispatchers.IO) {
+            for (to in plan.toUserIds) {
+                try {
+                    if (Outgoing.forwardText(to, plan.text, plan.name) == null) warning = Strings.SEND_FAILED
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
+            }
+            reload()
+        }
+    }
+
+    /** Says [text] in the banner at the top of the window. */
+    fun showWarning(text: String) {
+        warning = text
     }
 
     /** Shares the contacts in [userIds] with the open chat, one message each, as the phone does. */
@@ -381,20 +505,28 @@ class AppState(private val scope: CoroutineScope) {
 
     /**
      * The picture of the message a reply quotes, if it is on this PC. Found as the phone finds
-     * it (TextImageViewHolder): through replyId, in the message that was replied to. Only a
-     * single image for now; the phone also builds a preview for an album, a video and a file.
+     * it (TextImageViewHolder): through replyId, in the message that was replied to. A single
+     * image or a video for now; the phone also builds a preview for an album and a file.
      */
-    suspend fun quotedPictureOf(message: Message): File? {
+    suspend fun quotedMediaOf(message: Message): QuotedMedia? {
         val replyId = message.replyId
         if (replyId.isNullOrEmpty()) return null
         return try {
             val repository = getMessageRepository(App.context())
             val originalType = repository.getReplyType(replyId) ?: return null
-            if (originalType != Type.IMAGE) return null
-            MediaFiles.fileOfUri(repository.getReplyImage(replyId, originalType))
+            if (originalType != Type.IMAGE && originalType != Type.VIDEO) return null
+            val file = MediaFiles.fileOfUri(repository.getReplyImage(replyId, originalType)) ?: return null
+            QuotedMedia(file, originalType == Type.VIDEO)
         } catch (e: Throwable) {
             null
         }
+    }
+
+    /** The picture [message] itself can be drawn small with: its image, or its video. */
+    fun mediaOf(message: Message): QuotedMedia? {
+        if (message.type != Type.IMAGE && message.type != Type.VIDEO) return null
+        val file = MediaFiles.fileFor(message) ?: return null
+        return QuotedMedia(file, message.type == Type.VIDEO)
     }
 
     /** What a message shows as its one line: the text, or the kind of content. */

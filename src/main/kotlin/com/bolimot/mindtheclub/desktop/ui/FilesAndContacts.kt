@@ -99,11 +99,25 @@ internal fun MessageFile(state: AppState, message: Message) {
     )
 }
 
-/** What the phone's SendFile screen is: the file's card, a caption, send or cancel. */
+/**
+ * What the phone's SendFile screen is: the file's card, a caption, send or cancel. When the file
+ * is being forwarded, [displayName] is the name the original message gave it (this PC's copy is
+ * named by a code), and [quoteText] and [quoteName] are the words and the name it came with,
+ * shown on a card that [onDropQuote] takes away.
+ */
 @Composable
-internal fun SendFileDialog(file: File, initialCaption: String, onSend: (String) -> Unit, onClose: () -> Unit) {
+internal fun SendFileDialog(
+    file: File,
+    initialCaption: String,
+    onSend: (String) -> Unit,
+    onClose: () -> Unit,
+    displayName: String? = null,
+    quoteName: String? = null,
+    quoteText: String? = null,
+    onDropQuote: () -> Unit = {},
+) {
     var caption by remember(file) { mutableStateOf(initialCaption) }
-    val name = file.name
+    val name = displayName?.takeIf { it.isNotBlank() && it != "Unknown" } ?: file.name
     val extension = if (name.contains(".")) name.substringAfterLast(".", "Unknown") else "Unknown"
 
     AlertDialog(
@@ -113,6 +127,10 @@ internal fun SendFileDialog(file: File, initialCaption: String, onSend: (String)
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 FileCard(name = name, extension = extension, size = file.length())
+                if (!quoteText.isNullOrEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    QuoteInsert(name = quoteName ?: "", text = quoteText, onClose = onDropQuote)
+                }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = caption,
@@ -199,15 +217,30 @@ internal fun MessageContact(state: AppState, message: Message) {
 /**
  * Which contacts to share: the user's contacts, each with a tick, and Send. On the phone this
  * is the contact list opened "in contact share mode", which leaves out the chat being written to.
+ *
+ * The same list chooses where a forwarded message goes (SelectPeersForForward), under its own
+ * [title] and with no more than [maxSelectable] ticks: once that many are ticked, the others
+ * cannot be.
  */
 @Composable
-internal fun ContactPickerDialog(contacts: List<ChatItem>, onSend: (List<String>) -> Unit, onClose: () -> Unit) {
+internal fun ContactPickerDialog(
+    contacts: List<ChatItem>,
+    onSend: (List<String>) -> Unit,
+    onClose: () -> Unit,
+    title: String = Strings.CONTACTS,
+    maxSelectable: Int = Int.MAX_VALUE,
+) {
     val chosen = remember { mutableStateListOf<String>() }
+
+    fun tick(userId: String, on: Boolean) {
+        if (!on) chosen.remove(userId)
+        else if (userId !in chosen && chosen.size < maxSelectable) chosen.add(userId)
+    }
 
     AlertDialog(
         onDismissRequest = onClose,
         properties = StaysOpen,
-        title = { Text(Strings.CONTACTS) },
+        title = { Text(title) },
         text = {
             if (contacts.isEmpty()) {
                 Text(Strings.NO_CONTACTS_TO_SHARE)
@@ -218,7 +251,7 @@ internal fun ContactPickerDialog(contacts: List<ChatItem>, onSend: (List<String>
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { if (ticked) chosen.remove(contact.userId) else chosen.add(contact.userId) }
+                                .clickable { tick(contact.userId, !ticked) }
                                 .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -227,7 +260,8 @@ internal fun ContactPickerDialog(contacts: List<ChatItem>, onSend: (List<String>
                             Text(contact.name, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Checkbox(
                                 checked = ticked,
-                                onCheckedChange = { now -> if (now) chosen.add(contact.userId) else chosen.remove(contact.userId) }
+                                enabled = ticked || chosen.size < maxSelectable,
+                                onCheckedChange = { now -> tick(contact.userId, now) }
                             )
                         }
                     }

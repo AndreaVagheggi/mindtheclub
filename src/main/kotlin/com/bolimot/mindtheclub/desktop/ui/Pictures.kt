@@ -99,6 +99,9 @@ internal object Thumbnails {
         synchronized(cache) { cache[key] = bitmap }
         return bitmap
     }
+
+    /** The small copy of an image, or the still picture of a video. Blocking, as above. */
+    fun of(media: QuotedMedia): ImageBitmap? = if (media.isVideo) ofVideo(media.file) else of(media.file)
 }
 
 /** What a video shows in the window: its still picture if Windows has one, and whether its file is here. */
@@ -149,9 +152,21 @@ internal fun MessageVideo(state: AppState, message: Message) {
     )
 }
 
-/** What the phone's SendVideo screen is: the video, a caption, send or cancel. */
+/**
+ * What the phone's SendVideo screen is: the video, a caption, send or cancel. When the video is
+ * being forwarded, [quoteText] and [quoteName] are the words and the name it came with, shown
+ * on a card that [onDropQuote] takes away.
+ */
 @Composable
-internal fun SendVideoDialog(file: File, initialCaption: String, onSend: (String) -> Unit, onClose: () -> Unit) {
+internal fun SendVideoDialog(
+    file: File,
+    initialCaption: String,
+    onSend: (String) -> Unit,
+    onClose: () -> Unit,
+    quoteName: String? = null,
+    quoteText: String? = null,
+    onDropQuote: () -> Unit = {},
+) {
     var caption by remember(file) { mutableStateOf(initialCaption) }
     val frame by produceState<VideoFrame?>(null, file) {
         value = withContext(Dispatchers.IO) { VideoFrame(file, Thumbnails.ofVideo(file)) }
@@ -165,12 +180,18 @@ internal fun SendVideoDialog(file: File, initialCaption: String, onSend: (String
             Column {
                 VideoBox(frame, modifier = Modifier.size(width = 400.dp, height = 300.dp))
                 Spacer(Modifier.height(4.dp))
+                // A forwarded video is this PC's copy, whose name on disk is a code: only its size is said.
                 Text(
-                    "${file.name}  ${formatFileSize(file.length())}",
+                    if (MediaFiles.isKept(file)) formatFileSize(file.length())
+                    else "${file.name}  ${formatFileSize(file.length())}",
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (!quoteText.isNullOrEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    QuoteInsert(name = quoteName ?: "", text = quoteText, onClose = onDropQuote)
+                }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = caption,
@@ -235,7 +256,7 @@ internal fun MessagePicture(message: Message) {
 internal fun MessageQuote(state: AppState, message: Message) {
     val picture by produceState<ImageBitmap?>(null, message.messageId, message.replyId) {
         value = withContext(Dispatchers.IO) {
-            state.quotedPictureOf(message)?.let { Thumbnails.of(it) }
+            state.quotedMediaOf(message)?.let { Thumbnails.of(it) }
         }
     }
     val name = state.quotedNameOf(message)
@@ -276,9 +297,21 @@ internal fun MessageQuote(state: AppState, message: Message) {
     }
 }
 
-/** What the phone's SendImage screen is: the picture, a caption, send or cancel. */
+/**
+ * What the phone's SendImage screen is: the picture, a caption, send or cancel. When the picture
+ * is being forwarded, [quoteText] and [quoteName] are the words and the name it came with, shown
+ * on a card that [onDropQuote] takes away.
+ */
 @Composable
-internal fun SendPhotoDialog(file: File, initialCaption: String, onSend: (String) -> Unit, onClose: () -> Unit) {
+internal fun SendPhotoDialog(
+    file: File,
+    initialCaption: String,
+    onSend: (String) -> Unit,
+    onClose: () -> Unit,
+    quoteName: String? = null,
+    quoteText: String? = null,
+    onDropQuote: () -> Unit = {},
+) {
     var caption by remember(file) { mutableStateOf(initialCaption) }
     val preview by produceState<PictureState>(PictureState.Loading, file) {
         value = withContext(Dispatchers.IO) {
@@ -304,6 +337,10 @@ internal fun SendPhotoDialog(file: File, initialCaption: String, onSend: (String
                         PictureState.Missing -> Text(Strings.PHOTO_UNREADABLE, color = MaterialTheme.colorScheme.error)
                         PictureState.Loading -> CircularProgressIndicator()
                     }
+                }
+                if (!quoteText.isNullOrEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    QuoteInsert(name = quoteName ?: "", text = quoteText, onClose = onDropQuote)
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
