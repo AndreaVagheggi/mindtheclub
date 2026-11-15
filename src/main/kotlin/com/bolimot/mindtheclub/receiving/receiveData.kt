@@ -248,7 +248,7 @@ suspend fun inboxCheckMessageComplete(messageId: String, inboxDao: InboxDao) {
             // Multi chunk (media) assembly takes seconds and must survive doze: run it under
             // WorkManager, like every other part of the send path.
             // DESKTOP: only the types the PC processes are assembled (isOnThePc: text, image, video,
-            // file, contact). A text has more than one chunk when it REPLIES to a picture: the
+            // file, contact, profile). A text has more than one chunk when it REPLIES to a picture: the
             // phone sends the preview of the quoted picture as its content, chunked like any
             // media (send.kt in the App, hasMedia). For every other multi chunk content (albums,
             // audio) assembly is not on the PC yet: the complete set stays in the Inbox,

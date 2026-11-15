@@ -19,7 +19,9 @@ import com.bolimot.mindtheclub.functions.guid
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.sendMessage
 import com.bolimot.mindtheclub.start.App
+import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.tools.NO_PICTURE
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.SubType
 import com.bolimot.mindtheclub.tools.Type
@@ -119,6 +121,39 @@ object Outgoing {
             debugLine("Outgoing", "No picture for the reply to $replyId: ${e.message}")
             ""
         }
+    }
+
+    /**
+     * sendManager.sendReaction for a 1:1 chat: this user's reaction to [message], which is a
+     * message of its own (its own id, never saved as a bubble), with the reacted message's id in
+     * replyId and the emoji as its text. An empty [emoji] withdraws the reaction.
+     *
+     * The caller records the reaction locally first (ReactionManager.apply), as ChatScreen does.
+     */
+    fun sendReaction(message: Message, emoji: String) {
+        val myUserId = MySelf.userId() ?: return
+
+        val reaction = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = message.fromUserId,
+            messageId = guid(),
+            replyId = message.messageId,
+            groupId = "",
+            groupSize = 0,
+            text = emoji,
+            textAttached = "",
+            nameAttached = "",
+            uri = "",
+            type = Type.REACTION,
+            subType = "",
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null
+        )
+
+        sendMessage(MessageData.fromMessage(reaction))
     }
 
     /**
@@ -378,6 +413,84 @@ object Outgoing {
         if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
+    }
+
+    /** peerViewModel.sendMyProfileToRemotePeer: the picture leaves at most 1024 on its long side, quality 85. */
+    private const val PROFILE_PICTURE_SIDE = 1024
+    private const val PROFILE_PICTURE_QUALITY = 0.85f
+
+    /**
+     * peerViewModel.sendMyProfileToRemotePeer: this user's name, bio and picture to [remoteUserId],
+     * as a message of type profile. It is how a contact being acquired learns who it is talking
+     * to, and how a contact asking for it (REQUEST_PROFILE) gets a fresh one. The row is saved,
+     * as on the phone, so that the delivery ladder covers it; the window never draws it.
+     *
+     * The phone also puts its Bluetooth address in the record; the PC has no Bluetooth
+     * transport, so it puts none, which is what a phone without one sends.
+     */
+    suspend fun sendMyProfile(remoteUserId: String) {
+        debugLine("sendMyProfileToRemotePeer", "Start: sending my profile to $remoteUserId")
+        try {
+            val myUserId = MySelf.userId()
+            if (myUserId.isNullOrEmpty()) {
+                debugLine("sendMyProfileToRemotePeer", "I do not have a userId")
+                return
+            }
+            val myName = MySelf.name()
+            if (myName.isNullOrEmpty()) {
+                debugLine("sendMyProfileToRemotePeer", "I do not have a name")
+                return
+            }
+
+            val peerObject = Peer(
+                uid = 0,
+                userId = myUserId,
+                token = "",
+                name = myName,
+                bio = MySelf.bio(),
+                picture = null,
+                status = Contact.NEW,
+                privateId = MySelf.privateId() ?: "",
+                bluetoothMac = null
+            )
+
+            val myProfileString = Json.encodeToString(Peer.serializer(), peerObject)
+            val messageId = guid()
+            val myProfilePicString = MediaFiles.fileOfUri(MySelf.pictureUri())?.let { source ->
+                try {
+                    MediaFiles.keepResized(source, PROFILE_PICTURE_SIDE, PROFILE_PICTURE_QUALITY).toURI().toString()
+                } catch (e: MediaFiles.Refused) {
+                    null
+                }
+            } ?: NO_PICTURE
+
+            val message = Message(
+                0,
+                myUserId,
+                remoteUserId,
+                messageId,
+                "",
+                "",
+                0,
+                myProfileString,
+                null,
+                null,
+                myProfilePicString,
+                Type.PROFILE,
+                null,
+                System.currentTimeMillis(),
+                "",
+                null
+            )
+
+            // sendManager.sendProfile.
+            if (getMessageRepository(App.context()).saveMessage(message, messageIn = false)) {
+                sendMessage(MessageData.fromMessage(message))
+            }
+            debugLine("sendMyProfileToRemotePeer", "Profile sent to $remoteUserId (messageId=$messageId)")
+        } catch (ex: Exception) {
+            debugLine("sendMyProfileToRemotePeer", "Cannot send my profile to $remoteUserId: ${ex.message}")
+        }
     }
 
     /**

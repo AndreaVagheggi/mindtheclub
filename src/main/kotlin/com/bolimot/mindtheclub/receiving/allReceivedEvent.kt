@@ -4,8 +4,8 @@ package com.bolimot.mindtheclub.receiving
 // keeps the App's structure and order (the processing claim, the read that tolerates a missing
 // row, the blocked sender, the content check, then the type), with these differences:
 //
-//   - ONLY TEXT, SINGLE IMAGES, VIDEO, FILES AND CONTACTS ARE PROCESSED (isOnThePc). Every other
-//     type (albums, profile, reaction, sticker, gif, link, audio) is left exactly where it is:
+//   - ONLY TEXT, SINGLE IMAGES, VIDEO, FILES, CONTACTS, REACTIONS AND PROFILES ARE PROCESSED
+//     (isOnThePc). Every other type (albums, sticker, gif, link, audio) is left exactly where it is:
 //     its chunks stay in the Inbox and nothing is confirmed, so the sender keeps its copy and
 //     goes on announcing it.
 //     Confirming a content this program cannot save would make the sender delete it
@@ -16,9 +16,14 @@ package com.bolimot.mindtheclub.receiving
 //   - MessageNotifier (a LiveData the chat screen observes) is replaced by DesktopEvents, which
 //     the save itself already calls;
 //   - getFullMessage keeps its behaviour, with java.util.Base64 and a file URI in place of the
-//     Android classes; addIncomingContact is not here (contact acquisition is not on the PC).
+//     Android classes;
+//   - addIncomingContact calls the repository's body (functions/database.kt) instead of the
+//     view model.
 
+import com.bolimot.mindtheclub.contactAcquisition.receiveProfile
 import com.bolimot.mindtheclub.database.inbox.Inbox
+import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.functions.addOrUpdatePeer
 import com.bolimot.mindtheclub.database.inbox.InboxDao
 import com.bolimot.mindtheclub.functions.contentKeyOf
 import com.bolimot.mindtheclub.functions.debugLine
@@ -117,6 +122,19 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
             }
             // The assembled file is the contact's picture: receiveObject keeps it.
             Type.CONTACT -> receiveObject(messageId, content, message.text, fromUserId, type)
+            Type.REACTION -> {
+                // DESKTOP: as for a text, the assembled file (empty: a reaction carries no
+                // content) is not needed; the emoji is the text of the Inbox row.
+                if (content.startsWith("file:")) {
+                    try {
+                        File(java.net.URI(content)).delete()
+                    } catch (e: Exception) {
+                        // Not worth a log line.
+                    }
+                }
+                receiveReaction(messageId, message.text)
+            }
+            Type.PROFILE -> receiveProfile(message.text, content, message)
         }
         return true
     } finally {
@@ -167,4 +185,13 @@ suspend fun getFullMessage(message: Inbox, inboxDao: InboxDao, type: String): St
     if (!success) return null
 
     return file.toURI().toString()
+}
+
+suspend fun addIncomingContact(profileData: Peer): Boolean {
+    try {
+        return addOrUpdatePeer(profileData)
+    } catch (e: Exception) {
+        debugLine("addIncomingContact", e.toString())
+        return false
+    }
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,6 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -233,6 +235,18 @@ private fun ChatsScreen(state: AppState) {
     if (returning) {
         ReturnToPhoneDialog(state, onClose = { returning = false })
     }
+
+    state.profileShown?.let { profile ->
+        ProfileDialog(
+            profile,
+            onRemovePending = { state.removePending(profile.userId) },
+            onClose = { state.closeProfile() }
+        )
+    }
+
+    state.contactToAdd?.let { contact ->
+        NewPeerDialog(contact, onYes = { state.confirmAddContact() }, onNo = { state.cancelAddContact() })
+    }
 }
 
 @Composable
@@ -266,6 +280,11 @@ private fun ContactList(state: AppState, onReturnToPhone: () -> Unit) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    // The grey dots of a contact being acquired (peer_item.xml, "pending").
+                    if (chat.isNew) {
+                        Spacer(Modifier.width(8.dp))
+                        Icon(AppIcons.Pending, contentDescription = Strings.PENDING, tint = GREY, modifier = Modifier.size(24.dp))
                     }
                     if (chat.unread > 0) {
                         Spacer(Modifier.width(8.dp))
@@ -314,6 +333,10 @@ private fun Conversation(state: AppState) {
     var forwarding by remember(state.selectedUserId) { mutableStateOf<Message?>(null) }
     // A picture, video or file being forwarded, shown for confirmation before it is sent.
     var forwardPlan by remember(state.selectedUserId) { mutableStateOf<ForwardPlan?>(null) }
+    // The message whose "+" was chosen on the reaction bar, while every emoji is on screen.
+    var choosingEmojiFor by remember(state.selectedUserId) { mutableStateOf<Message?>(null) }
+    // The message whose reaction pill was clicked, while the list of who reacted is on screen.
+    var reactionsOf by remember(state.selectedUserId) { mutableStateOf<String?>(null) }
     val messageBoxFocus = remember { FocusRequester() }
     val listState = rememberLazyListState()
 
@@ -381,7 +404,8 @@ private fun Conversation(state: AppState) {
                         forwarding = picked
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp)
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
+                showReplyForward = state.canReplyOrForward(picked)
             )
         }
         HorizontalDivider()
@@ -393,7 +417,15 @@ private fun Conversation(state: AppState) {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(state.messages, key = { it.messageId }) { message ->
-                    Bubble(state, message)
+                    Bubble(
+                        state,
+                        message,
+                        onMoreEmojis = {
+                            state.clearSelection()
+                            choosingEmojiFor = message
+                        },
+                        onShowReactions = { reactionsOf = message.messageId }
+                    )
                 }
             }
 
@@ -508,6 +540,22 @@ private fun Conversation(state: AppState) {
         )
     }
 
+    // The "+" of the reaction bar: every emoji. The one chosen is the reaction.
+    choosingEmojiFor?.let { message ->
+        EmojiPickerDialog(
+            onPick = { emoji ->
+                state.react(message, emoji)
+                choosingEmojiFor = null
+            },
+            onClose = { choosingEmojiFor = null }
+        )
+    }
+
+    // The reaction pill of a bubble: who reacted, and with what.
+    reactionsOf?.let { messageId ->
+        ReactionsDialog(state, messageId, onClose = { reactionsOf = null })
+    }
+
     // Forward, first step: to whom. A text then leaves at once; a picture, a video and a file
     // go through the screen they are sent from (ChatScreen, getPeersResult).
     forwarding?.let { message ->
@@ -578,9 +626,10 @@ private fun Conversation(state: AppState) {
 }
 
 @Composable
-private fun Bubble(state: AppState, message: Message) {
+private fun Bubble(state: AppState, message: Message, onMoreEmojis: () -> Unit, onShowReactions: () -> Unit) {
     val mine = state.isMine(message)
     val picked = state.selectedMessageId == message.messageId
+    val pill = message.reaction?.takeIf { it.isNotEmpty() && message.status != Status.RECEIVING }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -599,9 +648,15 @@ private fun Bubble(state: AppState, message: Message) {
                     }
                 }
             }
-            .padding(top = 2.dp),
+            // Room under the bubble for its reaction pill, which hangs below it as on the phone.
+            .padding(top = 2.dp, bottom = if (pill != null) 16.dp else 0.dp),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
     ) {
+      // The bubble's own box: what the reaction bar is placed against, and where the pill hangs.
+      Box {
+        if (picked && state.canReact(message)) {
+            ReactionBarPopup(state, message, onMore = onMoreEmojis)
+        }
         Surface(
             color = if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(12.dp),
@@ -652,6 +707,15 @@ private fun Bubble(state: AppState, message: Message) {
                 )
             }
         }
+        // chat_text_in.xml, "emoji": 12 in from the bubble's left edge, 16 below its bottom.
+        if (pill != null) {
+            ReactionPill(
+                pill,
+                onClick = onShowReactions,
+                modifier = Modifier.align(Alignment.BottomStart).offset(x = 12.dp, y = 16.dp)
+            )
+        }
+      }
     }
 }
 

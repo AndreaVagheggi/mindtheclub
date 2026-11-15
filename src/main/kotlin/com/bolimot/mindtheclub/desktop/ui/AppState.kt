@@ -4,9 +4,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.work.BackoffPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.database.database.DatabaseProvider
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.peer.Peer
+import com.bolimot.mindtheclub.database.reaction.ReactionManager
+import com.bolimot.mindtheclub.desktop.backend.Backend
 import com.bolimot.mindtheclub.desktop.backup.BackupExporter
 import com.bolimot.mindtheclub.desktop.backup.BackupImporter
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
@@ -17,21 +24,26 @@ import com.bolimot.mindtheclub.desktop.media.VideoCompressor
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.getMessageRepository
+import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.start.App
+import com.bolimot.mindtheclub.tools.Contact
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.SubType
 import com.bolimot.mindtheclub.tools.Type
+import com.bolimot.mindtheclub.works.AcquireContactWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.awt.Desktop
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /** Which screen the window shows. */
 sealed interface Screen {
@@ -55,8 +67,25 @@ class ChatItem(
     val picture: String?,
     val preview: String,
     val lastDate: Long,
-    val unread: Int
-)
+    val unread: Int,
+    /** The contact's status: Contact.ACTIVE, or Contact.NEW while it is being acquired. */
+    val status: String = Contact.ACTIVE
+) {
+    /** A contact being acquired: its row says "Pending…" and opens its profile, not a chat (PeersFragment). */
+    val isNew: Boolean get() = status == Contact.NEW
+}
+
+/**
+ * The profile on screen (PeerView): opened from a shared contact's View Profile, or from the
+ * row of a contact being acquired, which can be removed from there.
+ */
+class ProfileView(val userId: String, val name: String, val bio: String, val picture: File?, val pending: Boolean)
+
+/** A contact the user is asked to add (NewPeerDialog), with the fingerprint its card vouches for. */
+class ContactToAdd(val userId: String, val name: String, val bio: String?, val fingerprint: String?)
+
+/** One line of the list of who reacted to a message (the phone's ReactionItem). */
+class ReactionRow(val userId: String, val name: String, val picture: File?, val emoji: String, val isMe: Boolean)
 
 /** A picture to draw small: the file of an image, or of a video, whose still frame is then drawn. */
 class QuotedMedia(val file: File, val isVideo: Boolean)
@@ -141,6 +170,7 @@ class AppState(private val scope: CoroutineScope) {
         // The engine reports here. Set before it starts, so nothing is missed.
         DesktopEvents.onMessageSaved = { message -> scope.launch(Dispatchers.IO) { onMessageSaved(message) } }
         DesktopEvents.onStatusChanged = { _, _ -> scope.launch(Dispatchers.IO) { reload() } }
+        DesktopEvents.onReactionChanged = { _, _ -> scope.launch(Dispatchers.IO) { reload() } }
         DesktopEvents.chatOnScreen = { userId -> userId == selectedUserId }
         Engine.onPushLost = { warning = Strings.PUSH_LOST }
 
@@ -158,7 +188,28 @@ class AppState(private val scope: CoroutineScope) {
         myUserId = MySelf.userId() ?: ""
         myName = MySelf.name() ?: ""
         reload()
+        watchContacts()
         screen = Screen.Chats
+    }
+
+    private var contactsWatch: Job? = null
+
+    /**
+     * The contact list follows the contacts table: a contact asked for, accepted, made active or
+     * given a new profile is written by the engine at moments the window cannot know, as the
+     * phone's list follows its paging source. Started again with every start of the engine,
+     * because a loaded backup opens a new database.
+     */
+    private fun watchContacts() {
+        contactsWatch?.cancel()
+        contactsWatch = scope.launch(Dispatchers.IO) {
+            try {
+                DatabaseProvider.provideDatabase().invalidationTracker.createFlow("Peer").collect { reload() }
+            } catch (e: Throwable) {
+                // The database was closed under the watch (a backup being loaded): the next
+                // start watches the new one.
+            }
+        }
     }
 
     /** Loads a phone backup, replacing whatever is on this PC, then starts. */
@@ -208,6 +259,13 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun select(userId: String) = scope.launch(Dispatchers.IO) {
+        // A contact being acquired has no chat yet: its row opens its profile (PeersFragment).
+        val chat = chats.firstOrNull { it.userId == userId }
+        if (chat != null && chat.isNew) {
+            // The phone shows "Pending…" where the bio goes.
+            profileShown = ProfileView(chat.userId, chat.name, Strings.PENDING, MediaFiles.fileOfUri(chat.picture), pending = true)
+            return@launch
+        }
         selectedMessageId = null
         selectedUserId = userId
         selectedName = chats.firstOrNull { it.userId == userId }?.name ?: ""
@@ -227,10 +285,80 @@ class AppState(private val scope: CoroutineScope) {
                 (message.type == Type.TEXT || message.type == Type.IMAGE ||
                         message.type == Type.VIDEO || isFileType(message.type))
 
+    /**
+     * Whether the user can react to a message: ChatScreen.showReactionOverlay. In a chat with
+     * one person, only to what that person sent (the phone shows no reaction bar on the user's
+     * own messages), and not to a content still arriving or a missed call.
+     */
+    fun canReact(message: Message): Boolean =
+        !isMine(message) && message.chatGroupId == null &&
+                message.status != Status.RECEIVING && message.type != Type.MISSED_CALL
+
     /** Picks [message], or lets go of it when it is the one already picked. */
     fun toggleSelection(message: Message) {
-        if (!canReplyOrForward(message)) return
+        if (!canReplyOrForward(message) && !canReact(message)) return
         selectedMessageId = if (selectedMessageId == message.messageId) null else message.messageId
+    }
+
+    // ---------------------------------------------------------------------- reactions
+
+    /**
+     * Puts [emoji] on [message] for this user, or takes it away when it is the one already there:
+     * ChatScreen.sendReactionToServer. Recorded here first, so the pill changes at once, then
+     * sent to the person who wrote the message.
+     */
+    fun react(message: Message, emoji: String) {
+        selectedMessageId = null
+        scope.launch(Dispatchers.IO) {
+            try {
+                val myUserId = MySelf.userId() ?: return@launch
+                val applied = if (ReactionManager.myEmoji(message.messageId) == emoji) "" else emoji
+                ReactionManager.apply(message.messageId, myUserId, applied, System.currentTimeMillis())
+                Outgoing.sendReaction(message, applied)
+            } catch (e: Throwable) {
+                warning = "${Strings.SEND_FAILED} ${e.message}"
+            }
+            reload()
+        }
+    }
+
+    /** The emoji this user put on a message, or null. */
+    suspend fun myEmojiOn(messageId: String): String? = ReactionManager.myEmoji(messageId)
+
+    /** Who reacted to a message, oldest first: ReactionsBottomSheet.toItems. */
+    suspend fun reactionRowsOf(messageId: String): List<ReactionRow> {
+        return try {
+            val peers = getPeerDao(App.context())
+            ReactionManager.reactionsOf(messageId).map { reaction ->
+                val isMe = reaction.reactorUserId == myUserId
+                val peer = if (isMe) null else peers.getPeer(reaction.reactorUserId)
+                ReactionRow(
+                    userId = reaction.reactorUserId,
+                    name = if (isMe) Strings.YOU else peer?.name?.takeIf { it.isNotEmpty() } ?: Strings.MEMBER,
+                    // Our own picture is not in the contacts: MySelf has it, as on the phone.
+                    picture = MediaFiles.fileOfUri(if (isMe) MySelf.pictureUri() else peer?.picture),
+                    emoji = reaction.emoji,
+                    isMe = isMe
+                )
+            }
+        } catch (e: Throwable) {
+            emptyList()
+        }
+    }
+
+    /** Takes this user's reaction off a message: the own line of the list of who reacted. */
+    fun removeMyReaction(messageId: String) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val myUserId = MySelf.userId() ?: return@launch
+                val message = getMessageRepository(App.context()).getMessage(messageId) ?: return@launch
+                ReactionManager.apply(messageId, myUserId, "", System.currentTimeMillis())
+                Outgoing.sendReaction(message, "")
+            } catch (e: Throwable) {
+                warning = "${Strings.SEND_FAILED} ${e.message}"
+            }
+            reload()
+        }
     }
 
     fun clearSelection() {
@@ -396,8 +524,96 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
-    /** The contacts that can be shared in the open chat: all of them but the one being written to. */
-    fun shareableContacts(): List<ChatItem> = chats.filter { it.userId != selectedUserId }
+    /**
+     * The contacts that can be shared in the open chat, or a message forwarded to: all of them
+     * but the one being written to, and but the ones still being acquired, which have no chat.
+     */
+    fun shareableContacts(): List<ChatItem> = chats.filter { it.userId != selectedUserId && it.status == Contact.ACTIVE }
+
+    // ------------------------------------------------------------ contacts and profiles
+
+    /** The profile on screen, or null. */
+    var profileShown: ProfileView? by mutableStateOf<ProfileView?>(null)
+        private set
+
+    /** The contact the user is being asked to add, or null. */
+    var contactToAdd: ContactToAdd? by mutableStateOf<ContactToAdd?>(null)
+        private set
+
+    /** View Profile on a shared contact: ChatScreen.onViewProfileClick, opening PeerView. */
+    fun viewProfileOf(message: Message) {
+        val peer = contactOf(message) ?: return
+        profileShown = ProfileView(peer.userId, peer.name, peer.bio ?: "", MediaFiles.fileOfUri(message.uri), pending = false)
+    }
+
+    fun closeProfile() {
+        profileShown = null
+    }
+
+    /**
+     * Add Contact on a shared contact: ChatScreen.onAddContactClick, then acquiringNewContact.
+     * Nothing happens for this user's own card, nor for a contact already here, exactly as on
+     * the phone. The phone also records a contact already here whose card carries a different
+     * key, for the key change dialog; that dialog is not on the PC, so nothing is recorded and
+     * the key is never taken.
+     */
+    fun addContactFrom(message: Message) {
+        val peer = contactOf(message) ?: return
+        // The shared contact carries the peer's public key as attested by the mutual friend.
+        val fingerprint = peer.publicKey?.takeIf { it.isNotEmpty() }?.let { KeyManager.fingerprintOf(it) }
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (peer.userId == myUserId) return@launch
+                if (getPeerDao(App.context()).getPeer(peer.userId) != null) return@launch
+                contactToAdd = ContactToAdd(peer.userId, peer.name, peer.bio, fingerprint)
+            } catch (e: Throwable) {
+                warning = "${Strings.DATABASE_ERROR} ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Yes on the question: NewPeerDialog hands the contact to AcquireContactWorker, which puts
+     * it in the list as pending, checks its key, writes the request and tells the contact.
+     */
+    fun confirmAddContact() {
+        val contact = contactToAdd ?: return
+        contactToAdd = null
+        val inputData = workDataOf(
+            "userId" to contact.userId,
+            "name" to contact.name,
+            "bio" to contact.bio,
+            "fingerprint" to contact.fingerprint,
+        )
+        val workRequest = OneTimeWorkRequestBuilder<AcquireContactWorker>()
+            .setInputData(inputData)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(App.context()).enqueue(workRequest)
+    }
+
+    fun cancelAddContact() {
+        contactToAdd = null
+    }
+
+    /**
+     * "Remove pending contact" (PeerView): the request is taken back from the contact's inbox
+     * and the contact leaves the list. (The phone also deletes a picture of older builds from
+     * Storage; the PC never put one there.)
+     */
+    fun removePending(userId: String) {
+        profileShown = null
+        scope.launch(Dispatchers.IO) {
+            try {
+                val me = MySelf.userId() ?: return@launch
+                Backend.deleteContactRequest(userId, me)
+                getPeerDao(App.context()).deletePeerByUserId(userId)
+            } catch (e: Throwable) {
+                warning = "${Strings.REMOVE_FAILED} ${e.message}"
+            }
+            reload()
+        }
+    }
 
     /** The contact a contact message carries: its text is the contact's record, as JSON. */
     fun contactOf(message: Message): Peer? {
@@ -463,16 +679,22 @@ class AppState(private val scope: CoroutineScope) {
                 if (peer.userId.startsWith("group") || peer.userId.startsWith("mtc-")) continue
                 if (peer.userId == myUserId) continue
 
-                val last = db.messageDao().getLastMessage(peer.userId)
+                // A profile message is the engine's business and is never drawn (the phone gives
+                // it an empty row): the last message shown is the last one of another kind.
+                val last = db.messageDao().getLastMessage(peer.userId)?.takeIf { it.type != Type.PROFILE }
+                    ?: db.messageDao().getRecentMessages(myUserId, peer.userId, PREVIEW_LOOKBACK)
+                        .firstOrNull { it.type != Type.PROFILE }
                 val unread = db.messageDao().getUnseenMessages(peer.userId).size
                 items.add(
                     ChatItem(
                         userId = peer.userId,
                         name = peer.name,
                         picture = peer.picture,
-                        preview = last?.let { previewOf(it) } ?: "",
+                        // A contact not yet active says so, as on the phone (viewHolders/peers/active.kt).
+                        preview = if (peer.status != Contact.ACTIVE) Strings.PENDING else last?.let { previewOf(it) } ?: "",
                         lastDate = last?.date ?: 0L,
-                        unread = unread
+                        unread = unread,
+                        status = peer.status
                     )
                 )
             }
@@ -484,7 +706,7 @@ class AppState(private val scope: CoroutineScope) {
             if (open != null) {
                 val list = db.messageDao().getRecentMessages(myUserId, open, MAX_MESSAGES_SHOWN).reversed()
                 messages.clear()
-                messages.addAll(list)
+                messages.addAll(list.filter { it.type != Type.PROFILE })
             }
         } catch (e: Throwable) {
             warning = "${Strings.DATABASE_ERROR} ${e.message}"
@@ -548,6 +770,9 @@ class AppState(private val scope: CoroutineScope) {
 
     private companion object {
         const val MAX_MESSAGES_SHOWN = 300
+
+        /** How far back the contact list looks for a message to preview past profile messages. */
+        const val PREVIEW_LOOKBACK = 20
 
         // A contact's record may gain fields in a later version of the App: read what is known.
         val contactJson = Json { ignoreUnknownKeys = true }

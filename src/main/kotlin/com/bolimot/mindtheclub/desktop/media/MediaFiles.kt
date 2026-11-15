@@ -163,6 +163,39 @@ object MediaFiles {
     }
 
     /**
+     * A copy of the picture in [source], turned the way its EXIF tag says and no larger than
+     * [longSide] (never enlarged), kept in the media folder as a JPEG at [quality]. What the
+     * phone's saveBitmapFromUri does to the profile picture before sending it.
+     */
+    suspend fun keepResized(source: File, longSide: Int, quality: Float): File = withContext(Dispatchers.IO) {
+        val image = thumbnail(source, longSide) ?: throw Refused("not a picture this PC can read")
+        keepJpeg(image, quality)
+    }
+
+    /**
+     * Keeps a received picture, [temp], in the media folder under the hash of its bytes, once it
+     * is known to be a picture. Null, and [temp] deleted, when it is not: what the phone's
+     * loadBitmap returning null means to receiveProfile.
+     */
+    suspend fun keepReceivedPicture(temp: File): File? = withContext(Dispatchers.IO) {
+        try {
+            if (thumbnail(temp, 64) == null) {
+                temp.delete()
+                return@withContext null
+            }
+            val hash = computeSha256(temp.inputStream())
+            if (hash == null) {
+                temp.delete()
+                return@withContext null
+            }
+            keep(temp, "$hash.jpg")
+        } catch (e: Exception) {
+            temp.delete()
+            null
+        }
+    }
+
+    /**
      * A small copy of a picture for the window, no larger than [longSide]. Null when the file
      * cannot be read as an image. Blocking: call it off the interface thread.
      */

@@ -1,6 +1,11 @@
 package com.bolimot.mindtheclub.desktop.engine
 
+import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
+import com.bolimot.mindtheclub.contactAcquisition.getAcquisitionStatus
+import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
+import com.bolimot.mindtheclub.contactAcquisition.setAcquisitionStatus
 import com.bolimot.mindtheclub.crypto.KeyManager
+import com.bolimot.mindtheclub.desktop.backend.Backend
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
@@ -13,6 +18,7 @@ import com.bolimot.mindtheclub.functions.stringToListInt
 import com.bolimot.mindtheclub.sending.reSendMessage
 import com.bolimot.mindtheclub.sending.restrictBatchToMissing
 import com.bolimot.mindtheclub.sending.sendMessageId
+import com.bolimot.mindtheclub.works.ContactRequestRetryWorker
 import com.bolimot.mindtheclub.works.DispatchWorker
 import com.bolimot.mindtheclub.works.submitDispatchWorker
 import com.bolimot.mindtheclub.functions.getBlockedUserRepository
@@ -26,10 +32,17 @@ import com.bolimot.mindtheclub.receiving.checkIfMessageIsCompleted
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.App
+import com.bolimot.mindtheclub.tools.AcquisitionStatus
+import com.bolimot.mindtheclub.tools.Contact
+import com.bolimot.mindtheclub.tools.Location
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
+import com.bolimot.mindtheclub.tools.ProfileType
 import com.bolimot.mindtheclub.tools.Status
+import com.bolimot.mindtheclub.tools.Type
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -57,8 +70,11 @@ import kotlinx.serialization.json.jsonObject
  *   Seen            the peer read our message
  *   connectionBusy  the peer refused our dataCall for now
  *
- * Everything else (calls, groups, contact requests, typing) is recorded in the log and
- * otherwise ignored.
+ * CONTACTS
+ *   contactRequest  someone asked to become a contact: accept the request in our inbox
+ *   requestProfile  a contact asks for our profile: send it
+ *
+ * Everything else (calls, groups, typing) is recorded in the log and otherwise ignored.
  */
 object SignalHandler {
 
@@ -105,10 +121,10 @@ object SignalHandler {
                     return@launch
                 }
 
-                // The App also recognises a peer whose contact acquisition is in progress and a
-                // member of one of its groups (isRecognisedPeer). Neither exists on the PC yet,
-                // so a contact in the database is the whole test.
-                if (!getPeerDao(App.context()).exist(remoteUserId)) {
+                // CONTACT_REQUEST comes from an unknown peer by definition. Safe: the handler
+                // only acts on a request document in OUR own inbox, with fingerprint check. A
+                // spoofed signal with no matching request is a no-op.
+                if (type != Notify.CONTACT_REQUEST && !isRecognisedPeer(remoteUserId)) {
                     debugLine(TAG, "Ignoring signal from unrecognised peer: $remoteUserId")
                     return@launch
                 }
@@ -122,6 +138,21 @@ object SignalHandler {
                 debugLine(TAG, "Exception on onPush: ${ex.message}")
             }
         }
+    }
+
+    /**
+     * myFirebaseMessagingService.kt, isRecognisedPeer: a contact, or a peer whose contact
+     * acquisition is in progress. DESKTOP: the App's third case, a member of one of our groups,
+     * is left out: groups are not on the PC.
+     */
+    private suspend fun isRecognisedPeer(userId: String): Boolean {
+        val context = App.context()
+        if (getPeerDao(context).exist(userId)) return true
+
+        return getAcquisitionStatus(userId, Location.LOCAL, ProfileType.LOCAL, context) != null ||
+                getAcquisitionStatus(userId, Location.LOCAL, ProfileType.REMOTE, context) != null ||
+                getAcquisitionStatus(userId, Location.REMOTE, ProfileType.LOCAL, context) != null ||
+                getAcquisitionStatus(userId, Location.REMOTE, ProfileType.REMOTE, context) != null
     }
 
     /** MyFirebaseMessagingService.openPayload. */
@@ -310,6 +341,24 @@ object SignalHandler {
                 deleteBatchTables(messageId)
                 PendingMessageTracker.remove(context, messageId, fromUserId)
 
+                // Our profile has arrived: the acquisition of this contact moves on, and the
+                // contact is complete once its own profile is here too.
+                if (ackedMessage?.type == Type.PROFILE) {
+                    setAcquisitionStatus(fromUserId, Location.LOCAL, ProfileType.LOCAL, AcquisitionStatus.SENT, context)
+                    debugLine("receiveProfile", "Set LOCALLY My profile sent")
+
+                    setAcquisitionStatus(fromUserId, Location.REMOTE, ProfileType.LOCAL, AcquisitionStatus.RECEIVED, context)
+                    debugLine("receiveProfile", "Set REMOTELLY My profile received")
+
+                    val myProfileStat = getAcquisitionStatus(fromUserId, Location.LOCAL, ProfileType.REMOTE, context)
+                    debugLine("receiveProfile", "Getting My profileStat LOCALLY/Remote Profile status: $myProfileStat")
+
+                    if (myProfileStat == AcquisitionStatus.RECEIVED) {
+                        debugLine("receiveProfile", "Already received remote profile, set ACTIVE")
+                        getPeerDao(context).updatePeerStatus(fromUserId, Contact.ACTIVE)
+                    }
+                }
+
                 // Piggyback: the peer is demonstrably awake, so the oldest message still owed
                 // to it goes out now instead of waiting for its rung on the ladder.
                 val stalePending = PendingMessageTracker.getPendingForPeer(context, fromUserId)
@@ -437,6 +486,37 @@ object SignalHandler {
                 debugLine(TAG, "Remote peer is busy for DATA_CALL, aborting connect attempt")
                 val cid = channelId ?: return
                 DataLink.peerBusy(fromUserId, cid)
+            }
+
+            // myFirebaseMessagingService.kt, Notify.REQUEST_PROFILE.
+            Notify.REQUEST_PROFILE -> {
+                debugLine(TAG, "Remote peer $fromUserId is requesting my profile")
+                Outgoing.sendMyProfile(fromUserId)
+            }
+
+            // myFirebaseMessagingService.kt, Notify.CONTACT_REQUEST. Someone wrote a request
+            // into our inbox and says so: accept it, as the phone does with auto-invite on
+            // (acceptNewContact.kt says why the PC has it always on).
+            Notify.CONTACT_REQUEST -> {
+                debugLine(TAG, "Contact request nudge from $fromUserId")
+                try {
+                    if (!isAutoInviteEnabled(context)) {
+                        debugLine(TAG, "Auto-invite disabled; request will surface on next app open")
+                        return
+                    }
+                    val myUserId = MySelf.userId() ?: return
+
+                    val doc = withContext(Dispatchers.IO) { Backend.contactRequest(myUserId, fromUserId) }
+                    if (doc == null) {
+                        debugLine(TAG, "No pending request doc from $fromUserId (already processed?)")
+                        return
+                    }
+
+                    autoAcceptRequestDocument(doc, context)
+                } catch (e: Exception) {
+                    debugLine(TAG, "Contact request handling failed: ${e.message}. Scheduling retry.")
+                    ContactRequestRetryWorker.enqueue(context)
+                }
             }
 
             else -> debugLine(TAG, "Signal $type is not handled on the PC yet")

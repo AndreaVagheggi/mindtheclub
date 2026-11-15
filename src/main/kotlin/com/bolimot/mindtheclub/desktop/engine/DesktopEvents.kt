@@ -34,6 +34,20 @@ object DesktopEvents {
         }
     }
 
+    /**
+     * The reactions on a message changed, ours or a peer's: [pill] is the new caption of the
+     * bubble's pill, empty when nobody has reacted any more.
+     */
+    @Volatile var onReactionChanged: ((messageId: String, pill: String) -> Unit)? = null
+
+    fun reactionChanged(messageId: String, pill: String) {
+        try {
+            onReactionChanged?.invoke(messageId, pill)
+        } catch (e: Exception) {
+            // A listener's failure is never the engine's.
+        }
+    }
+
     /** Whether the chat with this peer is the one on screen (ChatScreen in foreground). */
     @Volatile var chatOnScreen: (String) -> Boolean = { false }
 

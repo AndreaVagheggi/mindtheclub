@@ -52,6 +52,13 @@ object Strings {
     const val FORWARD = "Forward"
     const val SELECT_CONTACTS = "Select contacts"
 
+    // Reactions, in the App's own words.
+    const val REACTIONS = "Reactions"
+    fun reactionsAll(count: Int) = "All $count"
+    const val TAP_TO_REMOVE = "Tap to remove"
+    const val SELECT_AN_EMOJI = "Select an Emoji"
+    const val MEMBER = "Member"
+
     const val SEND_VIDEO_TITLE = "Send video"
     const val PREPARING_VIDEO = "Preparing video..."
 
@@ -62,6 +69,16 @@ object Strings {
     const val VIEW_PROFILE = "View Profile"
     const val ADD_CONTACT = "Add Contact"
     const val NO_CONTACTS_TO_SHARE = "There are no other contacts to share."
+
+    // Adding a contact and a contact being added, in the App's own words (new_peer_dialog.xml,
+    // NewPeerDialog, peer_view.xml).
+    const val ADD_NEW_CONTACT = "Add new contact"
+    const val ADD_MESSAGE = "Do you want to add this contact?"
+    const val YES = "Yes"
+    const val NO = "No"
+    const val PENDING = "Pending…"
+    const val REMOVE_PENDING = "Remove pending contact"
+    const val REMOVE_FAILED = "The pending contact could not be removed."
 
     // The paperclip and its four choices, in the App's own words.
     const val ATTACH = "Attachment"

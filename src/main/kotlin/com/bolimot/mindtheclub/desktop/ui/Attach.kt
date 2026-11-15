@@ -106,6 +106,14 @@ internal object AppIcons {
         )
     }
 
+    /** add.xml: the "+" at the end of the reaction bar, which opens every emoji. */
+    val Add: ImageVector by lazy {
+        icon(
+            "add", 960f,
+            "M440,520L200,520L200,440L440,440L440,200L520,200L520,440L760,440L760,520L520,520L520,760L440,760L440,520Z"
+        )
+    }
+
     /** reply.xml: the toolbar action of a picked message. */
     val Reply: ImageVector by lazy {
         icon("reply", 24f, "M10,9V5l-7,7 7,7v-4.1c5,0 8.5,1.6 11,5.1 -1,-5 -4,-10 -11,-11z")
@@ -121,6 +129,43 @@ internal object AppIcons {
         icon(
             "close", 18f,
             "M14.53,4.53l-1.06,-1.06L9,7.94 4.53,3.47 3.47,4.53 7.94,9l-4.47,4.47 1.06,1.06L9,10.06l4.47,4.47 1.06,-1.06L10.06,9z"
+        )
+    }
+
+    /** add_contact.xml: the head of the question that adds a contact (new_peer_dialog.xml). */
+    val AddContact: ImageVector by lazy {
+        icon(
+            "add_contact", 24f,
+            "M15,12c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4 -4,1.79 -4,4 1.79,4 4,4zM6,10L6,7L4,7v3L1,10v2h3v3h2v-3h3v-2L6,10zM15,14c-2.67,0 -8,1.34 -8,4v2h16v-2c0,-2.66 -5.33,-4 -8,-4z"
+        )
+    }
+
+    /** person2.xml: beside the name on a profile (peer_view.xml). */
+    val Person: ImageVector by lazy {
+        icon(
+            "person2", 24f,
+            "M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"
+        )
+    }
+
+    /** bio.xml: beside the bio on a profile (peer_view.xml). */
+    val Bio: ImageVector by lazy {
+        icon(
+            "bio", 24f,
+            "M12,12.25c1.24,0 2.25,-1.01 2.25,-2.25S13.24,7.75 12,7.75 9.75,8.76 9.75,10s1.01,2.25 2.25,2.25zM16.5,16.25c0,-1.5 -3,-2.25 -4.5,-2.25s-4.5,0.75 -4.5,2.25L7.5,17h9v-0.75zM19,3L5,3c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2L21,5c0,-1.1 -0.9,-2 -2,-2zM19,19L5,19L5,5h14v14z"
+        )
+    }
+
+    /** delete.xml: on the button that removes a pending contact (peer_view.xml). */
+    val Delete: ImageVector by lazy {
+        icon("delete", 24f, "M6,19c0,1.1 0.9,2 2,2h8c1.1,0 2,-0.9 2,-2V7H6v12zM19,4h-3.5l-1,-1h-5l-1,1H5v2h14V4z")
+    }
+
+    /** pending.xml: the three dots on the row of a contact being acquired (peer_item.xml). */
+    val Pending: ImageVector by lazy {
+        icon(
+            "pending", 24f,
+            "M12,2C6.48,2 2,6.48 2,12c0,5.52 4.48,10 10,10s10,-4.48 10,-10C22,6.48 17.52,2 12,2zM7,13.5c-0.83,0 -1.5,-0.67 -1.5,-1.5c0,-0.83 0.67,-1.5 1.5,-1.5s1.5,0.67 1.5,1.5C8.5,12.83 7.83,13.5 7,13.5zM12,13.5c-0.83,0 -1.5,-0.67 -1.5,-1.5c0,-0.83 0.67,-1.5 1.5,-1.5s1.5,0.67 1.5,1.5C13.5,12.83 12.83,13.5 12,13.5zM17,13.5c-0.83,0 -1.5,-0.67 -1.5,-1.5c0,-0.83 0.67,-1.5 1.5,-1.5s1.5,0.67 1.5,1.5C18.5,12.83 17.83,13.5 17,13.5z"
         )
     }
 

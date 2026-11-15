@@ -15,11 +15,15 @@ import com.bolimot.mindtheclub.database.inbox.InboxDao
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.message.MessageDao
 import com.bolimot.mindtheclub.database.message.MessageRepository
+import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.database.peer.PeerDao
 import com.bolimot.mindtheclub.database.reaction.ReactionDao
 import com.bolimot.mindtheclub.database.reaction.ReactionRepository
 import com.bolimot.mindtheclub.database.video.VideoDao
 import com.bolimot.mindtheclub.desktop.storage.BatchDb
+import com.bolimot.mindtheclub.tools.Contact
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // The Context parameter is kept so the callers stay as they are in the App; on the PC there is
 // one database and it does not depend on it.
@@ -66,6 +70,38 @@ fun getInboxDao(context: Context): InboxDao {
 
 fun isGroupChat(message: Message): Boolean {
     return message.chatGroupId != null
+}
+
+/**
+ * DESKTOP: the body of the App's PeerRepository.addOrUpdatePeer, which its files reach through
+ * getPeerViewModel().addOrUpdatePeer. An existing contact gets the new token, name, bio,
+ * picture and privateId; a new one is inserted as NEW, the status of a contact being acquired.
+ */
+suspend fun addOrUpdatePeer(peer: Peer): Boolean = withContext(Dispatchers.IO) {
+    val success: Boolean
+
+    if(peer.userId.isEmpty()){
+        debugLine("addOrUpdatePeer", "Peer userId empty")
+        return@withContext false
+    }
+
+    try {
+        val peerDao = DatabaseProvider.provideDatabase().peerDao()
+        success = if (peerDao.exist(peer.userId)) {
+            peerDao.updatePeer(peer.userId, peer.token, peer.name, peer.bio, peer.picture,  peer.privateId) > 0
+        } else {
+            peer.status = Contact.NEW
+            peerDao.insert(peer) > 0
+        }
+
+        if (!success) {
+            debugLine("addOrUpdatePeer", "Failed to add or update peer")
+        }
+        success
+    } catch (ex: Exception){
+        debugLine("addOrUpdatePeer", "Exception: ${ex.message}")
+        false
+    }
 }
 
 // ---------------------------------------------------------------- batch tables

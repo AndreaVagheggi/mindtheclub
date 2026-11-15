@@ -8,12 +8,20 @@ package com.bolimot.mindtheclub.crypto
 // Not here, on purpose:
 //   - ensureKeyPair: a PC never CREATES an identity, it receives one from the phone;
 //   - exportIdentityKeyset / importIdentityKeyset: the handover in and out is BackupImporter's
-//     job (and, later, the direct handover's);
-//   - fetchAndStorePublicKeyVerified: contact acquisition is not on the PC yet.
+//     job (and, later, the direct handover's).
+//
+// fetchAndStorePublicKeyVerified is the App's, with the document read over REST (Backend) and
+// one difference, marked there.
 
+import android.content.Context
+import com.bolimot.mindtheclub.desktop.backend.Backend
 import com.bolimot.mindtheclub.desktop.crypto.IdentityKeys
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.functions.debugLine
+import com.bolimot.mindtheclub.functions.getPeerDao
+import com.bolimot.mindtheclub.transport.PeerIdentityResolver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object KeyManager {
 
@@ -40,6 +48,54 @@ object KeyManager {
     @Synchronized
     fun forget() {
         loaded = null
+    }
+
+    /**
+     * The App's fetchAndStorePublicKeyVerified: reads the public key [userId] published, and
+     * stores it in that contact's row only if its fingerprint is [expectedFingerprint], the one
+     * a QR, a shared contact card or a sealed contact request vouches for. Never stores a key
+     * that nothing vouches for.
+     */
+    suspend fun fetchAndStorePublicKeyVerified(
+        userId: String,
+        expectedFingerprint: String?,
+        context: Context
+    ): Boolean {
+        return try {
+            val publicKey = withContext(Dispatchers.IO) { Backend.publishedPublicKey(userId) }
+
+            if (publicKey.isNullOrEmpty()) {
+                debugLine("KeyManager", "No publicKey published yet for $userId.")
+                return false
+            }
+            if (expectedFingerprint.isNullOrEmpty()) {
+                debugLine("KeyManager", "REFUSING to store unverified key for $userId.")
+                return false
+            }
+            if (fingerprintOf(publicKey) != expectedFingerprint) {
+                // The caller's expectation can lag behind an identity the user has ALREADY
+                // accepted: if the key we hold is the very key the server serves, there is
+                // nothing to verify or store (see the App's file, il caso Sofia).
+                val storedKey = getPeerDao(context).getPeer(userId)?.publicKey
+                if (!storedKey.isNullOrEmpty() && fingerprintOf(storedKey) == fingerprintOf(publicKey)) {
+                    debugLine("KeyManager", "Expected fingerprint is stale but stored key matches Firestore for $userId, treating as verified.")
+                    return true
+                }
+                // DESKTOP: the App records a mismatch against an existing contact
+                // (PeerIdentityChange.record) so the chat offers the key change dialog. That
+                // dialog is not on the PC yet: the key is refused and nothing is recorded,
+                // never accepted in silence.
+                debugLine("KeyManager", "Fingerprint MISMATCH for $userId. Not storing.")
+                return false
+            }
+            getPeerDao(context).updatePeerPublicKey(userId, publicKey)
+            PeerIdentityResolver.markStale()
+            debugLine("KeyManager", "publicKey verified and stored for $userId.")
+            true
+        } catch (e: Exception) {
+            debugLine("KeyManager", "fetchAndStorePublicKeyVerified failed for $userId: ${e.message}")
+            false
+        }
     }
 
     fun getMyPublicKey(): String? = identity()?.publicKey

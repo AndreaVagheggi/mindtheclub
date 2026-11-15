@@ -9,6 +9,7 @@ import com.bolimot.mindtheclub.desktop.storage.Prefs
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
+import com.bolimot.mindtheclub.works.ContactRequestRetryWorker
 import com.bolimot.mindtheclub.works.InboxRecoveryWorker
 import com.bolimot.mindtheclub.works.PendingRetryWorker
 import kotlinx.coroutines.launch
@@ -155,6 +156,10 @@ object Engine {
         val context = App.context()
         PendingRetryWorker.schedule(context)
         InboxRecoveryWorker.schedule(context)
+
+        // Contact requests that arrived while this PC was off: the open App accepts what is in
+        // its inbox (AppTab's listener), the PC looks once at every start.
+        ContactRequestRetryWorker.enqueue(context)
 
         // What a previous run left unsent and nothing is tracking yet is announced first, so
         // that the pass below finds it on the ladder like everything else.

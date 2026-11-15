@@ -69,18 +69,28 @@ internal const val FORWARD_MAX_CONTACTS = 3
  * on the phone is the Back key.
  */
 @Composable
-internal fun SelectionBar(onClose: () -> Unit, onReply: () -> Unit, onForward: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SelectionBar(
+    onClose: () -> Unit,
+    onReply: () -> Unit,
+    onForward: () -> Unit,
+    modifier: Modifier = Modifier,
+    // False for a message that can only be reacted to (a shared contact): the phone gives it no
+    // Reply and no Forward either.
+    showReplyForward: Boolean = true,
+) {
     val tint = MaterialTheme.colorScheme.onSurface
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onClose) {
             Icon(AppIcons.Close, contentDescription = Strings.CLOSE, tint = tint)
         }
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = onReply) {
-            Icon(AppIcons.Reply, contentDescription = Strings.REPLY, tint = tint)
-        }
-        IconButton(onClick = onForward) {
-            Icon(AppIcons.Forward, contentDescription = Strings.FORWARD, tint = tint)
+        if (showReplyForward) {
+            IconButton(onClick = onReply) {
+                Icon(AppIcons.Reply, contentDescription = Strings.REPLY, tint = tint)
+            }
+            IconButton(onClick = onForward) {
+                Icon(AppIcons.Forward, contentDescription = Strings.FORWARD, tint = tint)
+            }
         }
     }
 }

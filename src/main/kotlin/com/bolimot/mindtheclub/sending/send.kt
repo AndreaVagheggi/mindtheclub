@@ -65,7 +65,8 @@ fun sendMessage(message: MessageData) {
     // The first message the user authors to a real person starts the 30 day trial clock
     // (TrialManager.startsTrial in the App). The clock belongs to the identity: it is kept
     // with what the phone handed over, and the server only ever moves it earlier.
-    if (message.type != Type.PROFILE) {
+    // A reaction does not start it either: it is not among TrialManager.ACTIVATING_TYPES.
+    if (message.type != Type.PROFILE && message.type != Type.REACTION) {
         val carried = Prefs.of("desktop_carried")
         if (carried.getLong("trialStartedAt") == null) carried.putLong("trialStartedAt", System.currentTimeMillis())
     }
@@ -186,12 +187,12 @@ fun sendMessageWork(
                 && message.uri != NO_PICTURE
                 && message.type != Type.REACTION && !isRemoteUri
 
-        // DESKTOP: the kinds of local file the PC sends: a single image, a video, a file, and the picture
-        // of a shared contact. Any other content that is a local file (albums, audio) is
-        // refused. Returning true ends the work without a retry, as the App does for an empty
-        // media: retrying cannot help.
+        // DESKTOP: the kinds of local file the PC sends: a single image, a video, a file, the picture
+        // of a shared contact and the picture of the user's own profile. Any other content that
+        // is a local file (albums, audio) is refused. Returning true ends the work without a
+        // retry, as the App does for an empty media: retrying cannot help.
         val sendableFile = message.type == Type.IMAGE || message.type == Type.VIDEO ||
-                message.type == Type.CONTACT || isFileType(message.type)
+                message.type == Type.CONTACT || message.type == Type.PROFILE || isFileType(message.type)
         if (hasMedia && message.type != Type.TEXT && !sendableFile) {
             debugLine2("sendMediaMessage", "Media of type ${message.type} cannot be sent from the PC yet: ${message.messageId} not sent")
             return true

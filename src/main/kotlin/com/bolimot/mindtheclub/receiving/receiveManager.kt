@@ -2,7 +2,7 @@ package com.bolimot.mindtheclub.receiving
 
 // DESKTOP: this file is NOT a copy of the App's receiveManager.kt, which is a thousand lines
 // and mostly media: images, albums, video, files, each saved through Android's MediaStore.
-// receiveText, receiveImage, receiveVideo and receiveObject (for a file and for a contact) are here. They keep
+// receiveReaction, receiveText, receiveImage, receiveVideo and receiveObject (for a file and for a contact) are here. They keep
 // the App's statements in the App's order, with these differences:
 //
 //   - the notification, the sound and the "is this chat on screen" check go through
@@ -22,6 +22,7 @@ import android.content.Context
 import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.message.MessageRepository
+import com.bolimot.mindtheclub.database.reaction.ReactionManager
 import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
@@ -37,6 +38,7 @@ import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getVideoDao
+import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.markContentComplete
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -60,6 +62,49 @@ private suspend fun dropOrphanPlaceholder(messageKey: String) {
     } catch (e: Exception) {
         debugLine("receivedEvent", "Orphan placeholder cleanup failed for $messageKey: ${e.message}")
     }
+}
+
+suspend fun receiveReaction(messageId: String, emoji: String) {
+    val inboxDao = getInboxDao(App.context())
+    val inboxMessage = inboxDao.getMessage(messageId)
+    if (inboxMessage == null) {
+        debugLine("receiveReaction", "Inbox rows for $messageId are gone, dropping the reaction")
+        return
+    }
+
+    // Reactions carry their target in replyId. Peers on the previous build reused the
+    // target's own id, which in a group arrives as groupId because the relay re-mints per
+    // member; both are still accepted so a reaction from an older peer is not lost.
+    val targetMessageId = inboxMessage.replyId?.takeIf { it.isNotEmpty() }
+        ?: if (inboxMessage.chatGroupId != null && inboxMessage.groupId.isNotEmpty()) {
+            inboxMessage.groupId
+        } else {
+            messageId
+        }
+
+    // In a group the relay rewrites fromUserId at every hop, so only originalSenderId says
+    // who actually reacted.
+    val reactorUserId = inboxMessage.originalSenderId?.takeIf { it.isNotEmpty() }
+        ?: inboxMessage.fromUserId
+
+    // Stored whether or not the target is here yet (see the App's file): the Reaction table has
+    // no foreign key to Message, so an orphan row is legal; saveMessage recomputes the pill when
+    // the target lands.
+    ReactionManager.apply(targetMessageId, reactorUserId, emoji, inboxMessage.date)
+
+    val reactionContentKey = resolveContentKey(inboxDao, messageId)
+    inboxDao.deleteByContent(reactionContentKey)
+
+    ProcessedMessageCache.markProcessed(messageId)
+
+    val deliveryId = inboxMessage.chatGroupId?.let {
+        computeDeliveryDocId(it, inboxMessage.originalSenderId ?: "", inboxMessage.date)
+    }
+    notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
+
+    // DESKTOP: the App acknowledges the original group sender too and relays the reaction to the
+    // other members (propagateGroupMessage). Group content never reaches this function on the PC
+    // (receiveData refuses it), so for every reaction here chatGroupId is null and both are no-ops.
 }
 
 suspend fun receiveText(messageId: String) {

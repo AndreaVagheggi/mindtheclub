@@ -6,7 +6,8 @@ package com.bolimot.mindtheclub.works
 //     AssembleMessageWorker and deletes stale profile and reaction chunks. On the PC a TEXT is
 //     processed by calling fullMessageReceivedEvent directly (nothing of a text is kept as a
 //     file, even when it carries the preview of a quoted picture) and an
-//     IMAGE through AssembleMessageWorker, as in the App. Every other type is LEFT ALONE,
+//     IMAGE through AssembleMessageWorker, as in the App; stale profile and reaction chunks are
+//     deleted, as in the App. Every other type is LEFT ALONE,
 //     chunks included: they are complete sets the
 //     PC cannot process yet and has deliberately not confirmed, so the sender still holds
 //     them. Deleting them here would make the PC ask for them again at every announcement;
@@ -94,6 +95,15 @@ class InboxRecoveryWorker(
                     val type = firstChunk.type
                     // DESKTOP: see the top of the file.
                     when {
+                        // As in the App: a reaction is one chunk, processed the moment it is
+                        // complete, and a profile's chunks are never deleted by receiveProfile.
+                        // A complete set of either still here is stale: drop it. A sender with
+                        // no allReceived yet announces it again and it comes back fresh.
+                        type == Type.PROFILE || type == Type.REACTION -> {
+                            debugLine(TAG, "Cleaning up stale $type inbox chunks for $messageId")
+                            val recoveryContentKey = contentKeyOf(firstChunk)
+                            inboxDao.deleteByContent(recoveryContentKey)
+                        }
                         type == Type.TEXT -> {
                             debugLine(TAG, "Re-triggering processing for $messageId ($type)")
                             fullMessageReceivedEvent(messageId)

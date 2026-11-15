@@ -173,8 +173,7 @@ internal fun Avatar(picture: File?, size: Dp) {
 
 /**
  * The card of a shared contact: picture, name and bio, and under a line the two actions the
- * phone offers, View Profile and Add Contact (chat_profile_in.xml). The actions are drawn and
- * do nothing yet: viewing a profile and acquiring a contact are not on the PC.
+ * phone offers, View Profile and Add Contact (chat_profile_in.xml, ProfileViewHolder).
  */
 @Composable
 internal fun MessageContact(state: AppState, message: Message) {
@@ -202,11 +201,11 @@ internal fun MessageContact(state: AppState, message: Message) {
             }
             HorizontalDivider()
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                TextButton(onClick = {}, modifier = Modifier.weight(1f)) {
+                TextButton(onClick = { state.viewProfileOf(message) }, modifier = Modifier.weight(1f)) {
                     Text(Strings.VIEW_PROFILE, fontSize = 12.sp)
                 }
                 VerticalDivider()
-                TextButton(onClick = {}, modifier = Modifier.weight(1f)) {
+                TextButton(onClick = { state.addContactFrom(message) }, modifier = Modifier.weight(1f)) {
                     Text(Strings.ADD_CONTACT, fontSize = 12.sp)
                 }
             }
