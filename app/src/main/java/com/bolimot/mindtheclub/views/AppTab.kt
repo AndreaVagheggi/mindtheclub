@@ -36,6 +36,13 @@ import com.bolimot.mindtheclub.contactAcquisition.acquiringNewContact
 import com.bolimot.mindtheclub.contactAcquisition.autoAcceptRequestDocument
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.fragments.PeersFragment
+import com.bolimot.mindtheclub.dialogs.DeletePeerDialog
+import com.bolimot.mindtheclub.functions.deleteGroupNow
+import com.bolimot.mindtheclub.functions.isGroupAdmin
+import com.bolimot.mindtheclub.functions.leaveGroupNow
+import com.bolimot.mindtheclub.functions.showDeleteGroupDialog
+import com.bolimot.mindtheclub.functions.showLeaveGroupDialog
+import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.fragments.SearchResultsFragment
 import com.bolimot.mindtheclub.functions.NOTIF_BANNER_SNOOZE_MS
 import com.bolimot.mindtheclub.functions.NoteToSelf
@@ -80,7 +87,7 @@ import com.bolimot.mindtheclub.sharing.WebPreviewCache
 import com.bolimot.mindtheclub.functions.extractUrl
 import com.bolimot.mindtheclub.tools.Type
 
-class AppTab : BaseActivity() {
+class AppTab : BaseActivity(), DeletePeerDialog.DeletePeerListener {
 
     private lateinit var peerViewModel: PeerViewModel
     private lateinit var toolbar: MaterialToolbar
@@ -115,6 +122,77 @@ class AppTab : BaseActivity() {
         sharing = i.getStringExtra("sharing")
         text = i.getStringExtra("text")
         startedForCallOnly = i.getBooleanExtra("callOnly", false)
+    }
+
+    /** The one active contact selected in the list, or null: decides which toolbar menu shows. */
+    private var selectedContact: Peer? = null
+    private var contactToForward: String? = null
+
+    private val forwardContactResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val contactUserId = contactToForward
+            contactToForward = null
+            if (result.resultCode == RESULT_OK && contactUserId != null) {
+                val recipients = result.data?.getStringArrayListExtra("selectedPeers")
+                if (!recipients.isNullOrEmpty()) {
+                    // Same call as forwarding a contact card from a chat.
+                    peerViewModel.forwardContact(contactUserId, recipients)
+                }
+            }
+            peersFragment()?.clearSelection()
+        }
+
+    /** The one group selected in the list, or null. Its item shows once the admin check is in. */
+    private var selectedGroup: Peer? = null
+    private var selectedGroupChecked = false
+    private var selectedGroupAdmin = false
+
+    /** Called by PeersFragment on every selection change: one contact, one group, or null. */
+    fun onSingleSelection(peer: Peer?) {
+        val group = peer?.takeIf { it.userId.startsWith("group") }
+        val contact = peer?.takeIf { !it.userId.startsWith("group") }
+        val changed = contact?.userId != selectedContact?.userId || group?.userId != selectedGroup?.userId
+        selectedContact = contact
+        selectedGroup = group
+        if (!changed) return
+
+        selectedGroupChecked = false
+        selectedGroupAdmin = false
+        invalidateOptionsMenu()
+
+        // Leave or delete depends on being an admin, which only Firestore knows, as in the group
+        // screen. Offline the check says no, and "leave" is the safe answer then.
+        group?.let { g ->
+            lifecycleScope.launch {
+                val admin = isGroupAdmin(g.userId)
+                if (selectedGroup?.userId != g.userId) return@launch
+                selectedGroupAdmin = admin
+                selectedGroupChecked = true
+                invalidateOptionsMenu()
+            }
+        }
+    }
+
+    /** Leaves or deletes the selected group with the group screen's own functions. */
+    private fun runGroupExit(groupId: String, admin: Boolean) {
+        lifecycleScope.launch {
+            try {
+                if (admin) deleteGroupNow(applicationContext, groupId)
+                else leaveGroupNow(applicationContext, groupId)
+            } catch (e: Exception) {
+                debugLine("AppTab", "Group ${if (admin) "delete" else "leave"} failed for $groupId: ${e.message}")
+            }
+            // No ChatScreen.shouldFinish here: no chat is open, and the flag would close the next
+            // one the user opens.
+            peersFragment()?.clearSelection()
+        }
+    }
+
+    private fun peersFragment(): PeersFragment? =
+        supportFragmentManager.findFragmentById(R.id.fragmentContainer) as? PeersFragment
+
+    override fun onPeerDeleted() {
+        peersFragment()?.clearSelection()
     }
 
     private val getPeersResult =
@@ -224,6 +302,12 @@ class AppTab : BaseActivity() {
 
         val callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                // Like WhatsApp: back first drops a selection, only then leaves the app.
+                val fragment = peersFragment()
+                if (fragment != null && fragment.hasSelection()) {
+                    fragment.clearSelection()
+                    return
+                }
                 moveTaskToBack(true)
             }
         }
@@ -578,6 +662,38 @@ class AppTab : BaseActivity() {
                 }
                 return true
             }
+            R.id.action_group_exit -> {
+                // The same confirmations and the same operations as the group screen.
+                selectedGroup?.let { group ->
+                    val admin = selectedGroupAdmin
+                    if (admin) {
+                        showDeleteGroupDialog(this) { runGroupExit(group.userId, true) }
+                    } else {
+                        showLeaveGroupDialog(this) { runGroupExit(group.userId, false) }
+                    }
+                }
+                return true
+            }
+            R.id.action_delete_contact -> {
+                // The same dialog, and so the same deletion, as the contact's profile screen.
+                selectedContact?.let { peer ->
+                    DeletePeerDialog.newInstance(peer.userId, peer.name, peer.bio, peer.picture ?: "")
+                        .show(supportFragmentManager, "deletePeer")
+                }
+                return true
+            }
+            R.id.action_forward_contact -> {
+                // The same recipient picker as forwarding a contact card from a chat.
+                selectedContact?.let { peer ->
+                    contactToForward = peer.userId
+                    val intent = Intent(this, SelectPeersForForward::class.java).apply {
+                        putExtra("excludedUserId", peer.userId)
+                        putExtra("contactShareMode", true)
+                    }
+                    forwardContactResult.launch(intent)
+                }
+                return true
+            }
             R.id.action_options -> {
                 val intent = Intent(this, OptionsActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -607,6 +723,28 @@ class AppTab : BaseActivity() {
 
     @androidx.annotation.OptIn(ExperimentalBadgeUtils::class)
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        if (selectedGroup != null) {
+            newContactBadge?.let { BadgeUtils.detachBadgeDrawable(it, toolbar, R.id.action_new_contacts) }
+            // Empty until the admin check answers, so an admin is never offered "leave".
+            if (selectedGroupChecked) {
+                menuInflater.inflate(R.menu.main_group_selected, menu)
+                menu?.findItem(R.id.action_group_exit)?.let { item ->
+                    item.title = getString(if (selectedGroupAdmin) R.string.delete_group else R.string.leave_group)
+                    item.icon?.setTint(android.graphics.Color.WHITE)
+                }
+            }
+            return true
+        }
+
+        if (selectedContact != null) {
+            // The badge is drawn over the add contact icon, which this menu does not have.
+            newContactBadge?.let { BadgeUtils.detachBadgeDrawable(it, toolbar, R.id.action_new_contacts) }
+            menuInflater.inflate(R.menu.main_contact_selected, menu)
+            menu?.findItem(R.id.action_delete_contact)?.icon?.setTint(android.graphics.Color.WHITE)
+            menu?.findItem(R.id.action_forward_contact)?.icon?.setTint(android.graphics.Color.WHITE)
+            return true
+        }
+
         menuInflater.inflate(R.menu.main, menu)
 
         menu?.findItem(R.id.action_search)?.icon?.setTint(android.graphics.Color.WHITE)

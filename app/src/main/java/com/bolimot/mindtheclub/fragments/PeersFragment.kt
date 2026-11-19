@@ -56,6 +56,7 @@ import kotlinx.coroutines.withContext
 import androidx.paging.LoadState
 import com.bolimot.mindtheclub.views.InviteActivity
 import com.bolimot.mindtheclub.views.OptionsActivity
+import com.bolimot.mindtheclub.views.AppTab
 
 class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDialog.BlockPeerListener {
 
@@ -72,8 +73,10 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         debugLine("onItemClick", "Peer clicked")
 
         if (peersAdapter.isAnyPeerSelected()) {
-            if (peer.userId.startsWith("group") || Support.isSupport(peer.userId)) return
-            peersAdapter.toggleSelection(peer.userId)
+            if (canToggleSelection(peer)) {
+                peersAdapter.toggleSelection(peer.userId)
+                notifySelectionChanged()
+            }
             return
         }
 
@@ -228,8 +231,7 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
     override fun onItemLongClick(peer: Peer): Boolean {
         debugLine("onItemLongClick", "Peer long clicked")
-        // Selection builds groups: the MTC team must never become a group member (relay load).
-        if (peer.userId.startsWith("group") || Support.isSupport(peer.userId)) return false
+        if (!canToggleSelection(peer)) return false
 
         peersAdapter.toggleSelection(peer.userId)
         if (peersAdapter.isAnyPeerSelected()) {
@@ -237,7 +239,55 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         } else {
             debugLine("onItemLongClick", "No peer selected")
         }
+        notifySelectionChanged()
         return true
+    }
+
+    /**
+     * Who may join or leave the current selection. Selecting contacts builds a group, so the
+     * MTC team never enters it (relay load) and a group never sits next to contacts: a group is
+     * selectable only on its own, and while it is selected only that same group can be tapped
+     * again, to deselect it.
+     */
+    private fun canToggleSelection(peer: Peer): Boolean {
+        if (Support.isSupport(peer.userId)) return false
+        val selected = peersAdapter.getSelectedPeersUserId()
+        if (selected.isEmpty()) return true
+        val groupSelected = selected.any { it.startsWith("group") }
+        return if (groupSelected) peer.userId in selected else !peer.userId.startsWith("group")
+    }
+
+    /**
+     * Lets AppTab swap its toolbar for exactly ONE selection: delete and forward for an active
+     * contact, leave or delete for a group, the normal menu otherwise. Two or more selected
+     * means a group is being built, and a contact still pending keeps its own removal path in
+     * its profile.
+     */
+    private fun notifySelectionChanged() {
+        val ids = peersAdapter.getSelectedPeersUserId()
+        val single = if (ids.size == 1) {
+            peersAdapter.snapshot().items
+                .firstOrNull { it.userId == ids[0] }
+                ?.takeIf { it.userId.startsWith("group") || it.status == Contact.ACTIVE }
+        } else {
+            null
+        }
+        (activity as? AppTab)?.onSingleSelection(single)
+    }
+
+    fun hasSelection(): Boolean = ::peersAdapter.isInitialized && peersAdapter.isAnyPeerSelected()
+
+    override fun onDestroyView() {
+        // The selection dies with this view (search, fragment replaced): the toolbar must not
+        // keep offering delete and forward for it.
+        (activity as? AppTab)?.onSingleSelection(null)
+        super.onDestroyView()
+    }
+
+    fun clearSelection() {
+        if (!hasSelection()) return
+        peersAdapter.removeSelection()
+        notifySelectionChanged()
     }
 
     override fun onBlockClick(peer: Peer) {
@@ -406,6 +456,7 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
         if (totalMembers > 63) {
             showToast(getString(R.string.group_member_limit_exceeded, 63), requireContext())
             peersAdapter.removeSelection()
+            notifySelectionChanged()
             return
         }
 
@@ -444,6 +495,7 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
 
             withContext(Dispatchers.Main) {
                 peersAdapter.removeSelection()
+                notifySelectionChanged()
 
                 val intent = Intent(requireContext(), GroupMembersActivity::class.java).apply {
                     putExtra("userId", gId)
@@ -480,10 +532,12 @@ class PeersFragment : Fragment(), PeersAdapter.OnItemClickListener, BlockPeerDia
             .setPositiveButton("Create", null)
             .setNegativeButton("Cancel") { dialog, _ ->
                 peersAdapter.removeSelection()
+                notifySelectionChanged()
                 dialog.dismiss()
             }
             .setOnCancelListener {
                 peersAdapter.removeSelection()
+                notifySelectionChanged()
             }
             .create()
 

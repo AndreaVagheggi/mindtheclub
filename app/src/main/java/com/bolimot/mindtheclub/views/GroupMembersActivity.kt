@@ -13,18 +13,16 @@ import com.bolimot.mindtheclub.chat.SelectPeersForGroup
 import com.bolimot.mindtheclub.dialogs.DeletePeerDialog
 import com.bolimot.mindtheclub.fragments.GroupMembersFragment
 import com.bolimot.mindtheclub.functions.debugLine
-import com.bolimot.mindtheclub.functions.getMessageRepository
-import com.bolimot.mindtheclub.functions.getPeerViewModel
-import com.bolimot.mindtheclub.sending.notifyRemotePeer
+import com.bolimot.mindtheclub.functions.deleteGroupNow
+import com.bolimot.mindtheclub.functions.isGroupAdmin
+import com.bolimot.mindtheclub.functions.leaveGroupNow
+import com.bolimot.mindtheclub.functions.showDeleteGroupDialog
+import com.bolimot.mindtheclub.functions.showLeaveGroupDialog
 import com.bolimot.mindtheclub.start.BaseActivity
 import com.bolimot.mindtheclub.tools.MySelf
-import com.bolimot.mindtheclub.tools.Notify
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener {
@@ -74,22 +72,7 @@ class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener
 
     private fun checkAdminStatus() {
         lifecycleScope.launch {
-            val admin = withContext(Dispatchers.IO) {
-                try {
-                    val currentUserId = MySelf.userId() ?: return@withContext false
-                    val db = FirebaseFirestore.getInstance()
-                    val snapshot = db.collection("groups").document(groupId).get().await()
-                    if (!snapshot.exists()) return@withContext false
-
-                    @Suppress("UNCHECKED_CAST")
-                    val members = snapshot.get("members") as? Map<String, String>
-                        ?: return@withContext false
-                    members[currentUserId] == "admin"
-                } catch (e: Exception) {
-                    debugLine("GroupMembersActivity", "Admin check error: ${e.message}")
-                    false
-                }
-            }
+            val admin = isGroupAdmin(groupId)
 
             isAdmin = admin
             if (isAdmin) {
@@ -145,34 +128,13 @@ class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener
     }
 
     private fun confirmLeaveGroup() {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.leave_group))
-            .setMessage(getString(R.string.leave_group_alert))
-            .setPositiveButton(getString(R.string.leave)) { _, _ -> leaveGroup() }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        showLeaveGroupDialog(this) { leaveGroup() }
     }
 
     private fun leaveGroup() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val myUserId = MySelf.userId() ?: return@launch
-                val db = FirebaseFirestore.getInstance()
-                val groupRef = db.collection("groups").document(groupId)
-
-                groupRef.update("members.$myUserId", com.google.firebase.firestore.FieldValue.delete()).await()
-                debugLine("GroupMembersActivity", "Removed myself from group $groupId in Firestore")
-
-                val messageRepository = getMessageRepository(applicationContext)
-                messageRepository.deleteRemotePeerMessages(groupId)
-
-                val peerViewModel = getPeerViewModel()
-                val peer = peerViewModel.getPeer(groupId)
-                if (peer != null) {
-                    peerViewModel.deletePeer(peer)
-                }
-
-                debugLine("GroupMembersActivity", "Local group data cleaned up after leaving")
+                leaveGroupNow(applicationContext, groupId)
 
                 withContext(Dispatchers.Main) {
                     ChatScreen.shouldFinish = true
@@ -215,59 +177,17 @@ class GroupMembersActivity : BaseActivity(), DeletePeerDialog.DeletePeerListener
     }
 
     private fun confirmDeleteGroup() {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.delete_group))
-            .setMessage(getString(R.string.delete_group_confirm))
-            .setPositiveButton(getString(R.string.delete)) { _, _ -> deleteGroup() }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        showDeleteGroupDialog(this) { deleteGroup() }
     }
 
     private fun deleteGroup() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val groupRef = FirebaseFirestore.getInstance()
-                    .collection("groups").document(groupId)
-                val snapshot = groupRef.get().await()
-
-                if (!snapshot.exists()) {
-                    debugLine("GroupMembersActivity", "Group already deleted")
+                if (!deleteGroupNow(applicationContext, groupId)) {
+                    // Already gone from Firestore: as before, just close.
                     withContext(Dispatchers.Main) { finish() }
                     return@launch
                 }
-
-                @Suppress("UNCHECKED_CAST")
-                val membersMap = snapshot.get("members") as? Map<String, String> ?: emptyMap()
-                val myUserId = MySelf.userId() ?: return@launch
-                val groupName = snapshot.getString("name") ?: ""
-
-                membersMap.keys.filter { it != myUserId }.forEach { userId ->
-                    notifyRemotePeer(userId, groupId, Notify.GROUP_REMOVED, groupName)
-                }
-
-                groupRef.delete().await()
-                debugLine("GroupMembersActivity", "Group $groupId deleted from Firestore")
-
-                try {
-                    FirebaseStorage.getInstance().reference
-                        .child("group_pictures/${groupId}.jpg")
-                        .delete()
-                        .await()
-                    debugLine("GroupMembersActivity", "Group picture deleted from Storage")
-                } catch (e: Exception) {
-                    debugLine("GroupMembersActivity", "Group picture cleanup (may not exist): ${e.message}")
-                }
-
-                val messageRepository = getMessageRepository(applicationContext)
-                messageRepository.deleteRemotePeerMessages(groupId)
-
-                val peerViewModel = getPeerViewModel()
-                val peer = peerViewModel.getPeer(groupId)
-                if (peer != null) {
-                    peerViewModel.deletePeer(peer)
-                }
-
-                debugLine("GroupMembersActivity", "Local group data cleaned up")
 
                 withContext(Dispatchers.Main) {
                     ChatScreen.shouldFinish = true
