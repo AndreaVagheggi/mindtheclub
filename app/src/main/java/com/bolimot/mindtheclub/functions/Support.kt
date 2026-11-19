@@ -78,24 +78,44 @@ object Support {
     private suspend fun connect(context: Context) {
         if (isMe()) return
         try {
-            val input = workDataOf(
-                "userId" to USER_ID,
-                "name" to NAME,
-                "bio" to BIO,
-                "fingerprint" to FINGERPRINT,
-            )
-            val request = OneTimeWorkRequestBuilder<AcquireContactWorker>()
-                .setInputData(input)
-                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-                .build()
-            // KEEP: a second tap while the first request is still running must not start another.
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(ACQUIRE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
-
+            enqueueContactRequest(context)
             seedWelcome(context)
         } catch (e: Exception) {
             debugLine(TAG, "connect failed: ${e.message}")
         }
+    }
+
+    /**
+     * The option turned on again while we already have the team as a contact. The support phone
+     * may have lost us without either side knowing (13 Nov 2026: removed there by mistake, and
+     * from then on it ignored our profile and our messages). Sending the request again lets its
+     * auto-accept recreate us; if it still has us, it closes the request and re-sends its profile.
+     * Our own contact row is untouched: AcquireContactWorker's insert fails on the unique userId.
+     */
+    fun resendContactRequest(context: Context) {
+        if (isMe()) return
+        try {
+            enqueueContactRequest(context)
+            debugLine(TAG, "Contact request re-sent to the MTC team")
+        } catch (e: Exception) {
+            debugLine(TAG, "resendContactRequest failed: ${e.message}")
+        }
+    }
+
+    private fun enqueueContactRequest(context: Context) {
+        val input = workDataOf(
+            "userId" to USER_ID,
+            "name" to NAME,
+            "bio" to BIO,
+            "fingerprint" to FINGERPRINT,
+        )
+        val request = OneTimeWorkRequestBuilder<AcquireContactWorker>()
+            .setInputData(input)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+            .build()
+        // KEEP: a second tap while the first request is still running must not start another.
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork(ACQUIRE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
 
     /** Local message shown as coming from the team. Fixed messageId, so it is saved only once. */

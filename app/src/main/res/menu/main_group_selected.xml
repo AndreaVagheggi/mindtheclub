@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Contact list toolbar while exactly one group is selected (AppTab). The title is set at
+     runtime: "Delete group" for an admin, "Leave group" otherwise. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_group_exit"
+        android:title="@string/leave_group"
+        android:icon="@drawable/delete"
+        app:showAsAction="always"/>
+</menu>

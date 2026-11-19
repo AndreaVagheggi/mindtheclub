@@ -115,10 +115,12 @@ class OptionsActivity : BaseActivity() {
                 Support.setVisible(this, false)
                 return@setOnCheckedChangeListener
             }
-            // Already connected once: just show it again. First time: disclosure, then connect.
+            // Already connected once: show it again, and re-send the request in case the support
+            // phone lost us. First time: disclosure, then connect.
             lifecycleScope.launch {
                 if (Support.getPeer(this@OptionsActivity) != null) {
                     Support.setVisible(this@OptionsActivity, true)
+                    Support.resendContactRequest(this@OptionsActivity)
                 } else {
                     Support.confirmAndConnect(this@OptionsActivity) { added ->
                         if (!added) showSupportSwitch.isChecked = false

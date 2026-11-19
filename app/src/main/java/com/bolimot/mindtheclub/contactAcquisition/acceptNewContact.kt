@@ -53,6 +53,7 @@ suspend fun autoAcceptRequestDocument(
         // explicit accept dialog instead of dying in silenzio.
         val existingPeer = getPeerViewModel().getPeer(userId)
         if (existingPeer != null) {
+            var sameKey = false
             try {
                 val enc = doc.getBoolean("enc") == true
                 val incomingFp = if (enc) doc.getString("fingerprint")
@@ -63,8 +64,19 @@ suspend fun autoAcceptRequestDocument(
                     com.bolimot.mindtheclub.functions.PeerIdentityChange
                         .record(context, userId, incomingFp)
                 }
+                sameKey = !incomingFp.isNullOrEmpty() && incomingFp == storedFp
             } catch (e: Exception) {
                 debugLine("autoAcceptRequest", "Key change check failed for $userId: ${e.message}")
+            }
+            // An active contact asking again with the very key we verified: its side lost us
+            // (removed by mistake, reinstalled) and cannot complete without our profile. Re-send
+            // it and close the request, which otherwise hung forever with its badge. Our row is
+            // not touched; a different key still goes only through the explicit dialog above.
+            if (sameKey && existingPeer.status == Contact.ACTIVE) {
+                debugLine("autoAcceptRequest", "Repeat request from active contact $userId, re-sending my profile")
+                getPeerViewModel().sendMyProfileToRemotePeer(userId)
+                removeRequestFromFirestore(userId)
+                return true
             }
             return false
         }
@@ -153,6 +165,13 @@ suspend fun acceptNewContact(
                 if (!stored) {
                     debugLine("acceptNewContact", "Post-insert key store failed for $userId; signalling will recover it from Firestore")
                 }
+
+                // Active now, not when allReceived for our profile lands: the key is verified and
+                // name and bio are in, the same evidence the scanner side goes active on since
+                // 28 Aug. While NEW this row opened as "pending" with a remove-request button,
+                // and on 13 Nov a tap three seconds after the auto-accept deleted the contact on
+                // the MTC Team phone only, leaving the requester talking to nobody.
+                peerViewModel.setStatusToActive(userId)
 
                 peerViewModel.sendMyProfileToRemotePeer(userId)
                 removeRequestFromFirestore(userId)
