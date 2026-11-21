@@ -156,6 +156,14 @@
     <string name="menu_how_mtc_works">Cara kerja MTC</string>
     <string name="menu_feedback">Beri kami masukan!</string>
     <string name="about_feedback_link">Bantu kami meningkatkan MindTheClub, kirimkan masukanmu</string>
+    <string name="update_check">Periksa pembaruan</string>
+    <string name="update_up_to_date">Kamu sudah memakai versi terbaru</string>
+    <string name="update_check_failed">Tidak dapat memeriksa pembaruan, coba lagi nanti</string>
+    <string name="update_available">Versi %1$s tersedia. Perbarui sekarang?</string>
+    <string name="update_now">Perbarui</string>
+    <string name="update_downloading">Mengunduh pembaruan…</string>
+    <string name="update_allow_install">Untuk memperbarui, izinkan MindTheClub menginstal aplikasi, lalu ketuk lagi Periksa pembaruan</string>
+    <string name="update_failed">Pembaruan tidak dapat dipasang, coba lagi nanti</string>
     <string name="feedback_prompt_title">Pendapatmu penting bagi kami</string>
     <string name="feedback_prompt_body">Bisakah kamu meluangkan 2 menit untuk memberi tahu kami pendapatmu tentang MindTheClub?</string>
     <string name="feedback_prompt_yes">Beri masukan</string>

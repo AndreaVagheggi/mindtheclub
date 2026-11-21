@@ -155,6 +155,14 @@
     <string name="menu_how_mtc_works">How MTC works</string>
     <string name="menu_feedback">Give us your feedback!</string>
     <string name="about_feedback_link">Help us improve MindTheClub, send us your feedback</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_up_to_date">You already have the latest version</string>
+    <string name="update_check_failed">Could not check for updates, try again later</string>
+    <string name="update_available">Version %1$s is available. Do you want to update now?</string>
+    <string name="update_now">Update</string>
+    <string name="update_downloading">Downloading the update…</string>
+    <string name="update_allow_install">To update, allow MindTheClub to install apps, then tap Check for updates again</string>
+    <string name="update_failed">The update could not be installed, try again later</string>
     <string name="feedback_prompt_title">We value your opinion</string>
     <string name="feedback_prompt_body">Could you spare 2 minutes to tell us what you think of MindTheClub?</string>
     <string name="feedback_prompt_yes">Give feedback</string>
