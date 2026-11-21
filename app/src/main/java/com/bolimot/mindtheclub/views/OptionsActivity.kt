@@ -23,6 +23,7 @@ import com.bolimot.mindtheclub.billing.SubscriptionCopy
 import com.bolimot.mindtheclub.contactAcquisition.PREF_AUTO_INVITE_MODE
 import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.crypto.KeyManager
+import com.bolimot.mindtheclub.functions.AppUpdater
 import com.bolimot.mindtheclub.functions.NoteToSelf
 import com.bolimot.mindtheclub.functions.Support
 import com.bolimot.mindtheclub.functions.deleteDebugLog
@@ -41,6 +42,9 @@ import kotlinx.coroutines.launch
 class OptionsActivity : BaseActivity() {
 
     private lateinit var bluetoothSwitch: SwitchMaterial
+
+    // "Check for updates" in About. A property, because it registers an activity result launcher.
+    private val appUpdater = AppUpdater(this)
 
     private val enableBtResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -336,6 +340,20 @@ class OptionsActivity : BaseActivity() {
                     setPadding(0, 8, 0, 0)
                 }
 
+                val updateButton = MaterialButton(
+                    this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle
+                ).apply {
+                    text = getString(R.string.update_check)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = 24 }
+                    setOnClickListener {
+                        isEnabled = false
+                        appUpdater.check { isEnabled = true }
+                    }
+                }
+
                 val userIdLabel = TextView(this).apply {
                     text = "User ID"
                     textSize = 16f
@@ -364,6 +382,7 @@ class OptionsActivity : BaseActivity() {
                 layout.addView(appName)
                 layout.addView(versionLabel)
                 layout.addView(versionValue)
+                layout.addView(updateButton)
                 layout.addView(userIdLabel)
                 layout.addView(userIdValue)
                 layout.addView(feedbackLink)

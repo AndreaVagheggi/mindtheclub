@@ -88,7 +88,7 @@ val isTestBuild = releaseLogging || noPay ||
 //
 // Bump baseVersionCode by TWO each cycle, keeping it even, so the odd number
 // stays reserved for that cycle's tester build.
-val baseVersionCode = 1094
+val baseVersionCode = 1096
 val appVersionCode = if (isTestBuild) baseVersionCode + 1 else baseVersionCode
 
 // Both commands build the SAME build type, so without this they would both write
@@ -156,7 +156,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode
-        versionName = "Release 1.94" +
+        versionName = "Release 1.96" +
                 (if (releaseLogging) " (log)" else "") +
                 (if (noPay) " (nopay)" else "") +
                 (if (iceModeProperty != null && iceMode != "all") " ($iceMode)" else "")
@@ -387,6 +387,10 @@ dependencies {
 
     // mtcx: no Google Play Billing and no Play Install Referrer. The subscription is a licence
     // bought on the web (LicenseManager), and this build is never installed through Play.
+
+    // GOOGLE PLAY IN-APP UPDATES ("Check for updates" in About, functions/appUpdate.kt).
+    // Play build only: mtcx checks its F-Droid archive instead and must not carry this.
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 
     // VARIOUS
     implementation("com.google.zxing:core:3.5.3")
