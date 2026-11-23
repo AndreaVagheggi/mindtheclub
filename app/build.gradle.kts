@@ -387,10 +387,8 @@ dependencies {
 
     // mtcx: no Google Play Billing and no Play Install Referrer. The subscription is a licence
     // bought on the web (LicenseManager), and this build is never installed through Play.
-
-    // GOOGLE PLAY IN-APP UPDATES ("Check for updates" in About, functions/appUpdate.kt).
-    // Play build only: mtcx checks its F-Droid archive instead and must not carry this.
-    implementation("com.google.android.play:app-update-ktx:2.1.0")
+    // mtcx: no Play In-App Updates either. "Check for updates" (functions/appUpdate.kt, mtcx
+    // version) reads the F-Droid archive and installs through PackageInstaller.
 
     // VARIOUS
     implementation("com.google.zxing:core:3.5.3")

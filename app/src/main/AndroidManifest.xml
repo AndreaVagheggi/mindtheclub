@@ -47,6 +47,8 @@
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"
         tools:ignore="FullScreenIntentPolicy" />
+    <!-- mtcx: "Check for updates" installs the new APK from our F-Droid archive (functions/appUpdate.kt). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".start.App"
@@ -96,6 +98,9 @@
             android:exported="false" />
 
         <receiver android:name=".voip.CallActionReceiver" android:enabled="true" android:exported="false" />
+
+        <!-- mtcx: result of the self-update install session (functions/appUpdate.kt). -->
+        <receiver android:name=".functions.AppUpdateInstallReceiver" android:exported="false" />
 
         <activity
             android:name=".voip.AnswerCallActivity"
