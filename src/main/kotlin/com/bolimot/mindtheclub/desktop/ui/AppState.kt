@@ -734,6 +734,25 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
+    // ------------------------------------------------------------ dragged into the window
+
+    /** What was dropped on the window, waiting for the open chat to take it, or null. */
+    internal var dropped: Incoming? by mutableStateOf<Incoming?>(null)
+        private set
+
+    /**
+     * Something was dragged onto the window. It goes to the chat on screen; with no chat open
+     * there is nowhere to send it, and it is let go.
+     */
+    internal fun drop(item: Incoming) {
+        if (screen != Screen.Chats || selectedUserId == null) return
+        dropped = item
+    }
+
+    fun clearDropped() {
+        dropped = null
+    }
+
     /** Says [text] in the banner at the top of the window. */
     fun showWarning(text: String) {
         warning = text

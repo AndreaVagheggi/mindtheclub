@@ -38,12 +38,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.DataFlavor
-import java.awt.image.BufferedImage
 import java.io.File
-import java.io.InputStream
-import javax.imageio.ImageIO
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
 
 /*
  * GIFs and stickers, as the phone has them.
@@ -56,7 +56,7 @@ import javax.imageio.ImageIO
  *
  * On the phone they come from the keyboard (ChatScreen.handlePasteContent: a GIF opens SendGif,
  * a PNG leaves at once as a sticker) or from another app. The PC's keyboard is Ctrl+V in the
- * message box: pastedPicture reads what was copied.
+ * message box, or a drag into the window: Transfers.kt reads what was copied or dropped.
  */
 
 /** The size the bubble draws a GIF at, as a picture. */
@@ -187,78 +187,127 @@ internal fun SendGifDialog(
     )
 }
 
-/** What a Ctrl+V in the message box brought, when it is a picture. */
-internal sealed interface PastedPicture {
-    val file: File
+/** A GIF downloaded from the web larger than this is not taken: it is not a chat's GIF. */
+private const val MAX_GIF_BYTES = 20L * 1024 * 1024
 
-    /** A GIF: the SendGif screen. */
-    class Gif(override val file: File) : PastedPicture
+private val gifClient: HttpClient = HttpClient.newBuilder()
+    .followRedirects(HttpClient.Redirect.NORMAL)
+    .connectTimeout(Duration.ofSeconds(10))
+    .build()
 
-    /** A picture with see-through parts: a sticker, sent at once. */
-    class Sticker(override val file: File) : PastedPicture
+/**
+ * The address to download a GIF from, when [text] is nothing but the address of one: a path
+ * ending in .gif, or one of Giphy's media addresses, whose .webp and .mp4 have a .gif beside
+ * them under the same name (checked on 25 Nov 2026: ".../200.webp" and ".../200.gif"). Null
+ * for any other text, which is then pasted as text.
+ */
+internal fun gifAddressOf(text: String): String? {
+    val address = text.trim()
+    if (address.isEmpty() || address.any { it.isWhitespace() }) return null
+    if (!address.startsWith("http://", true) && !address.startsWith("https://", true)) return null
+    val uri = try {
+        URI(address)
+    } catch (e: Exception) {
+        return null
+    }
+    val host = uri.host?.lowercase() ?: return null
+    val path = uri.path ?: return null
+    val lowerPath = path.lowercase()
+    return when {
+        lowerPath.endsWith(".gif") -> address
+        host.endsWith("giphy.com") && host.startsWith("media") &&
+                (lowerPath.endsWith(".webp") || lowerPath.endsWith(".mp4")) ->
+            "${uri.scheme}://${uri.rawAuthority}${uri.rawPath.substringBeforeLast('.')}.gif"
+        else -> null
+    }
+}
 
-    /** Any other picture: the screen of a photo. */
-    class Photo(override val file: File) : PastedPicture
+/** Downloads the GIF at [url] into the scratch folder. Null when what comes is not a GIF. */
+internal suspend fun downloadGif(url: String): File? {
+    val file = download(url) ?: return null
+    if (AnimatedPictures.extensionOf(file) != "gif") {
+        file.delete()
+        return null
+    }
+    return file
 }
 
 /**
- * Reads the Windows clipboard for a Ctrl+V in the message box. Null when what was copied is
- * text, or nothing this can use: the box then pastes as usual. A copied text wins over a
- * picture that comes with it (a word processor copies a picture of the text too).
+ * Downloads a picture dragged from a page, trying [urls] in order, into the scratch folder,
+ * named by what its bytes are (gif, png, jpg). An address may also be a "data:" one, the picture
+ * written inside the page. Null when none of them gives a picture this PC can read.
  */
-internal fun pastedPicture(): PastedPicture? {
+internal suspend fun downloadPicture(urls: List<String>): File? = withContext(Dispatchers.IO) {
+    for (url in urls) {
+        val file = if (url.startsWith("data:", ignoreCase = true)) fromDataAddress(url) else download(url)
+        file ?: continue
+        val kind = AnimatedPictures.extensionOf(file)
+        val readable = kind == "gif" || try {
+            javax.imageio.ImageIO.read(file) != null
+        } catch (e: Exception) {
+            false
+        }
+        if (!readable) {
+            file.delete()
+            continue
+        }
+        val named = scratchFile(kind)
+        if (file.renameTo(named)) return@withContext named
+        return@withContext file
+    }
+    null
+}
+
+/** "data:image/png;base64,...": the picture written inside the page. */
+private fun fromDataAddress(address: String): File? {
+    val comma = address.indexOf(',')
+    if (comma < 0 || !address.substring(0, comma).contains(";base64", ignoreCase = true)) return null
     return try {
-        val contents = Toolkit.getDefaultToolkit().systemClipboard.getContents(null) ?: return null
-
-        // Files copied in Explorer: one picture file is taken, anything else is not a picture.
-        if (contents.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            val files = (contents.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>)?.filterIsInstance<File>()
-            val file = files?.singleOrNull() ?: return null
-            return when (file.extension.lowercase()) {
-                "gif" -> PastedPicture.Gif(file)
-                "png", "jpg", "jpeg", "bmp", "webp" -> {
-                    val image = ImageIO.read(file) ?: return null
-                    if (AnimatedPictures.hasTransparency(image)) PastedPicture.Sticker(file) else PastedPicture.Photo(file)
-                }
-                else -> null
-            }
-        }
-
-        if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) return null
-
-        // The picture's own bytes, when the program that copied it offers them.
-        val gifFlavor = DataFlavor("image/gif; class=java.io.InputStream")
-        if (contents.isDataFlavorSupported(gifFlavor)) {
-            val bytes = (contents.getTransferData(gifFlavor) as InputStream).use { it.readBytes() }
-            return PastedPicture.Gif(scratchFile("gif").apply { writeBytes(bytes) })
-        }
-        val pngFlavor = DataFlavor("image/png; class=java.io.InputStream")
-        if (contents.isDataFlavorSupported(pngFlavor)) {
-            val bytes = (contents.getTransferData(pngFlavor) as InputStream).use { it.readBytes() }
-            val file = scratchFile("png").apply { writeBytes(bytes) }
-            val image = ImageIO.read(file) ?: return null
-            return if (AnimatedPictures.hasTransparency(image)) PastedPicture.Sticker(file) else PastedPicture.Photo(file)
-        }
-
-        // Only a bitmap: a screenshot, a picture copied from a page.
-        if (contents.isDataFlavorSupported(DataFlavor.imageFlavor)) {
-            val image = contents.getTransferData(DataFlavor.imageFlavor) as? java.awt.Image ?: return null
-            val width = image.getWidth(null)
-            val height = image.getHeight(null)
-            if (width <= 0 || height <= 0) return null
-            val copy = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
-            copy.createGraphics().apply { drawImage(image, 0, 0, null); dispose() }
-            val file = scratchFile("png")
-            ImageIO.write(copy, "png", file)
-            return if (AnimatedPictures.hasTransparency(copy)) PastedPicture.Sticker(file) else PastedPicture.Photo(file)
-        }
-        null
+        val bytes = java.util.Base64.getMimeDecoder().decode(address.substring(comma + 1))
+        if (bytes.isEmpty() || bytes.size > MAX_GIF_BYTES) null else scratchFile("bin").apply { writeBytes(bytes) }
     } catch (e: Exception) {
         null
     }
 }
 
-private fun scratchFile(extension: String): File = File(App.context().filesDir, "pasted_${guid()}.$extension")
+/** Downloads [url] into the scratch folder, as a browser would ask for it. Null on any failure. */
+private suspend fun download(url: String): File? = withContext(Dispatchers.IO) {
+    try {
+        val request = HttpRequest.newBuilder(URI.create(url))
+            .timeout(Duration.ofSeconds(30))
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
+            .GET()
+            .build()
+        val response = gifClient.send(request, HttpResponse.BodyHandlers.ofInputStream())
+        if (response.statusCode() != 200) {
+            response.body().close()
+            return@withContext null
+        }
+        val file = scratchFile("bin")
+        response.body().use { input ->
+            file.outputStream().use { output ->
+                val buffer = ByteArray(8192)
+                var total = 0L
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read == -1) break
+                    total += read
+                    if (total > MAX_GIF_BYTES) {
+                        output.close()
+                        file.delete()
+                        return@withContext null
+                    }
+                    output.write(buffer, 0, read)
+                }
+            }
+        }
+        file
+    } catch (e: Exception) {
+        null
+    }
+}
+
+internal fun scratchFile(extension: String): File = File(App.context().filesDir, "pasted_${guid()}.$extension")
 
 private fun openInViewer(file: File) {
     try {

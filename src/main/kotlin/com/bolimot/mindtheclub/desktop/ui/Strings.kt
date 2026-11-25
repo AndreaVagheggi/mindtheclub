@@ -75,6 +75,8 @@ object Strings {
     const val GIF = "GIF"
     const val STICKER = "Sticker"
     const val SEND_GIF_TITLE = "Send GIF"
+    const val GIF_NOT_DOWNLOADED = "The GIF could not be downloaded."
+    const val PICTURE_NOT_DOWNLOADED = "The picture could not be downloaded."
 
     // Voice messages, in the App's own words (R.string.audio, R.string.microphone).
     const val VOICE_MESSAGE = "Voice message"

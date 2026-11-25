@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +66,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.engine.Engine
+import com.bolimot.mindtheclub.desktop.media.AnimatedPictures
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.web.WebPreview
 import com.bolimot.mindtheclub.desktop.web.WebsiteInfo
@@ -72,7 +74,10 @@ import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -110,6 +115,11 @@ fun main() = application {
             }
         }
     ) {
+        // The whole window takes what is dragged onto it from a browser or from Explorer.
+        DisposableEffect(window) {
+            installDropTarget(window) { item -> state.drop(item) }
+            onDispose { window.dropTarget = null }
+        }
         MaterialTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 when (val screen = state.screen) {
@@ -326,6 +336,8 @@ private fun Conversation(state: AppState) {
     var album by remember(state.selectedUserId) { mutableStateOf<List<File>?>(null) }
     // A GIF chosen under Images or pasted, shown for confirmation before it is sent (SendGif).
     var gifToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
+    // Downloads a GIF whose address was pasted, away from the window's work.
+    val pasteScope = rememberCoroutineScope()
     // The video chosen under the paperclip's Video, shown for confirmation before it is sent.
     var videoToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     // The file chosen under the paperclip's File, shown for confirmation before it is sent.
@@ -403,6 +415,56 @@ private fun Conversation(state: AppState) {
         replyTo = null
         webUrl = null
         webInfo = null
+    }
+
+    // What came in from outside the window, pasted or dropped (Transfers.kt), sent where the
+    // phone sends it.
+    fun receive(item: Incoming) {
+        when (item) {
+            is Incoming.Gif -> gifToSend = item.file
+            is Incoming.GifAt -> pasteScope.launch {
+                val file = downloadGif(item.url)
+                if (file != null) {
+                    gifToSend = file
+                } else if (item.address.isNotEmpty()) {
+                    // Not a GIF after all: the address goes into the box as text.
+                    draft += item.address
+                } else {
+                    state.showWarning(Strings.GIF_NOT_DOWNLOADED)
+                }
+            }
+            is Incoming.PictureAt -> pasteScope.launch {
+                val file = downloadPicture(item.urls)
+                if (file == null) {
+                    state.showWarning(Strings.PICTURE_NOT_DOWNLOADED)
+                } else if (file.extension == "gif") {
+                    gifToSend = file
+                } else {
+                    // As a picture pasted or dropped from Explorer: see-through parts make a sticker.
+                    val image = withContext(Dispatchers.IO) {
+                        try {
+                            javax.imageio.ImageIO.read(file)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    if (image != null && AnimatedPictures.hasTransparency(image)) state.sendSticker(file) else photo = file
+                }
+            }
+            is Incoming.Sticker -> state.sendSticker(item.file)
+            is Incoming.Photo -> photo = item.file
+            is Incoming.Album -> album = item.files
+            is Incoming.Video -> videoToSend = item.file
+            is Incoming.AnyFile -> fileToSend = item.file
+            is Incoming.Text -> draft += item.text
+        }
+    }
+
+    // Something dropped on the window while this chat is open.
+    LaunchedEffect(state.dropped) {
+        val item = state.dropped ?: return@LaunchedEffect
+        state.clearDropped()
+        receive(item)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -541,13 +603,10 @@ private fun Conversation(state: AppState) {
                                 true
                             } else if (event.type == KeyEventType.KeyDown && event.key == Key.V && event.isCtrlPressed) {
                                 // The PC's keyboard GIFs and stickers (handlePasteContent): a
-                                // copied picture is sent, a copied text is pasted as usual.
-                                when (val pasted = pastedPicture()) {
-                                    is PastedPicture.Gif -> { gifToSend = pasted.file; true }
-                                    is PastedPicture.Sticker -> { state.sendSticker(pasted.file); true }
-                                    is PastedPicture.Photo -> { photo = pasted.file; true }
-                                    null -> false
-                                }
+                                // copied picture or file is sent, a copied text is pasted as usual.
+                                val pasted = pastedContent()
+                                if (pasted != null) receive(pasted)
+                                pasted != null
                             } else {
                                 false
                             }
