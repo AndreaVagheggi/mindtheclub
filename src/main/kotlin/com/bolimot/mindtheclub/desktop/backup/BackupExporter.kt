@@ -6,6 +6,7 @@ import com.bolimot.mindtheclub.desktop.crypto.IdentityKeys
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.desktop.storage.Prefs
+import com.bolimot.mindtheclub.tools.Type
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.net.URI
@@ -84,6 +85,15 @@ object BackupExporter {
         // for a file of that name in its public folders and, not finding it, leaves the bubble
         // pointing at this PC's file, where it is found again when the identity comes back here.
         for (message in messages) {
+            // An album keeps several pictures, comma separated: the names travel the same way,
+            // one per picture and "" for one that is not here (BackupManager.createBackup).
+            if (message.type == Type.MULTIPLE_IMAGES) {
+                val names = message.uri.split(",").map { uri ->
+                    MediaFiles.fileOfUri(uri.trim())?.takeIf { MediaFiles.isKept(it) }?.name ?: ""
+                }
+                if (names.any { it.isNotEmpty() }) mediaFileNames[message.messageId] = names.joinToString(",")
+                continue
+            }
             val file = MediaFiles.fileOfUri(message.uri) ?: continue
             if (MediaFiles.isKept(file)) mediaFileNames[message.messageId] = file.name
         }

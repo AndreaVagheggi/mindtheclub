@@ -90,8 +90,9 @@ fun getFileDetailFromType(type: String?): List<String>{
  * unconfirmed, so its sender keeps its copy (see receiving/allReceivedEvent.kt).
  */
 fun isOnThePc(type: String?): Boolean {
-    return type == Type.TEXT || type == Type.IMAGE || type == Type.VIDEO || type == Type.CONTACT ||
-            type == Type.REACTION || type == Type.PROFILE || isFileType(type)
+    return type == Type.TEXT || type == Type.IMAGE || type == Type.MULTIPLE_IMAGES || type == Type.VIDEO ||
+            type == Type.CONTACT || type == Type.REACTION || type == Type.PROFILE || type == Type.AUDIO ||
+            type == Type.WEB || isFileType(type)
 }
 
 /** The App's function, unchanged: the name a media file is kept under is the hash of its bytes. */

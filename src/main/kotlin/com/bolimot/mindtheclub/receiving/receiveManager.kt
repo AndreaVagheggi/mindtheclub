@@ -2,18 +2,18 @@ package com.bolimot.mindtheclub.receiving
 
 // DESKTOP: this file is NOT a copy of the App's receiveManager.kt, which is a thousand lines
 // and mostly media: images, albums, video, files, each saved through Android's MediaStore.
-// receiveReaction, receiveText, receiveImage, receiveVideo and receiveObject (for a file and for a contact) are here. They keep
-// the App's statements in the App's order, with these differences:
+// receiveReaction, receiveText, receiveImage, receiveImages (albums), receiveVideo and
+// receiveObject (for a file, a contact and a voice message) are here. They keep the App's
+// statements in the App's order, with these differences:
 //
 //   - the notification, the sound and the "is this chat on screen" check go through
 //     DesktopEvents instead of the Android classes;
-//   - receiveImage keeps the picture in the PC's media folder (desktop/media/MediaFiles.kt)
-//     where the App saves it to the phone's public Pictures folder through MediaStore. Same
-//     name, the SHA-256 of the bytes, and the same reuse of a file already there. The small
-//     "preview" copy the App also writes (for the quote shown when a text replies to a
-//     picture) is not made: replies are not on the PC yet;
-//   - a reply to an album or to a video gets no preview image (the App builds one from the
-//     media, which are not on the PC); a reply to a single image keeps the uri it finds;
+//   - receiveImage and receiveImages keep the pictures in the PC's media folder
+//     (desktop/media/MediaFiles.kt) where the App saves them to the phone's public Pictures
+//     folder through MediaStore. Same name, the SHA-256 of the bytes, and the same reuse of a
+//     file already there;
+//   - the preview of a reply to an album or to a video is made by QuotedPictures, as the App's
+//     buildMultiImagePreview and saveFirstVideoFrame make it;
 //   - propagateGroupMessage is not called: a group text never reaches this function on the PC
 //     (receiveData refuses group content), and for a 1:1 message the App's call does nothing.
 
@@ -25,7 +25,10 @@ import com.bolimot.mindtheclub.database.message.MessageRepository
 import com.bolimot.mindtheclub.database.reaction.ReactionManager
 import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
+import com.bolimot.mindtheclub.desktop.media.Albums
+import com.bolimot.mindtheclub.desktop.media.AudioFiles
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.desktop.media.QuotedPictures
 import com.bolimot.mindtheclub.functions.assembleChunksToTempFile
 import com.bolimot.mindtheclub.functions.computeSha256
 import com.bolimot.mindtheclub.functions.contentKeyOf
@@ -175,9 +178,10 @@ suspend fun receiveText(messageId: String) {
                 var replyUri = getReplyImage(originalId, replyType ?: "", App.context())
 
                 if (replyUri != null) {
-                    // DESKTOP: no preview is built for an album or a video, see the top of the file.
+                    // DESKTOP: buildMultiImagePreview and saveFirstVideoFrame are QuotedPictures
+                    // on the PC; null when the answered album or video is not on this PC.
                     if (replyType == Type.MULTIPLE_IMAGES || replyType == Type.VIDEO) {
-                        replyUri = null
+                        replyUri = QuotedPictures.of(replyType, replyUri)
                     }
                 }
                 message.uri = replyUri ?: ""
@@ -233,16 +237,25 @@ private suspend fun getReplyImage(replyId: String, type: String, context: Contex
 //   - a CONTACT: the text is the contact's record (JSON) and [content] is its picture, already
 //     assembled by getFullMessage into the scratch folder. The App leaves it there; the PC
 //     moves it to the media folder, so it follows the rule of every other picture. A contact
-//     shared without a picture arrives as an empty file, which is dropped.
+//     shared without a picture arrives as an empty file, which is dropped;
+//   - an AUDIO: [content] is the voice message, assembled by getFullMessage into the scratch
+//     folder as "full<id>.dat". The App plays it from there; the PC moves it to the media folder
+//     under the hash of its bytes plus the extension its bytes say it has (AudioFiles
+//     .extensionOf: m4a for what a phone records), because Windows, which plays it, goes by
+//     the extension.
 //
-// The other kinds the App routes here (sticker, gif, link, audio) are not on the PC yet and
-// never reach this function (isOnThePc).
+//   - a LINK (Type.WEB): it carries no content ([content] is an empty file, dropped) and its
+//     preview is in replyId (the picture's address), nameAttached and textAttached, which are
+//     copied from the Inbox row as for every kind.
+//
+// The other kinds the App routes here (sticker, gif) are not on the PC yet and never reach this
+// function (isOnThePc).
 suspend fun receiveObject(messageId: String, content: String, text: String, fromUserId: String, type: String) {
     debugLine2("fullMessageReceivedEvent", "$type MESSAGE RECEIVED: $messageId")
 
     val context = App.context()
 
-    // The picture getFullMessage assembled for a contact, if any.
+    // The picture getFullMessage assembled for a contact, or the sound of a voice message.
     val assembledPicture: File? = if (content.isNotEmpty()) MediaFiles.fileOfUri(content) else null
 
     try {
@@ -328,7 +341,12 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 return
             }
         } else {
-            // DESKTOP: a contact's picture, see the note above the function.
+            // DESKTOP: a contact's picture or a voice message, see the note above the function.
+            val keptExtension = if (type == Type.AUDIO && assembledPicture != null) {
+                AudioFiles.extensionOf(assembledPicture)
+            } else {
+                "jpg"
+            }
             if (assembledPicture == null) {
                 ""
             } else if (assembledPicture.length() == 0L) {
@@ -341,7 +359,7 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                     ""
                 } else {
                     try {
-                        MediaFiles.keep(assembledPicture, "$hash.jpg").toURI().toString()
+                        MediaFiles.keep(assembledPicture, "$hash.$keptExtension").toURI().toString()
                     } catch (e: Exception) {
                         debugLine("receiveObject", "Failed to save the contact's picture: ${e.message}")
                         assembledPicture.delete()
@@ -689,6 +707,154 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
 
     } catch (e: Exception) {
         debugLine("fullMessageReceivedEvent", "Failed to receive image: ${e.message}")
+    }
+}
+
+// DESKTOP: the App's receiveImages. [content] is the album as it travelled, assembled by
+// getFullMessage: the pictures one after the other, each followed by a separator (Albums.split
+// is the App's extractImages). Each picture is kept once, in the media folder, under the hash
+// of its bytes: where the App writes it twice, once by extractImages under a random name (the
+// copy the message points at) and once under its hash (the copy of the chat's gallery), the PC
+// writes the hash copy only and points both at it. The App also turns each picture upright and
+// re-encodes it; the PC keeps its bytes as they came, with their EXIF orientation, which every
+// viewer on the PC honours (MediaFiles.thumbnail does too).
+suspend fun receiveImages(messageId: String, content: String, text: String, fromUserId: String) {
+    debugLine2("fullMessageReceivedEvent", "MULTIPLE IMAGES MESSAGE RECEIVED: $messageId")
+
+    val context = App.context()
+    val merged: File? = MediaFiles.fileOfUri(content)
+
+    try {
+        val messageDao = getMessageDao(context)
+        val inboxDao = getInboxDao(context)
+        val imagesDao = getImageDao(context)
+
+        val messageRepository = MessageRepository(messageDao)
+
+        val inboxMessage = inboxDao.getFirstMessage(messageId)
+
+        if (inboxMessage == null) {
+            debugLine("fullMessageReceivedEvent", "No such multiple images message in Inbox")
+            merged?.delete()
+            return
+        }
+
+        val contentKey = contentKeyOf(inboxMessage)
+
+        // The sender puts the album's own id in groupId (MessageData.fromMessage).
+        val messageKey = inboxMessage.groupId.ifEmpty { messageId }
+
+        val existingMessage = messageRepository.getMessage(messageKey)
+        if (existingMessage != null && existingMessage.status != Status.RECEIVING) {
+            debugLine("fullMessageReceivedEvent", "Multiple Image message already exists: $messageKey")
+            val earlyDeliveryId = inboxMessage.chatGroupId?.let {
+                computeDeliveryDocId(it, inboxMessage.originalSenderId ?: fromUserId, inboxMessage.date)
+            }
+            notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
+            if (earlyDeliveryId != null && inboxMessage.originalSenderId != null
+                && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+                notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
+            }
+            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
+            merged?.delete()
+            return
+        }
+
+        if (merged == null) {
+            debugLine("fullMessageReceivedEvent", "Failed to extract images")
+            return
+        }
+
+        // extractImages, then the hash copy of each picture (see the note above the function).
+        val parts = Albums.split(merged)
+        val kept = ArrayList<File>()
+        for (part in parts) {
+            MediaFiles.keepReceivedPicture(part)?.let { kept.add(it) }
+        }
+        merged.delete()
+
+        if (kept.isEmpty()) {
+            debugLine("fullMessageReceivedEvent", "Failed to extract images")
+            return
+        }
+
+        debugLine("fullMessageReceivedEvent", "Extracted ${kept.size} images")
+
+        val uriStringList = kept.joinToString(",") { it.toURI().toString() }
+        val originalSender = inboxMessage.originalSenderId ?: fromUserId
+
+        if (inboxMessage.chatGroupId != null && inboxMessage.originalSenderId != null) {
+            if (messageRepository.groupMessageExists(inboxMessage.chatGroupId, inboxMessage.originalSenderId, inboxMessage.date)) {
+                debugLine("receiveImages", "Duplicate group message, skipping")
+                inboxDao.deleteByContent(contentKey)
+                dropOrphanPlaceholder(messageKey)
+                ProcessedMessageCache.markProcessed(messageId)
+                val dupDeliveryId = computeDeliveryDocId(inboxMessage.chatGroupId,
+                    inboxMessage.originalSenderId, inboxMessage.date)
+                notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
+                if (inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+                    notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, dupDeliveryId)
+                }
+                return
+            }
+        }
+
+        val message = Message(
+            uid = 0,
+            fromUserId = inboxMessage.chatGroupId ?: originalSender,
+            toUserId = MySelf.userId()!!,
+            messageId = messageKey,
+            replyId = inboxMessage.replyId,
+            groupId = messageKey,
+            groupSize = inboxMessage.groupSize,
+            text = text,
+            textAttached = inboxMessage.textAttached,
+            nameAttached = inboxMessage.nameAttached,
+            uri = uriStringList,
+            type = Type.MULTIPLE_IMAGES,
+            subType = inboxMessage.subType,
+            date = inboxMessage.date,
+            status = "",
+            reaction = null,
+            chatGroupId = inboxMessage.chatGroupId,
+            originalSenderId = originalSender
+        )
+
+        if (messageRepository.saveMessage(message, messageIn = true)) {
+            inboxDao.deleteByContent(contentKey)
+            ProcessedMessageCache.markProcessed(messageId)
+
+            // ImageRepository.insertImage in the App: one row per picture of the album.
+            val imageOwner = inboxMessage.chatGroupId ?: inboxMessage.fromUserId
+            for (file in kept) {
+                if (imagesDao.countByFilename(file.name, imageOwner, messageKey) == 0) {
+                    imagesDao.insert(Image(0, messageKey, file.toURI().toString(), inboxMessage.date, "", imageOwner))
+                }
+            }
+
+            val deliveryId = inboxMessage.chatGroupId?.let {
+                computeDeliveryDocId(it, originalSender, inboxMessage.date)
+            }
+            markContentComplete(deliveryId)
+            notifyRemotePeer(fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
+
+            if (deliveryId != null && inboxMessage.originalSenderId != null
+                && inboxMessage.originalSenderId != fromUserId) {
+                notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
+            }
+
+            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+
+            if (!chatScreenIsInForeground(message.fromUserId)) {
+                DesktopEvents.notifyMessage(message)
+            }
+        } else {
+            debugLine("fullMessageReceivedEvent", "Failed to save image message")
+        }
+    } catch (e: Exception) {
+        debugLine("fullMessageReceivedEvent", "Failed to receive multiple images: Exception: ${e.message}")
     }
 }
 

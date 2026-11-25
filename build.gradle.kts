@@ -62,6 +62,10 @@ dependencies {
     // (the recovery trackers store their entries as JSON).
     implementation("org.json:json:20240303")
 
+    // jsoup, the HTML reader the App uses for the preview of a link (functions/fetchWeb.kt),
+    // the same version. It has no dependencies of its own.
+    implementation("org.jsoup:jsoup:1.21.1")
+
     // Windows Data Protection API, to seal the identity key (desktop/storage/KeyVault.kt).
     implementation("net.java.dev.jna:jna:5.17.0")
     implementation("net.java.dev.jna:jna-platform:5.17.0")

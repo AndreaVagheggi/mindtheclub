@@ -4,8 +4,8 @@ package com.bolimot.mindtheclub.receiving
 // keeps the App's structure and order (the processing claim, the read that tolerates a missing
 // row, the blocked sender, the content check, then the type), with these differences:
 //
-//   - ONLY TEXT, SINGLE IMAGES, VIDEO, FILES, CONTACTS, REACTIONS AND PROFILES ARE PROCESSED
-//     (isOnThePc). Every other type (albums, sticker, gif, link, audio) is left exactly where it is:
+//   - ONLY TEXT, LINKS, IMAGES, ALBUMS, VIDEO, FILES, CONTACTS, REACTIONS, PROFILES AND VOICE
+//     MESSAGES ARE PROCESSED (isOnThePc). Every other type (sticker, gif) is left exactly where it is:
 //     its chunks stay in the Inbox and nothing is confirmed, so the sender keeps its copy and
 //     goes on announcing it.
 //     Confirming a content this program cannot save would make the sender delete it
@@ -120,8 +120,11 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
                 }
                 receiveText(messageId)
             }
-            // The assembled file is the contact's picture: receiveObject keeps it.
-            Type.CONTACT -> receiveObject(messageId, content, message.text, fromUserId, type)
+            // The assembled file is the contact's picture, or the voice message: receiveObject keeps
+            // it. A link carries nothing: its preview is in the fields of the Inbox row.
+            Type.CONTACT, Type.AUDIO, Type.WEB -> receiveObject(messageId, content, message.text, fromUserId, type)
+            // The assembled file is the album's pictures, one after the other: receiveImages parts them.
+            Type.MULTIPLE_IMAGES -> receiveImages(messageId, content, message.text, fromUserId)
             Type.REACTION -> {
                 // DESKTOP: as for a text, the assembled file (empty: a reaction carries no
                 // content) is not needed; the emoji is the text of the Inbox row.

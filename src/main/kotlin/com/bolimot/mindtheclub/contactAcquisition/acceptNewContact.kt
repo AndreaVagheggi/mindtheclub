@@ -64,6 +64,7 @@ suspend fun autoAcceptRequestDocument(
         // attack.
         val existingPeer = getPeerDao(context).getPeer(userId)
         if (existingPeer != null) {
+            var sameKey = false
             try {
                 val incomingFp = if (doc.enc) doc.fingerprint
                     ?.let { com.bolimot.mindtheclub.crypto.KeyManager.decrypt(it) } else null
@@ -73,8 +74,19 @@ suspend fun autoAcceptRequestDocument(
                     // DESKTOP: PeerIdentityChange.record is not on the PC, see the top of the file.
                     debugLine("autoAcceptRequest", "Request from $userId carries a different key, left alone")
                 }
+                sameKey = !incomingFp.isNullOrEmpty() && incomingFp == storedFp
             } catch (e: Exception) {
                 debugLine("autoAcceptRequest", "Key change check failed for $userId: ${e.message}")
+            }
+            // An active contact asking again with the very key we verified: its side lost us
+            // (removed by mistake, reinstalled) and cannot complete without our profile. Re-send
+            // it and close the request, which otherwise hung forever. Our row is not touched; a
+            // different key is never taken.
+            if (sameKey && existingPeer.status == Contact.ACTIVE) {
+                debugLine("autoAcceptRequest", "Repeat request from active contact $userId, re-sending my profile")
+                Outgoing.sendMyProfile(userId)
+                removeRequestFromFirestore(userId)
+                return true
             }
             return false
         }
@@ -151,6 +163,12 @@ suspend fun acceptNewContact(
                 if (!stored) {
                     debugLine("acceptNewContact", "Post-insert key store failed for $userId; signalling will recover it from Firestore")
                 }
+
+                // Active now, not when allReceived for our profile lands: the key is verified and
+                // name and bio are in, the same evidence the asking side goes active on. While
+                // NEW this row opened as "pending" with a remove-request button, and a click on
+                // it seconds after the auto-accept deleted the contact on this side only.
+                getPeerDao(context).updatePeerStatus(userId, Contact.ACTIVE)
 
                 Outgoing.sendMyProfile(userId)
                 removeRequestFromFirestore(userId)

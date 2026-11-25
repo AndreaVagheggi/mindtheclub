@@ -7,7 +7,8 @@ import com.bolimot.mindtheclub.database.peer.Peer
 import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.media.VideoCompressor
-import com.bolimot.mindtheclub.desktop.media.VideoThumbnail
+import com.bolimot.mindtheclub.desktop.media.QuotedPictures
+import com.bolimot.mindtheclub.desktop.web.WebsiteInfo
 import com.bolimot.mindtheclub.desktop.storage.BatchDb
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.debugLine
@@ -37,10 +38,6 @@ import java.io.File
  * App builds it, save it, hand it to sendMessage. Everything after that is the engine.
  */
 object Outgoing {
-
-    /** The still frame a reply to a video carries: its longest side, and its JPEG quality. */
-    private const val REPLY_FRAME_SIDE = 640
-    private const val REPLY_FRAME_QUALITY = 0.50f
 
     /** sendManager.sendObject: a content is marked "forwarded" when it quotes some words. */
     private fun forwardSubType(textAttached: String?): String =
@@ -98,25 +95,84 @@ object Outgoing {
     }
 
     /**
+     * sendManager.sendText with Type.WEB: a text with a link in it, sent with the link's
+     * preview as ChatScreen fills it in. The preview travels in three fields the App gives this
+     * meaning to: replyId is the address of the page's picture, nameAttached the page's title,
+     * textAttached its description. The picture itself does not travel.
+     *
+     * ChatScreen does the same when a reply carries a link: the preview takes the fields of the
+     * quote, and only the subType still says "reply". [subType] is that subType.
+     */
+    suspend fun sendWeb(toUserId: String, text: String, info: WebsiteInfo, subType: String?): Message? {
+        val myUserId = MySelf.userId() ?: return null
+        if (text.isEmpty()) return null
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = info.imageUrl,
+            groupId = "",
+            groupSize = 0,
+            text = text,
+            textAttached = info.description,
+            nameAttached = info.title,
+            uri = "",
+            type = Type.WEB,
+            subType = subType,
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /** sendManager.forwardWeb: a link and its preview to [toUserId], as they came. */
+    suspend fun forwardWeb(toUserId: String, original: Message): Message? {
+        val myUserId = MySelf.userId() ?: return null
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = original.replyId.toString(),
+            groupId = "",
+            groupSize = 0,
+            text = original.text,
+            textAttached = original.textAttached.toString(),
+            nameAttached = original.nameAttached.toString(),
+            uri = "",
+            type = Type.WEB,
+            subType = SubType.FORWARD,
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /**
      * The picture a reply to [replyId] carries, as a file: URI, or "" when it carries none.
-     * sendText in the App: the picture itself for a picture, the first frame for a video, the
-     * contact's picture for a shared contact; nothing for a text or a file. Nothing either when
-     * the original's file is not on this PC: a name that points at no file must never travel.
+     * sendText in the App: the picture itself for a picture, the first frame for a video, a
+     * grid of its first four pictures for an album, the contact's picture for a shared contact;
+     * nothing for a text or a file (QuotedPictures). Nothing either when the original's files are
+     * not on this PC: a name that points at no file must never travel.
      */
     private suspend fun quotedPictureUri(replyId: String): String {
         return try {
             val repository = getMessageRepository(App.context())
             val replyType = repository.getReplyType(replyId) ?: return ""
-            val original = MediaFiles.fileOfUri(repository.getReplyImage(replyId, replyType)) ?: return ""
-            when (replyType) {
-                Type.IMAGE, Type.CONTACT -> original.toURI().toString()
-                Type.VIDEO -> {
-                    // saveFirstVideoFrame in the App: a JPEG at quality 50.
-                    val frame = VideoThumbnail.of(original, REPLY_FRAME_SIDE) ?: return ""
-                    MediaFiles.keepJpeg(frame, REPLY_FRAME_QUALITY).toURI().toString()
-                }
-                else -> ""
-            }
+            QuotedPictures.of(replyType, repository.getReplyImage(replyId, replyType)) ?: ""
         } catch (e: Exception) {
             debugLine("Outgoing", "No picture for the reply to $replyId: ${e.message}")
             ""
@@ -248,6 +304,65 @@ object Outgoing {
     }
 
     /**
+     * sendManager.sendMultipleImage for a 1:1 chat, after the phone's SendImages screen: an album
+     * of [sources], in that order, with [caption] under it. Each picture is prepared as a single
+     * one is (MediaFiles.prepareForSending: upright, at most 2048, JPEG 80), unless this PC
+     * already keeps it (a forward). The row keeps them as a comma separated list; the one file
+     * they travel as is made when the message is dispatched (MessageData.fromMessage).
+     *
+     * Throws MediaFiles.Refused when a picture cannot be read. Returns the saved message, or
+     * null when it could not be saved.
+     */
+    suspend fun sendImages(
+        toUserId: String,
+        sources: List<File>,
+        caption: String,
+        textAttached: String? = null,
+        nameAttached: String? = null,
+    ): Message? {
+        val myUserId = MySelf.userId() ?: return null
+        if (sources.isEmpty()) return null
+
+        val prepared = sources.map { if (MediaFiles.isKept(it)) it else MediaFiles.prepareForSending(it) }
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = caption,
+            textAttached = textAttached,
+            nameAttached = nameAttached,
+            uri = prepared.joinToString(",") { it.toURI().toString() },
+            type = Type.MULTIPLE_IMAGES,
+            subType = forwardSubType(textAttached),
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+
+        // sendManager.addObjectForBrowsing: one row of the chat's gallery per picture.
+        try {
+            val imageDao = getImageDao(App.context())
+            for (file in prepared) {
+                if (imageDao.countByFilename(file.name, message.toUserId, message.messageId) == 0) {
+                    imageDao.insert(Image(0, message.messageId, file.toURI().toString(), message.date, "", message.toUserId))
+                }
+            }
+        } catch (e: Exception) {
+            debugLine("Outgoing", "Image rows not written for ${message.messageId}: ${e.message}")
+        }
+        return message
+    }
+
+    /**
      * sendManager.sendObject with "video", for a 1:1 chat, after the phone's SendVideo screen.
      *
      * As on the phone, a large video is first re-encoded to 720p at 2 Mbit/s and the original
@@ -362,6 +477,72 @@ object Outgoing {
             uri = copy.toURI().toString(),
             type = "${Type.FILE}$detailCSV",
             subType = forwardSubType(textAttached),
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /**
+     * ChatScreen.sendAudioFile, which is sendManager.sendObject with Type.AUDIO: a voice message
+     * just recorded, [recording] being the M4A file this PC keeps (AudioFiles.keepRecording).
+     * No caption and nothing quoted. Returns the saved message, or null when it could not be saved.
+     */
+    suspend fun sendAudio(toUserId: String, recording: File): Message? {
+        val myUserId = MySelf.userId() ?: return null
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = "",
+            textAttached = "",
+            nameAttached = "",
+            uri = recording.toURI().toString(),
+            type = Type.AUDIO,
+            subType = forwardSubType(""),
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /**
+     * sendManager.forwardAudio: a voice message to [toUserId], with no screen in between. The
+     * message carries in nameAttached the userId of whoever SPOKE it, [originId], so that every
+     * bubble it reaches shows that person's picture (MessageRepository.getProfilePic).
+     */
+    suspend fun forwardAudio(toUserId: String, originId: String?, recording: File): Message? {
+        val myUserId = MySelf.userId() ?: return null
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = "",
+            textAttached = "",
+            nameAttached = originId,
+            uri = recording.toURI().toString(),
+            type = Type.AUDIO,
+            subType = SubType.FORWARD,
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
             chatGroupId = null,

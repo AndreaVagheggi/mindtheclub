@@ -2,6 +2,7 @@ package com.bolimot.mindtheclub.dataModels
 
 import androidx.annotation.Keep
 import com.bolimot.mindtheclub.database.message.Message
+import com.bolimot.mindtheclub.desktop.media.Albums
 import com.bolimot.mindtheclub.tools.Type
 import kotlinx.serialization.Serializable
 
@@ -55,9 +56,9 @@ data class MessageData(
                     text = message.text,
                     textAttached = message.textAttached,
                     nameAttached = message.nameAttached,
-                    // DESKTOP: the App merges the album into one file here (mergeImages). Albums cannot be
-                    // sent from the PC yet, so the uri is carried as it is.
-                    uri = message.uri,
+                    // DESKTOP: mergeImages is the PC's Albums.merge (desktop/media/Albums.kt), the
+                    // same file to the byte.
+                    uri = Albums.merge(message.uri, message.messageId),
                     type = Type.MULTIPLE_IMAGES,
                     subType = message.subType,
                     date = message.date,

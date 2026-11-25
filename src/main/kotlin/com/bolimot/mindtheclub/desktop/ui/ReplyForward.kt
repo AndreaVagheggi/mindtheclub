@@ -203,11 +203,11 @@ internal fun QuoteInsert(
 @Composable
 internal fun ReplyInsert(state: AppState, message: Message, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val picture by produceState<ImageBitmap?>(null, message.messageId) {
-        value = withContext(Dispatchers.IO) { state.mediaOf(message)?.let { Thumbnails.of(it) } }
+        value = withContext(Dispatchers.IO) { state.replyPictureOf(message)?.let { Thumbnails.of(it) } }
     }
     QuoteInsert(
         name = state.selectedName,
-        text = message.text,
+        text = state.quotedTextOf(message),
         onClose = onClose,
         modifier = modifier,
         picture = picture,

@@ -169,6 +169,57 @@ internal object AppIcons {
         )
     }
 
+    /** microphone.xml: the voice message button, its recording bar, and the mark on a voice bubble. */
+    val Microphone: ImageVector by lazy {
+        icon(
+            "microphone", 24f,
+            "M12,14c1.66,0 2.99,-1.34 2.99,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11L5,11c0,3.41 2.72,6.23 6,6.72L11,21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z"
+        )
+    }
+
+    /** play.xml: the voice bubble's play button. */
+    val Play52: ImageVector by lazy {
+        icon("play", 960f, "M300,300 L300,660 L660,480 Z")
+    }
+
+    /** pause.xml: the voice bubble's pause button, two hollow bars. */
+    val Pause52: ImageVector by lazy {
+        icon(
+            "pause", 960f,
+            "M506,660L506,300L660,300L660,660L506,660M300,660L300,300L454,300L454,660L300,660" +
+                    "M557,609L609,609L609,351L557,351L557,609M351,609L403,609L403,351L351,351L351,609"
+        )
+    }
+
+    /** rewind.xml: "slide left to cancel" on the recording bar. */
+    val Rewind: ImageVector by lazy {
+        icon(
+            "rewind", 960f,
+            "M440,720L200,480L440,240L496,296L313,480L496,664L440,720ZM704,720L464,480L704,240L760,296L577,480L760,664L704,720Z"
+        )
+    }
+
+    /** lock.xml: the top of the capsule above the microphone while recording. */
+    val Lock: ImageVector by lazy {
+        icon(
+            "lock", 24f,
+            "M18,8h-1L17,6c0,-2.76 -2.24,-5 -5,-5S7,3.24 7,6v2L6,8c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2L20,10c0,-1.1 -0.9,-2 -2,-2zM12,17c-1.1,0 -2,-0.9 -2,-2s0.9,-2 2,-2 2,0.9 2,2 -0.9,2 -2,2zM15.1,8L8.9,8L8.9,6c0,-1.71 1.39,-3.1 3.1,-3.1 1.71,0 3.1,1.39 3.1,3.1v2z"
+        )
+    }
+
+    /** up.xml: "slide up to lock" in the capsule. */
+    val Up: ImageVector by lazy {
+        icon(
+            "up", 24f,
+            "M6,17.59l1.41,1.41l4.59,-4.58l4.59,4.58l1.41,-1.41l-6,-6zM6,11l1.41,1.41l4.59,-4.58l4.59,4.58l1.41,-1.41l-6,-6z"
+        )
+    }
+
+    /** send.xml: sends a locked recording. */
+    val Send: ImageVector by lazy {
+        icon("send", 24f, "M2.01,21L23,12 2.01,3 2,10l15,2 -15,2z")
+    }
+
     private fun icon(name: String, viewport: Float, pathData: String): ImageVector =
         ImageVector.Builder(
             name = name,

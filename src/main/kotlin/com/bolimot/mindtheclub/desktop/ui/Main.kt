@@ -65,6 +65,8 @@ import androidx.compose.ui.window.rememberWindowState
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.desktop.engine.Engine
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.desktop.web.WebPreview
+import com.bolimot.mindtheclub.desktop.web.WebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.tools.Status
@@ -318,6 +320,9 @@ private fun Conversation(state: AppState) {
     var draft by remember(state.selectedUserId) { mutableStateOf("") }
     // The picture chosen under the paperclip's Images, shown for confirmation before it is sent.
     var photo by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
+    // The pictures chosen together under the paperclip's Images: an album, shown for
+    // confirmation before it is sent (SendImages).
+    var album by remember(state.selectedUserId) { mutableStateOf<List<File>?>(null) }
     // The video chosen under the paperclip's Video, shown for confirmation before it is sent.
     var videoToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     // The file chosen under the paperclip's File, shown for confirmation before it is sent.
@@ -337,6 +342,12 @@ private fun Conversation(state: AppState) {
     var choosingEmojiFor by remember(state.selectedUserId) { mutableStateOf<Message?>(null) }
     // The message whose reaction pill was clicked, while the list of who reacted is on screen.
     var reactionsOf by remember(state.selectedUserId) { mutableStateOf<String?>(null) }
+    // The link being written and its preview (ChatScreen: webUrl, webTitle, webDescription,
+    // imageUrl). The preview is null while the page is being read. Given up with the cross, it is
+    // not looked for again until the text has no link in it (webPreviewDismissed).
+    var webUrl by remember(state.selectedUserId) { mutableStateOf<String?>(null) }
+    var webInfo by remember(state.selectedUserId) { mutableStateOf<WebsiteInfo?>(null) }
+    var webDismissed by remember(state.selectedUserId) { mutableStateOf(false) }
     val messageBoxFocus = remember { FocusRequester() }
     val listState = rememberLazyListState()
 
@@ -364,12 +375,31 @@ private fun Conversation(state: AppState) {
         if (state.messages.isNotEmpty()) listState.scrollToItem(state.messages.size - 1)
     }
 
+    // ChatScreen's TextWatcher: the first link written is the one previewed.
+    LaunchedEffect(draft) {
+        val found = WebPreview.extractUrl(draft)
+        if (found == null) {
+            webUrl = null
+            webDismissed = false
+        } else if (webUrl == null && !webDismissed) {
+            webUrl = found
+        }
+    }
+    // Read once, in the background, and not started again by what is typed after the link.
+    LaunchedEffect(webUrl) {
+        webInfo = null
+        val link = webUrl ?: return@LaunchedEffect
+        webInfo = WebPreview.fetchWebsiteInfo(link)
+    }
+
     fun send() {
         // Nothing written: nothing is sent, and a reply being prepared stays where it is.
         if (draft.isBlank()) return
-        state.send(draft, replyTo)
+        state.send(draft, replyTo, webInfo)
         draft = ""
         replyTo = null
+        webUrl = null
+        webInfo = null
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -398,7 +428,7 @@ private fun Conversation(state: AppState) {
                 onForward = {
                     state.clearSelection()
                     // A picture, video or file can be forwarded only if its file is on this PC.
-                    if (picked.type != Type.TEXT && MediaFiles.fileFor(picked) == null) {
+                    if (picked.type != Type.TEXT && !state.hasMediaHere(picked)) {
                         state.showWarning(Strings.MEDIA_NOT_AVAILABLE)
                     } else {
                         forwarding = picked
@@ -435,7 +465,10 @@ private fun Conversation(state: AppState) {
                 visible = attaching,
                 onImages = {
                     attaching = false
-                    chooseFile(save = false, suggested = PICTURE_FILES)?.let { photo = it }
+                    // Several pictures can be chosen at once, as on the phone: one is a picture,
+                    // more are an album.
+                    val chosen = chooseFiles(suggested = PICTURE_FILES)
+                    if (chosen.size == 1) photo = chosen[0] else if (chosen.size > 1) album = chosen
                 },
                 onVideo = {
                     attaching = false
@@ -455,38 +488,89 @@ private fun Conversation(state: AppState) {
 
         HorizontalDivider()
         // The message being answered, on its card just above the message box.
-        replyTo?.let { answered ->
-            ReplyInsert(
-                state,
-                answered,
-                onClose = { replyTo = null },
+        // The preview of a link being written takes the place of the reply card, as on the
+        // phone, where the two are the same card (chat_insert).
+        if (webUrl != null) {
+            LinkInsert(
+                info = webInfo,
+                // dismissWebPreview: the preview goes, and so does what was written.
+                onClose = {
+                    webDismissed = true
+                    webUrl = null
+                    webInfo = null
+                    draft = ""
+                },
                 modifier = Modifier.padding(start = 12.dp, top = 8.dp)
             )
+        } else {
+            replyTo?.let { answered ->
+                ReplyInsert(
+                    state,
+                    answered,
+                    onClose = { replyTo = null },
+                    modifier = Modifier.padding(start = 12.dp, top = 8.dp)
+                )
+            }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                placeholder = { Text(Strings.MESSAGE_HINT) },
-                // The paperclip, inside the box at its end, as on the phone.
-                trailingIcon = { AttachButton(onClick = { attaching = !attaching }) },
-                maxLines = 4,
-                modifier = Modifier.weight(1f).focusRequester(messageBoxFocus).onPreviewKeyEvent { event ->
-                    // Enter sends, Shift+Enter makes a new line.
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && !event.isShiftPressed) {
-                        send()
-                        true
-                    } else {
-                        false
-                    }
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (state.recording) {
+                    // A voice message being recorded takes the place of the message box.
+                    RecordingBar(state, modifier = Modifier.weight(1f))
+                } else {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        placeholder = { Text(Strings.MESSAGE_HINT) },
+                        // The paperclip, inside the box at its end, as on the phone.
+                        trailingIcon = { AttachButton(onClick = { attaching = !attaching }) },
+                        maxLines = 4,
+                        modifier = Modifier.weight(1f).focusRequester(messageBoxFocus).onPreviewKeyEvent { event ->
+                            // Enter sends, Shift+Enter makes a new line.
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && !event.isShiftPressed) {
+                                send()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    )
                 }
-            )
-            Spacer(Modifier.width(8.dp))
-            Button(enabled = draft.isNotBlank(), onClick = { send() }) { Text(Strings.SEND) }
+                Spacer(Modifier.width(8.dp))
+                // As on the phone: the microphone while nothing is written, Send once something is.
+                if (draft.isNotBlank() && !state.recording) {
+                    Button(onClick = { send() }) { Text(Strings.SEND) }
+                } else {
+                    VoiceButton(state)
+                }
+            }
+            // Above the microphone while recording, until the recording is locked.
+            if (state.recording && !state.recordingLocked) {
+                LockCapsule(modifier = Modifier.align(Alignment.TopEnd).offset(x = (-15).dp, y = (-88).dp))
+            }
         }
+    }
+
+    album?.let { files ->
+        SendAlbumDialog(
+            initialFiles = files,
+            initialCaption = draft,
+            onSend = { chosen, caption ->
+                state.sendImages(chosen, caption)
+                draft = ""
+                album = null
+            },
+            // Down to one picture: the screen of a single picture, as on the phone.
+            onSingle = { file, caption ->
+                album = null
+                draft = caption
+                photo = file
+            },
+            onClose = { album = null }
+        )
     }
 
     photo?.let { file ->
@@ -565,22 +649,62 @@ private fun Conversation(state: AppState) {
             maxSelectable = FORWARD_MAX_CONTACTS,
             onSend = { userIds ->
                 val plan = state.planForward(message, userIds)
-                if (message.type == Type.TEXT) state.forwardText(plan) else forwardPlan = plan
+                when (message.type) {
+                    Type.TEXT -> state.forwardText(plan)
+                    // A voice message leaves at once too, with no send screen (forwardAudio).
+                    Type.AUDIO -> state.forwardAudio(plan)
+                    // A link leaves at once too, with its preview (forwardWeb).
+                    Type.WEB -> state.forwardWeb(plan)
+                    else -> forwardPlan = plan
+                }
                 forwarding = null
             },
             onClose = { forwarding = null }
         )
     }
 
-    // Forward, second step for a picture, a video and a file: the send screen, with the card
+    // Forward, second step for a picture, an album, a video and a file: the send screen, with the card
     // that says whose it is and the words it came with. The cross on the card sends it bare.
     forwardPlan?.let { plan ->
-        val file = remember(plan.message.messageId) { MediaFiles.fileFor(plan.message) }
+        // The content's file, or for an album its first picture: what must be on this PC.
+        val file = remember(plan.message.messageId) {
+            if (plan.message.type == Type.MULTIPLE_IMAGES) state.albumFilesOf(plan.message).firstOrNull()
+            else MediaFiles.fileFor(plan.message)
+        }
         if (file == null) {
             LaunchedEffect(plan) { forwardPlan = null }
         } else {
             val type = plan.message.type
+            // A forwarded album taken down to one picture: that picture on its own screen, with
+            // the caption written so far (onItemReselect opens SendImage).
+            var single by remember(plan.message.messageId) { mutableStateOf<Pair<File, String>?>(null) }
+            val lastOne = single
             when {
+                type == Type.MULTIPLE_IMAGES && lastOne != null -> SendPhotoDialog(
+                    file = lastOne.first,
+                    initialCaption = lastOne.second,
+                    onSend = { caption ->
+                        state.sendImage(lastOne.first, caption, plan)
+                        forwardPlan = null
+                    },
+                    onClose = { forwardPlan = null },
+                    quoteName = plan.name,
+                    quoteText = plan.text,
+                    onDropQuote = { forwardPlan = plan.withoutQuote() }
+                )
+                type == Type.MULTIPLE_IMAGES -> SendAlbumDialog(
+                    initialFiles = state.albumFilesOf(plan.message),
+                    initialCaption = "",
+                    onSend = { chosen, caption ->
+                        state.sendImages(chosen, caption, plan)
+                        forwardPlan = null
+                    },
+                    onSingle = { picture, caption -> single = picture to caption },
+                    onClose = { forwardPlan = null },
+                    quoteName = plan.name,
+                    quoteText = plan.text,
+                    onDropQuote = { forwardPlan = plan.withoutQuote() }
+                )
                 type == Type.IMAGE -> SendPhotoDialog(
                     file = file,
                     initialCaption = "",
@@ -618,7 +742,7 @@ private fun Conversation(state: AppState) {
                     quoteText = plan.text,
                     onDropQuote = { forwardPlan = plan.withoutQuote() }
                 )
-                // Only these three are forwarded through a send screen (AppState.canReplyOrForward).
+                // Only these four are forwarded through a send screen (AppState.canReplyOrForward).
                 else -> {}
             }
         }
@@ -695,6 +819,9 @@ private fun Bubble(state: AppState, message: Message, onMoreEmojis: () -> Unit, 
                     }
                     // A shared contact shows its card and no text: the text is the contact's record.
                     message.type == Type.CONTACT -> MessageContact(state, message)
+                    message.type == Type.AUDIO -> MessageAudio(state, message)
+                    message.type == Type.MULTIPLE_IMAGES -> MessageAlbum(message)
+                    message.type == Type.WEB -> MessageWeb(message)
                     // A forwarded text has no words of its own: they are all in the quote above.
                     message.type == Type.TEXT -> if (message.text.isNotEmpty()) Text(message.text)
                     else -> Text(state.previewOf(message))
@@ -796,6 +923,15 @@ private const val PICTURE_FILES = "*.jpg;*.jpeg;*.png;*.bmp;*.gif"
 private const val VIDEO_FILES = "*.mp4;*.mov;*.m4v;*.3gp"
 
 /** The system's own file window. Null when the user cancels. */
+/** The Windows file chooser, letting several files be chosen at once. Empty when none was. */
+private fun chooseFiles(suggested: String?): List<File> {
+    val dialog = FileDialog(null as Frame?, Strings.APP_NAME, FileDialog.LOAD)
+    dialog.isMultipleMode = true
+    if (suggested != null) dialog.file = suggested
+    dialog.isVisible = true
+    return dialog.files?.toList() ?: emptyList()
+}
+
 private fun chooseFile(save: Boolean, suggested: String?): File? {
     val dialog = FileDialog(null as Frame?, Strings.APP_NAME, if (save) FileDialog.SAVE else FileDialog.LOAD)
     if (suggested != null) dialog.file = suggested

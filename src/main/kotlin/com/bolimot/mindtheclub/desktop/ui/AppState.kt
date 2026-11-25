@@ -19,9 +19,14 @@ import com.bolimot.mindtheclub.desktop.backup.BackupImporter
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.engine.Engine
 import com.bolimot.mindtheclub.desktop.engine.Outgoing
+import com.bolimot.mindtheclub.desktop.media.Albums
+import com.bolimot.mindtheclub.desktop.media.AudioFiles
+import com.bolimot.mindtheclub.desktop.media.AudioRecorder
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.media.VideoCompressor
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
+import com.bolimot.mindtheclub.desktop.web.WebPreview
+import com.bolimot.mindtheclub.desktop.web.WebsiteInfo
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerDao
@@ -259,6 +264,9 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun select(userId: String) = scope.launch(Dispatchers.IO) {
+        // A recording belongs to the chat it was started in: leaving that chat throws it away,
+        // as leaving ChatScreen does on the phone.
+        if (userId != selectedUserId) cancelRecording()
         // A contact being acquired has no chat yet: its row opens its profile (PeersFragment).
         val chat = chats.firstOrNull { it.userId == userId }
         if (chat != null && chat.isNew) {
@@ -282,8 +290,15 @@ class AppState(private val scope: CoroutineScope) {
      */
     fun canReplyOrForward(message: Message): Boolean =
         message.status != Status.RECEIVING &&
-                (message.type == Type.TEXT || message.type == Type.IMAGE ||
-                        message.type == Type.VIDEO || isFileType(message.type))
+                (message.type == Type.TEXT || message.type == Type.WEB || message.type == Type.IMAGE || message.type == Type.MULTIPLE_IMAGES ||
+                        message.type == Type.VIDEO || message.type == Type.AUDIO || isFileType(message.type))
+
+    /**
+     * The words a quote of [message] shows: its text, or for a voice message, which has none,
+     * "<Voice message>" (ChatScreen.messageReply puts exactly that in textAttached).
+     */
+    fun quotedTextOf(message: Message): String =
+        if (message.type == Type.AUDIO) "<${Strings.VOICE_MESSAGE}>" else message.text
 
     /**
      * Whether the user can react to a message: ChatScreen.showReactionOverlay. In a chat with
@@ -381,17 +396,22 @@ class AppState(private val scope: CoroutineScope) {
      * answered message is the user's own: the PC does the same, so that a reply written here
      * and one written on the phone are the same message.)
      */
-    fun send(text: String, replyTo: Message? = null) {
+    fun send(text: String, replyTo: Message? = null, linkPreview: WebsiteInfo? = null) {
         val to = selectedUserId ?: return
         val body = text.trim()
         if (body.isEmpty()) return
         val quotedName = selectedName
         scope.launch(Dispatchers.IO) {
             try {
-                if (replyTo == null) {
+                if (WebPreview.extractUrl(body) != null) {
+                    // ChatScreen's send button: a text with a link in it is a link, with the
+                    // preview read so far (none if the page could not be read, or not yet). A
+                    // reply keeps only its subType: the preview takes the quote's fields.
+                    Outgoing.sendWeb(to, body, linkPreview ?: WebsiteInfo("", "", ""), replyTo?.let { SubType.REPLY })
+                } else if (replyTo == null) {
                     Outgoing.sendText(to, body)
                 } else {
-                    Outgoing.sendText(to, body, replyTo.text, quotedName, SubType.REPLY, replyTo.messageId)
+                    Outgoing.sendText(to, body, quotedTextOf(replyTo), quotedName, SubType.REPLY, replyTo.messageId)
                 }
             } catch (e: Throwable) {
                 warning = "${Strings.SEND_FAILED} ${e.message}"
@@ -399,6 +419,45 @@ class AppState(private val scope: CoroutineScope) {
             reload()
         }
     }
+
+    /**
+     * Sends the pictures in [files] as one album with [caption] under it: to the open chat, or,
+     * with [forward], to the chats of that forward, quoting what it says.
+     */
+    fun sendImages(files: List<File>, caption: String, forward: ForwardPlan? = null) {
+        val targets = targetsOf(forward)
+        if (targets.isEmpty() || files.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            for (to in targets) {
+                try {
+                    val sent = Outgoing.sendImages(to, files, caption.trim(), forward?.text, forward?.name)
+                    if (sent == null) warning = Strings.SEND_FAILED
+                } catch (e: MediaFiles.Refused) {
+                    warning = Strings.PHOTO_UNREADABLE
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
+            }
+            reload()
+        }
+    }
+
+    /** The pictures of an album message that are on this PC, in order. */
+    fun albumFilesOf(message: Message): List<File> = Albums.filesOf(message.uri)
+
+    /**
+     * Whether the content of [message] is on this PC, so that it can be forwarded: the file of
+     * a picture, video, file or voice message, every picture of an album.
+     */
+    fun hasMediaHere(message: Message): Boolean =
+        // A link has no file: what it forwards is in the message itself.
+        if (message.type == Type.WEB) {
+            true
+        } else if (message.type == Type.MULTIPLE_IMAGES) {
+            Albums.countOf(message.uri) > 0 && albumFilesOf(message).size == Albums.countOf(message.uri)
+        } else {
+            MediaFiles.fileFor(message) != null
+        }
 
     /** Where a content goes: to the chats of a forward, or to the open chat. */
     private fun targetsOf(forward: ForwardPlan?): List<String> =
@@ -501,6 +560,133 @@ class AppState(private val scope: CoroutineScope) {
                 }
             }
             reload()
+        }
+    }
+
+    /**
+     * Forwards a voice message to the chats of [plan], at once, as ChatScreen does with
+     * forwardAudio: no send screen and nothing quoted. The new bubbles show the picture of
+     * whoever spoke it: the one this message already names, or its sender.
+     */
+    /** Forwards a link and its preview to the chats of [plan], at once (forwardWeb). */
+    fun forwardWeb(plan: ForwardPlan) {
+        if (plan.message.text.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            for (to in plan.toUserIds) {
+                try {
+                    if (Outgoing.forwardWeb(to, plan.message) == null) warning = Strings.SEND_FAILED
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
+            }
+            reload()
+        }
+    }
+
+    /**
+     * The picture the reply card shows for [message]: its own (mediaOf), or for a link the
+     * site's picture, loaded from the site (ChatScreen.messageReply, safeUrl(replyId)).
+     */
+    suspend fun replyPictureOf(message: Message): QuotedMedia? {
+        mediaOf(message)?.let { return it }
+        if (message.type != Type.WEB) return null
+        return WebPreview.pictureOf(message.replyId)?.let { QuotedMedia(it, false) }
+    }
+
+    fun forwardAudio(plan: ForwardPlan) {
+        val file = MediaFiles.fileFor(plan.message) ?: return
+        val authorId = plan.message.nameAttached?.takeIf { it.isNotEmpty() } ?: plan.message.fromUserId
+        scope.launch(Dispatchers.IO) {
+            for (to in plan.toUserIds) {
+                try {
+                    if (Outgoing.forwardAudio(to, authorId, file) == null) warning = Strings.SEND_FAILED
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
+            }
+            reload()
+        }
+    }
+
+    // ---------------------------------------------------------------- voice messages
+
+    private val recorder = AudioRecorder()
+
+    /** A voice message is being recorded (ChatScreen.isRecording). */
+    var recording: Boolean by mutableStateOf(false)
+        private set
+
+    /** The recording was locked by sliding up: it goes on without holding the button (isLocked). */
+    var recordingLocked: Boolean by mutableStateOf(false)
+        private set
+
+    /** When the recording started, for its chronometer. */
+    var recordingStartedAt: Long by mutableStateOf(0L)
+        private set
+
+    /** ChatScreen.startRecording. */
+    fun startRecording() {
+        if (recording || selectedUserId == null) return
+        if (!recorder.start()) {
+            warning = Strings.MICROPHONE_UNAVAILABLE
+            return
+        }
+        recordingLocked = false
+        recordingStartedAt = System.currentTimeMillis()
+        recording = true
+    }
+
+    /** ChatScreen.lockRecording: sliding up frees the hand; Send or the bin end it. */
+    fun lockRecording() {
+        if (recording) recordingLocked = true
+    }
+
+    /** ChatScreen.cancelRecording: sliding left, or the bin of a locked recording. */
+    fun cancelRecording() {
+        if (!recording) return
+        recorder.cancel()
+        recording = false
+        recordingLocked = false
+        // The phone says "Recording cancelled" in a toast, a note that goes away by itself. The
+        // PC's only note is the banner, which stays until it is closed: too much for what the
+        // user has just done by hand, so nothing is said.
+    }
+
+    /** ChatScreen.stopRecording then sendAudioFile: the recording goes to the open chat. */
+    fun stopAndSendRecording() {
+        if (!recording) return
+        val to = selectedUserId
+        val wav = recorder.stop()
+        recording = false
+        recordingLocked = false
+        if (to == null || wav == null) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                val m4a = AudioFiles.keepRecording(wav)
+                if (m4a == null) {
+                    warning = Strings.VOICE_MESSAGE_NOT_SAVED
+                } else if (Outgoing.sendAudio(to, m4a) == null) {
+                    warning = Strings.SEND_FAILED
+                }
+            } catch (e: Throwable) {
+                warning = "${Strings.SEND_FAILED} ${e.message}"
+            }
+            reload()
+        }
+    }
+
+    /**
+     * The picture a voice bubble shows: MessageRepository.getProfilePic. The person named in
+     * nameAttached (whoever spoke a forwarded voice message), else the sender; the user's own
+     * picture when that person is not among the contacts, which is the case of the user.
+     */
+    suspend fun voicePictureOf(message: Message): File? {
+        return try {
+            val peerId = message.nameAttached?.takeIf { it.isNotEmpty() } ?: message.fromUserId
+            val peer = getPeerDao(App.context()).getPeer(peerId)
+            MediaFiles.fileOfUri(if (peer == null) MySelf.pictureUri() else peer.picture)
+        } catch (e: Throwable) {
+            null
         }
     }
 
@@ -717,7 +903,9 @@ class AppState(private val scope: CoroutineScope) {
 
     /** Whether a message carries a quote: it replies to another message, or it was forwarded. */
     fun hasQuote(message: Message): Boolean =
-        !message.textAttached.isNullOrEmpty() || (message.type == Type.TEXT && !message.subType.isNullOrEmpty())
+        // A link uses the quote's fields for its preview (title, description): it quotes nothing.
+        message.type != Type.WEB &&
+                (!message.textAttached.isNullOrEmpty() || (message.type == Type.TEXT && !message.subType.isNullOrEmpty()))
 
     /** Who wrote the quoted message. The phone shows "You" for the user's own name (textViewHolder). */
     fun quotedNameOf(message: Message): String {
@@ -736,6 +924,14 @@ class AppState(private val scope: CoroutineScope) {
         return try {
             val repository = getMessageRepository(App.context())
             val originalType = repository.getReplyType(replyId) ?: return null
+            // An album: the reply carries the grid of its first pictures (TextImageViewHolder
+            // draws message.uri for it), else the first picture of the album, if it is here.
+            if (originalType == Type.MULTIPLE_IMAGES) {
+                val file = MediaFiles.fileOfUri(message.uri)
+                    ?: Albums.filesOf(repository.getReplyImage(replyId, originalType)).firstOrNull()
+                    ?: return null
+                return QuotedMedia(file, false)
+            }
             if (originalType != Type.IMAGE && originalType != Type.VIDEO) return null
             val file = MediaFiles.fileOfUri(repository.getReplyImage(replyId, originalType)) ?: return null
             QuotedMedia(file, originalType == Type.VIDEO)
@@ -744,8 +940,12 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
-    /** The picture [message] itself can be drawn small with: its image, or its video. */
+    /**
+     * The picture [message] itself can be drawn small with: its image, its video, or the first
+     * picture of an album (the phone draws a grid of four there, too small to tell apart).
+     */
     fun mediaOf(message: Message): QuotedMedia? {
+        if (message.type == Type.MULTIPLE_IMAGES) return albumFilesOf(message).firstOrNull()?.let { QuotedMedia(it, false) }
         if (message.type != Type.IMAGE && message.type != Type.VIDEO) return null
         val file = MediaFiles.fileFor(message) ?: return null
         return QuotedMedia(file, message.type == Type.VIDEO)
@@ -761,6 +961,10 @@ class AppState(private val scope: CoroutineScope) {
             if (message.text.isBlank()) Strings.VIDEO else "${Strings.VIDEO}: ${message.text.replace('\n', ' ')}"
         isFileType(message.type) -> "${Strings.FILE}: ${getFileDetailFromType(message.type).getOrNull(0) ?: ""}"
         message.type == Type.CONTACT -> "${Strings.CONTACT}: ${contactOf(message)?.name ?: ""}"
+        message.type == Type.AUDIO -> Strings.VOICE_MESSAGE
+        message.type == Type.WEB -> Strings.LINK
+        message.type == Type.MULTIPLE_IMAGES ->
+            if (message.text.isBlank()) Strings.IMAGES else "${Strings.IMAGES}: ${message.text.replace('\n', ' ')}"
         else -> "[${message.type}]"
     }
 

@@ -70,6 +70,16 @@ object Strings {
     const val ADD_CONTACT = "Add Contact"
     const val NO_CONTACTS_TO_SHARE = "There are no other contacts to share."
 
+    // A link, in the App's own word (R.string.link).
+    const val LINK = "Link"
+
+    // Voice messages, in the App's own words (R.string.audio, R.string.microphone).
+    const val VOICE_MESSAGE = "Voice message"
+    const val MICROPHONE = "Microphone"
+    const val MICROPHONE_UNAVAILABLE = "The microphone cannot be used. Check that one is connected."
+    const val VOICE_MESSAGE_UNPLAYABLE = "This voice message cannot be played on this PC."
+    const val VOICE_MESSAGE_NOT_SAVED = "The voice message could not be prepared."
+
     // Adding a contact and a contact being added, in the App's own words (new_peer_dialog.xml,
     // NewPeerDialog, peer_view.xml).
     const val ADD_NEW_CONTACT = "Add new contact"

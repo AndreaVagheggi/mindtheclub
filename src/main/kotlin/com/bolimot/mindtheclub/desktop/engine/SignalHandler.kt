@@ -6,6 +6,7 @@ import com.bolimot.mindtheclub.contactAcquisition.isAutoInviteEnabled
 import com.bolimot.mindtheclub.contactAcquisition.setAcquisitionStatus
 import com.bolimot.mindtheclub.crypto.KeyManager
 import com.bolimot.mindtheclub.desktop.backend.Backend
+import com.bolimot.mindtheclub.desktop.media.Albums
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
@@ -340,6 +341,11 @@ object SignalHandler {
 
                 deleteBatchTables(messageId)
                 PendingMessageTracker.remove(context, messageId, fromUserId)
+
+                // DESKTOP: the one file an album travelled as (Albums.merge) is not needed any
+                // more. The App leaves it in its cache folder, which Android empties; the PC has
+                // no such folder, so it goes now.
+                if (ackedMessage?.type == Type.MULTIPLE_IMAGES) Albums.mergedFile(messageId).delete()
 
                 // Our profile has arrived: the acquisition of this contact moves on, and the
                 // contact is complete once its own profile is here too.
