@@ -48,6 +48,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -323,6 +324,8 @@ private fun Conversation(state: AppState) {
     // The pictures chosen together under the paperclip's Images: an album, shown for
     // confirmation before it is sent (SendImages).
     var album by remember(state.selectedUserId) { mutableStateOf<List<File>?>(null) }
+    // A GIF chosen under Images or pasted, shown for confirmation before it is sent (SendGif).
+    var gifToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     // The video chosen under the paperclip's Video, shown for confirmation before it is sent.
     var videoToSend by remember(state.selectedUserId) { mutableStateOf<File?>(null) }
     // The file chosen under the paperclip's File, shown for confirmation before it is sent.
@@ -468,7 +471,10 @@ private fun Conversation(state: AppState) {
                     // Several pictures can be chosen at once, as on the phone: one is a picture,
                     // more are an album.
                     val chosen = chooseFiles(suggested = PICTURE_FILES)
-                    if (chosen.size == 1) photo = chosen[0] else if (chosen.size > 1) album = chosen
+                    // A single GIF keeps moving: it goes as a GIF, not as a photo.
+                    if (chosen.size == 1 && chosen[0].extension.equals("gif", ignoreCase = true)) gifToSend = chosen[0]
+                    else if (chosen.size == 1) photo = chosen[0]
+                    else if (chosen.size > 1) album = chosen
                 },
                 onVideo = {
                     attaching = false
@@ -533,6 +539,15 @@ private fun Conversation(state: AppState) {
                             if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && !event.isShiftPressed) {
                                 send()
                                 true
+                            } else if (event.type == KeyEventType.KeyDown && event.key == Key.V && event.isCtrlPressed) {
+                                // The PC's keyboard GIFs and stickers (handlePasteContent): a
+                                // copied picture is sent, a copied text is pasted as usual.
+                                when (val pasted = pastedPicture()) {
+                                    is PastedPicture.Gif -> { gifToSend = pasted.file; true }
+                                    is PastedPicture.Sticker -> { state.sendSticker(pasted.file); true }
+                                    is PastedPicture.Photo -> { photo = pasted.file; true }
+                                    null -> false
+                                }
                             } else {
                                 false
                             }
@@ -552,6 +567,19 @@ private fun Conversation(state: AppState) {
                 LockCapsule(modifier = Modifier.align(Alignment.TopEnd).offset(x = (-15).dp, y = (-88).dp))
             }
         }
+    }
+
+    gifToSend?.let { file ->
+        SendGifDialog(
+            file = file,
+            initialCaption = draft,
+            onSend = { caption ->
+                state.sendGif(file, caption)
+                draft = ""
+                gifToSend = null
+            },
+            onClose = { gifToSend = null }
+        )
     }
 
     album?.let { files ->
@@ -655,6 +683,8 @@ private fun Conversation(state: AppState) {
                     Type.AUDIO -> state.forwardAudio(plan)
                     // A link leaves at once too, with its preview (forwardWeb).
                     Type.WEB -> state.forwardWeb(plan)
+                    // A sticker leaves at once too (on the phone its Forward does nothing).
+                    Type.STICKER -> MediaFiles.fileFor(message)?.let { state.sendSticker(it, plan) }
                     else -> forwardPlan = plan
                 }
                 forwarding = null
@@ -663,7 +693,7 @@ private fun Conversation(state: AppState) {
         )
     }
 
-    // Forward, second step for a picture, an album, a video and a file: the send screen, with the card
+    // Forward, second step for a picture, an album, a GIF, a video and a file: the send screen, with the card
     // that says whose it is and the words it came with. The cross on the card sends it bare.
     forwardPlan?.let { plan ->
         // The content's file, or for an album its first picture: what must be on this PC.
@@ -700,6 +730,18 @@ private fun Conversation(state: AppState) {
                         forwardPlan = null
                     },
                     onSingle = { picture, caption -> single = picture to caption },
+                    onClose = { forwardPlan = null },
+                    quoteName = plan.name,
+                    quoteText = plan.text,
+                    onDropQuote = { forwardPlan = plan.withoutQuote() }
+                )
+                type == Type.GIF -> SendGifDialog(
+                    file = file,
+                    initialCaption = "",
+                    onSend = { caption ->
+                        state.sendGif(file, caption, plan)
+                        forwardPlan = null
+                    },
                     onClose = { forwardPlan = null },
                     quoteName = plan.name,
                     quoteText = plan.text,
@@ -742,7 +784,7 @@ private fun Conversation(state: AppState) {
                     quoteText = plan.text,
                     onDropQuote = { forwardPlan = plan.withoutQuote() }
                 )
-                // Only these four are forwarded through a send screen (AppState.canReplyOrForward).
+                // Only these are forwarded through a send screen (AppState.canReplyOrForward).
                 else -> {}
             }
         }
@@ -822,6 +864,14 @@ private fun Bubble(state: AppState, message: Message, onMoreEmojis: () -> Unit, 
                     message.type == Type.AUDIO -> MessageAudio(state, message)
                     message.type == Type.MULTIPLE_IMAGES -> MessageAlbum(message)
                     message.type == Type.WEB -> MessageWeb(message)
+                    message.type == Type.GIF -> {
+                        MessageGif(message)
+                        if (message.text.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(message.text)
+                        }
+                    }
+                    message.type == Type.STICKER -> MessageSticker(message)
                     // A forwarded text has no words of its own: they are all in the quote above.
                     message.type == Type.TEXT -> if (message.text.isNotEmpty()) Text(message.text)
                     else -> Text(state.previewOf(message))

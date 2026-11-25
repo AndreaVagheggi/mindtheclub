@@ -363,6 +363,64 @@ object Outgoing {
     }
 
     /**
+     * sendManager.sendObject with Type.GIF, after the phone's SendGif screen: the GIF as it is
+     * (never re-encoded, which would stop it moving), with [caption] under it. A FORWARD passes
+     * [textAttached] and [nameAttached]. Returns the saved message, or null.
+     */
+    suspend fun sendGif(
+        toUserId: String,
+        source: File,
+        caption: String,
+        textAttached: String? = null,
+        nameAttached: String? = null,
+    ): Message? = sendPictureObject(toUserId, source, caption, textAttached, nameAttached, Type.GIF)
+
+    /**
+     * ChatScreen.handlePasteContent with "image/png": a sticker, sent at once with no screen and
+     * no caption, the picture as it is so that its transparency stays. Returns the saved
+     * message, or null.
+     */
+    suspend fun sendSticker(toUserId: String, source: File): Message? =
+        sendPictureObject(toUserId, source, "", "", "", Type.STICKER)
+
+    /** sendObject for a picture that travels untouched: a copy is kept, under its hash. */
+    private suspend fun sendPictureObject(
+        toUserId: String,
+        source: File,
+        caption: String,
+        textAttached: String?,
+        nameAttached: String?,
+        type: String,
+    ): Message? {
+        val myUserId = MySelf.userId() ?: return null
+        val copy = if (MediaFiles.isKept(source)) source else MediaFiles.keepCopyForSending(source)
+
+        val message = Message(
+            uid = 0,
+            fromUserId = myUserId,
+            toUserId = toUserId,
+            messageId = guid(),
+            replyId = "",
+            groupId = "",
+            groupSize = 0,
+            text = caption,
+            textAttached = textAttached,
+            nameAttached = nameAttached,
+            uri = copy.toURI().toString(),
+            type = type,
+            subType = forwardSubType(textAttached),
+            date = System.currentTimeMillis(),
+            status = DesktopStrings.sending(),
+            chatGroupId = null,
+            originalSenderId = null,
+        )
+
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        sendMessage(MessageData.fromMessage(message))
+        return message
+    }
+
+    /**
      * sendManager.sendObject with "video", for a 1:1 chat, after the phone's SendVideo screen.
      *
      * As on the phone, a large video is first re-encoded to 720p at 2 Mbit/s and the original

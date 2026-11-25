@@ -291,6 +291,7 @@ class AppState(private val scope: CoroutineScope) {
     fun canReplyOrForward(message: Message): Boolean =
         message.status != Status.RECEIVING &&
                 (message.type == Type.TEXT || message.type == Type.WEB || message.type == Type.IMAGE || message.type == Type.MULTIPLE_IMAGES ||
+                        message.type == Type.GIF || message.type == Type.STICKER ||
                         message.type == Type.VIDEO || message.type == Type.AUDIO || isFileType(message.type))
 
     /**
@@ -568,6 +569,49 @@ class AppState(private val scope: CoroutineScope) {
      * forwardAudio: no send screen and nothing quoted. The new bubbles show the picture of
      * whoever spoke it: the one this message already names, or its sender.
      */
+    /**
+     * Sends the GIF in [file] with [caption] under it: to the open chat, or, with [forward], to
+     * the chats of that forward, quoting what it says.
+     */
+    fun sendGif(file: File, caption: String, forward: ForwardPlan? = null) {
+        val targets = targetsOf(forward)
+        if (targets.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            for (to in targets) {
+                try {
+                    if (Outgoing.sendGif(to, file, caption.trim(), forward?.text, forward?.name) == null) warning = Strings.SEND_FAILED
+                } catch (e: MediaFiles.Refused) {
+                    warning = Strings.PHOTO_UNREADABLE
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
+            }
+            reload()
+        }
+    }
+
+    /**
+     * Sends the sticker in [file]: to the open chat, at once, as a pasted sticker leaves the
+     * phone; or, with [forward], to the chats of that forward. (The phone's Forward of a sticker
+     * does nothing: ChatScreen's getPeersResult has no case for it. On the PC it sends it.)
+     */
+    fun sendSticker(file: File, forward: ForwardPlan? = null) {
+        val targets = targetsOf(forward)
+        if (targets.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            for (to in targets) {
+                try {
+                    if (Outgoing.sendSticker(to, file) == null) warning = Strings.SEND_FAILED
+                } catch (e: MediaFiles.Refused) {
+                    warning = Strings.PHOTO_UNREADABLE
+                } catch (e: Throwable) {
+                    warning = "${Strings.SEND_FAILED} ${e.message}"
+                }
+            }
+            reload()
+        }
+    }
+
     /** Forwards a link and its preview to the chats of [plan], at once (forwardWeb). */
     fun forwardWeb(plan: ForwardPlan) {
         if (plan.message.text.isEmpty()) return
@@ -932,7 +976,9 @@ class AppState(private val scope: CoroutineScope) {
                     ?: return null
                 return QuotedMedia(file, false)
             }
-            if (originalType != Type.IMAGE && originalType != Type.VIDEO) return null
+            val drawable = originalType == Type.IMAGE || originalType == Type.VIDEO ||
+                    originalType == Type.GIF || originalType == Type.STICKER
+            if (!drawable) return null
             val file = MediaFiles.fileOfUri(repository.getReplyImage(replyId, originalType)) ?: return null
             QuotedMedia(file, originalType == Type.VIDEO)
         } catch (e: Throwable) {
@@ -946,7 +992,9 @@ class AppState(private val scope: CoroutineScope) {
      */
     fun mediaOf(message: Message): QuotedMedia? {
         if (message.type == Type.MULTIPLE_IMAGES) return albumFilesOf(message).firstOrNull()?.let { QuotedMedia(it, false) }
-        if (message.type != Type.IMAGE && message.type != Type.VIDEO) return null
+        val drawable = message.type == Type.IMAGE || message.type == Type.VIDEO ||
+                message.type == Type.GIF || message.type == Type.STICKER
+        if (!drawable) return null
         val file = MediaFiles.fileFor(message) ?: return null
         return QuotedMedia(file, message.type == Type.VIDEO)
     }
@@ -963,6 +1011,8 @@ class AppState(private val scope: CoroutineScope) {
         message.type == Type.CONTACT -> "${Strings.CONTACT}: ${contactOf(message)?.name ?: ""}"
         message.type == Type.AUDIO -> Strings.VOICE_MESSAGE
         message.type == Type.WEB -> Strings.LINK
+        message.type == Type.GIF -> Strings.GIF
+        message.type == Type.STICKER -> Strings.STICKER
         message.type == Type.MULTIPLE_IMAGES ->
             if (message.text.isBlank()) Strings.IMAGES else "${Strings.IMAGES}: ${message.text.replace('\n', ' ')}"
         else -> "[${message.type}]"

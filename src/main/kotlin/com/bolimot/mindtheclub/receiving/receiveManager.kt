@@ -26,6 +26,7 @@ import com.bolimot.mindtheclub.database.reaction.ReactionManager
 import com.bolimot.mindtheclub.database.video.Video
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.media.Albums
+import com.bolimot.mindtheclub.desktop.media.AnimatedPictures
 import com.bolimot.mindtheclub.desktop.media.AudioFiles
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.media.QuotedPictures
@@ -248,8 +249,10 @@ private suspend fun getReplyImage(replyId: String, type: String, context: Contex
 //     preview is in replyId (the picture's address), nameAttached and textAttached, which are
 //     copied from the Inbox row as for every kind.
 //
-// The other kinds the App routes here (sticker, gif) are not on the PC yet and never reach this
-// function (isOnThePc).
+//   - a GIF or a STICKER: [content] is the picture, assembled by getFullMessage. The App plays it
+//     from there; the PC keeps it in the media folder under the hash of its bytes plus the
+//     extension its bytes say it has (AnimatedPictures.extensionOf: gif, png, webp, jpg), so
+//     that a GIF stays a GIF and a sticker keeps its transparency.
 suspend fun receiveObject(messageId: String, content: String, text: String, fromUserId: String, type: String) {
     debugLine2("fullMessageReceivedEvent", "$type MESSAGE RECEIVED: $messageId")
 
@@ -341,11 +344,13 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 return
             }
         } else {
-            // DESKTOP: a contact's picture or a voice message, see the note above the function.
-            val keptExtension = if (type == Type.AUDIO && assembledPicture != null) {
-                AudioFiles.extensionOf(assembledPicture)
-            } else {
-                "jpg"
+            // DESKTOP: a contact's picture, a voice message, a GIF or a sticker, see the note
+            // above the function.
+            val keptExtension = when {
+                assembledPicture == null -> "jpg"
+                type == Type.AUDIO -> AudioFiles.extensionOf(assembledPicture)
+                type == Type.GIF || type == Type.STICKER -> AnimatedPictures.extensionOf(assembledPicture)
+                else -> "jpg"
             }
             if (assembledPicture == null) {
                 ""

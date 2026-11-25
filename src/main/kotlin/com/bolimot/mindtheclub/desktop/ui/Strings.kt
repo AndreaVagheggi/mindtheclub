@@ -70,8 +70,11 @@ object Strings {
     const val ADD_CONTACT = "Add Contact"
     const val NO_CONTACTS_TO_SHARE = "There are no other contacts to share."
 
-    // A link, in the App's own word (R.string.link).
+    // A link, a GIF, a sticker, in the App's own words (R.string.link, gif, sticker).
     const val LINK = "Link"
+    const val GIF = "GIF"
+    const val STICKER = "Sticker"
+    const val SEND_GIF_TITLE = "Send GIF"
 
     // Voice messages, in the App's own words (R.string.audio, R.string.microphone).
     const val VOICE_MESSAGE = "Voice message"

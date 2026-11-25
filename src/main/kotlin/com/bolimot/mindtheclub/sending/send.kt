@@ -188,11 +188,12 @@ fun sendMessageWork(
                 && message.type != Type.REACTION && !isRemoteUri
 
         // DESKTOP: the kinds of local file the PC sends: a single image, an album (its merged
-        // file, MessageData.fromMessage), a video, a file, a voice message, the picture of a
+        // file, MessageData.fromMessage), a GIF, a sticker, a video, a file, a voice message, the picture of a
         // shared contact and the picture of the user's own profile. Any other content that is a
         // local file is refused. Returning true ends the work without a retry, as the App does
         // for an empty media: retrying cannot help.
         val sendableFile = message.type == Type.IMAGE || message.type == Type.MULTIPLE_IMAGES ||
+                message.type == Type.GIF || message.type == Type.STICKER ||
                 message.type == Type.VIDEO || message.type == Type.AUDIO || message.type == Type.CONTACT ||
                 message.type == Type.PROFILE || isFileType(message.type)
         if (hasMedia && message.type != Type.TEXT && !sendableFile) {

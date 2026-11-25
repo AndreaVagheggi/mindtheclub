@@ -4,8 +4,9 @@ package com.bolimot.mindtheclub.receiving
 // keeps the App's structure and order (the processing claim, the read that tolerates a missing
 // row, the blocked sender, the content check, then the type), with these differences:
 //
-//   - ONLY TEXT, LINKS, IMAGES, ALBUMS, VIDEO, FILES, CONTACTS, REACTIONS, PROFILES AND VOICE
-//     MESSAGES ARE PROCESSED (isOnThePc). Every other type (sticker, gif) is left exactly where it is:
+//   - ONLY THE TYPES OF isOnThePc ARE PROCESSED: text, links, images, albums, GIFs, stickers,
+//     video, files, contacts, reactions, profiles and voice messages. Every other type is left
+//     exactly where it is:
 //     its chunks stay in the Inbox and nothing is confirmed, so the sender keeps its copy and
 //     goes on announcing it.
 //     Confirming a content this program cannot save would make the sender delete it
@@ -120,9 +121,11 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
                 }
                 receiveText(messageId)
             }
-            // The assembled file is the contact's picture, or the voice message: receiveObject keeps
-            // it. A link carries nothing: its preview is in the fields of the Inbox row.
-            Type.CONTACT, Type.AUDIO, Type.WEB -> receiveObject(messageId, content, message.text, fromUserId, type)
+            // The assembled file is the contact's picture, the voice message, the GIF or the
+            // sticker: receiveObject keeps it. A link carries nothing: its preview is in the
+            // fields of the Inbox row.
+            Type.CONTACT, Type.AUDIO, Type.WEB, Type.GIF, Type.STICKER ->
+                receiveObject(messageId, content, message.text, fromUserId, type)
             // The assembled file is the album's pictures, one after the other: receiveImages parts them.
             Type.MULTIPLE_IMAGES -> receiveImages(messageId, content, message.text, fromUserId)
             Type.REACTION -> {
