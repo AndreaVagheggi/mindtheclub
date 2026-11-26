@@ -57,7 +57,7 @@ import kotlinx.coroutines.withContext
  *     screen they are sent from, with a card saying whose they are and the words they came
  *     with, and a cross to send them without it.
  *
- * Delete, Share and Copy are not on the PC yet.
+ * Delete, Share and Copy are the rest of that toolbar: AppState.deleteMessage, shareMessage, copyMessage.
  */
 
 /** How many chats one forward can go to: SelectPeersForForward, maxSelectableCount. */
@@ -70,13 +70,16 @@ internal const val FORWARD_MAX_CONTACTS = 3
  */
 @Composable
 internal fun SelectionBar(
+    // AppState.actionsFor: which of Delete, Reply, Forward, Share, Copy the message has. A
+    // shared contact, which can only be reacted to, has none.
+    actions: Set<MessageAction>,
     onClose: () -> Unit,
+    onDelete: () -> Unit,
     onReply: () -> Unit,
     onForward: () -> Unit,
+    onShare: () -> Unit,
+    onCopy: () -> Unit,
     modifier: Modifier = Modifier,
-    // False for a message that can only be reacted to (a shared contact): the phone gives it no
-    // Reply and no Forward either.
-    showReplyForward: Boolean = true,
 ) {
     val tint = MaterialTheme.colorScheme.onSurface
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
@@ -84,12 +87,30 @@ internal fun SelectionBar(
             Icon(AppIcons.Close, contentDescription = Strings.CLOSE, tint = tint)
         }
         Spacer(Modifier.weight(1f))
-        if (showReplyForward) {
+        // The phone's order (chat_drfsc.xml): Delete, Reply, Forward, Share, Copy.
+        if (MessageAction.DELETE in actions) {
+            IconButton(onClick = onDelete) {
+                Icon(AppIcons.Delete, contentDescription = Strings.DELETE, tint = tint)
+            }
+        }
+        if (MessageAction.REPLY in actions) {
             IconButton(onClick = onReply) {
                 Icon(AppIcons.Reply, contentDescription = Strings.REPLY, tint = tint)
             }
+        }
+        if (MessageAction.FORWARD in actions) {
             IconButton(onClick = onForward) {
                 Icon(AppIcons.Forward, contentDescription = Strings.FORWARD, tint = tint)
+            }
+        }
+        if (MessageAction.SHARE in actions) {
+            IconButton(onClick = onShare) {
+                Icon(AppIcons.Share, contentDescription = Strings.SHARE, tint = tint)
+            }
+        }
+        if (MessageAction.COPY in actions) {
+            IconButton(onClick = onCopy) {
+                Icon(AppIcons.Copy, contentDescription = Strings.COPY, tint = tint)
             }
         }
     }

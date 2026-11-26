@@ -184,4 +184,11 @@ interface MessageDao{
     )
 """)
     suspend fun getPendingMessages(): List<Message>
+
+    // DESKTOP: how many OTHER messages name the file [fileName] in their uri (an album lists
+    // several, comma separated). On the PC a file is kept once under the hash of its bytes and
+    // shared by every message with that content: a deleted message takes its file only when
+    // this is zero (MessageRepository.deleteMessagesAndFiles).
+    @Query("SELECT COUNT(*) FROM Message WHERE messageId != :messageId AND uri LIKE '%' || :fileName || '%'")
+    suspend fun countOthersUsing(fileName: String, messageId: String): Int
 }

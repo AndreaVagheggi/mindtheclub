@@ -9,12 +9,16 @@ package com.bolimot.mindtheclub.database.message
 //   - DeliveryHealth.recordIncoming is not called (the latency statistics are not on the PC);
 //   - deleteMessages removes the rows and their reactions ONLY. In the App it also deletes the
 //     linked media files and, for group content, tells the senders the content was refused.
-//     Here its one caller is the removal of an orphan RECEIVING placeholder, which has neither;
+//     Here its one caller is the removal of an orphan RECEIVING placeholder, which has neither.
+//     A message the user deletes goes through deleteMessagesAndFiles, which takes its files too;
 //   - the paged queries, the chat deletion, the "seen" notifications and the last message
 //     preview are not here yet: they arrive with the screens that use them.
 
 import com.bolimot.mindtheclub.database.reaction.toPillText
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
+import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.tools.MySelf
+import java.io.File
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getReactionRepository
@@ -143,6 +147,55 @@ class MessageRepository(private val messageDao: MessageDao) {
                 debugLine("deleteMessages", "Exception: ${e.message}")
                 false
             }
+        }
+    }
+
+    /**
+     * The App's deleteMessages for a message the user deletes (ChatScreen, Delete): its row, its
+     * reactions and its files, on this device only.
+     *
+     * DESKTOP: one difference about the files. The PC keeps a file once, under the hash of its
+     * bytes, and every message with the same content points at it (a forward, a reply's
+     * picture, a contact's picture that is also the contact's avatar). So a file goes only when
+     * no other message and no contact uses it any more, and only from the PC's own media
+     * folder. The App's own guard against deleting a live avatar (isLivePeerAvatar) is the same
+     * idea for the one case the phone shares a file.
+     */
+    suspend fun deleteMessagesAndFiles(messages: List<Message>): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                for (message in messages) {
+                    messageDao.deleteMessage(message.messageId)
+                    getReactionRepository(App.context()).deleteReactions(message.messageId)
+                    deleteLinkedFiles(message)
+                }
+                true
+            } catch (e: Exception) {
+                debugLine("deleteMessages", "Exception: ${e.message}")
+                false
+            }
+        }
+    }
+
+    private suspend fun deleteLinkedFiles(message: Message) {
+        // A profile message points at the file a contact's avatar is using (see the App's file).
+        if (message.type == Type.PROFILE) return
+
+        val uris = if (message.type == Type.MULTIPLE_IMAGES) message.uri.split(",") else listOf(message.uri)
+        val avatars = HashSet<String>()
+        for (peer in getPeerDao(App.context()).getAllPeers()) {
+            MediaFiles.fileOfUri(peer.picture)?.let { avatars.add(it.name) }
+        }
+        MediaFiles.fileOfUri(MySelf.pictureUri())?.let { avatars.add(it.name) }
+
+        for (uri in uris) {
+            val file = MediaFiles.fileOfUri(uri.trim()) ?: continue
+            if (!MediaFiles.isKept(file)) continue
+            if (file.name in avatars) continue
+            if (messageDao.countOthersUsing(file.name, message.messageId) > 0) continue
+            if (file.delete()) debugLine("deleteLinkedFiles", "File deleted: ${file.name}")
+            // The copy a voice message is played from (AudioFiles.playable).
+            File(File(App.context().filesDir, "audio_play"), file.nameWithoutExtension + ".wav").delete()
         }
     }
 

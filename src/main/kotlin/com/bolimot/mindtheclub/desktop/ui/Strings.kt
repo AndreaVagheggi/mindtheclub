@@ -70,6 +70,12 @@ object Strings {
     const val ADD_CONTACT = "Add Contact"
     const val NO_CONTACTS_TO_SHARE = "There are no other contacts to share."
 
+    // The actions of a picked message, in the App's own words (R.string.delete, copy).
+    const val DELETE = "Delete"
+    const val COPY = "Copy"
+    const val SHARE = "Share"
+    const val SHARE_FAILED = "The Windows Share panel could not be opened."
+
     // A link, a GIF, a sticker, in the App's own words (R.string.link, gif, sticker).
     const val LINK = "Link"
     const val GIF = "GIF"

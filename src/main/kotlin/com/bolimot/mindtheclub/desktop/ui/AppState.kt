@@ -24,6 +24,7 @@ import com.bolimot.mindtheclub.desktop.media.AudioFiles
 import com.bolimot.mindtheclub.desktop.media.AudioRecorder
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.desktop.media.VideoCompressor
+import com.bolimot.mindtheclub.desktop.media.WindowsShare
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.desktop.web.WebPreview
 import com.bolimot.mindtheclub.desktop.web.WebsiteInfo
@@ -47,6 +48,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.awt.Desktop
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -88,6 +91,9 @@ class ProfileView(val userId: String, val name: String, val bio: String, val pic
 
 /** A contact the user is asked to add (NewPeerDialog), with the fingerprint its card vouches for. */
 class ContactToAdd(val userId: String, val name: String, val bio: String?, val fingerprint: String?)
+
+/** The actions of the phone's toolbar for a picked message, in its order. */
+enum class MessageAction { DELETE, REPLY, FORWARD, SHARE, COPY }
 
 /** One line of the list of who reacted to a message (the phone's ReactionItem). */
 class ReactionRow(val userId: String, val name: String, val picture: File?, val emoji: String, val isMe: Boolean)
@@ -283,16 +289,6 @@ class AppState(private val scope: CoroutineScope) {
 
     // ------------------------------------------------------------ picking a message
 
-    /**
-     * Whether a message can be replied to and forwarded: ChatScreen.determineMenuRes. A text, a
-     * picture, a video and a file can; a shared contact cannot (the phone gives it the plain
-     * menu), and neither can a content still arriving.
-     */
-    fun canReplyOrForward(message: Message): Boolean =
-        message.status != Status.RECEIVING &&
-                (message.type == Type.TEXT || message.type == Type.WEB || message.type == Type.IMAGE || message.type == Type.MULTIPLE_IMAGES ||
-                        message.type == Type.GIF || message.type == Type.STICKER ||
-                        message.type == Type.VIDEO || message.type == Type.AUDIO || isFileType(message.type))
 
     /**
      * The words a quote of [message] shows: its text, or for a voice message, which has none,
@@ -311,8 +307,87 @@ class AppState(private val scope: CoroutineScope) {
                 message.status != Status.RECEIVING && message.type != Type.MISSED_CALL
 
     /** Picks [message], or lets go of it when it is the one already picked. */
+    /**
+     * What the top of the conversation offers for a picked message, in the phone's order:
+     * ChatScreen.determineMenuRes and its menus chat_drfsc, chat_drfsx, chat_drfxx, chat_dxxxx
+     * (Delete, Reply, Forward, Share, Copy). A shared contact gets the plain menu, so nothing;
+     * neither does a content still arriving.
+     */
+    fun actionsFor(message: Message): Set<MessageAction> {
+        if (message.status == Status.RECEIVING) return emptySet()
+        val drfsc = setOf(MessageAction.DELETE, MessageAction.REPLY, MessageAction.FORWARD, MessageAction.SHARE, MessageAction.COPY)
+        val drfsx = setOf(MessageAction.DELETE, MessageAction.REPLY, MessageAction.FORWARD, MessageAction.SHARE)
+        val drfxx = setOf(MessageAction.DELETE, MessageAction.REPLY, MessageAction.FORWARD)
+        return when {
+            message.type == Type.TEXT || message.type == Type.WEB -> drfsc
+            message.type == Type.IMAGE || message.type == Type.MULTIPLE_IMAGES ||
+                    message.type == Type.VIDEO || message.type == Type.AUDIO -> drfsx
+            message.type == Type.GIF || message.type == Type.STICKER || isFileType(message.type) -> drfxx
+            message.type == Type.MISSED_CALL -> setOf(MessageAction.DELETE)
+            else -> emptySet()
+        }
+    }
+
+    /**
+     * Delete on a picked message: MessageRepository.deleteMessages, on this PC only, as on the
+     * phone. Its files go with it, unless another message or a contact still uses them.
+     */
+    fun deleteMessage(message: Message) {
+        selectedMessageId = null
+        scope.launch(Dispatchers.IO) {
+            try {
+                getMessageRepository(App.context()).deleteMessagesAndFiles(listOf(message))
+            } catch (e: Throwable) {
+                warning = "${Strings.DATABASE_ERROR} ${e.message}"
+            }
+            reload()
+        }
+    }
+
+    /** Copy on a picked text or link: its words, on the Windows clipboard (ClipData.newPlainText). */
+    fun copyMessage(message: Message) {
+        selectedMessageId = null
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(message.text), null)
+        } catch (e: Exception) {
+            // The clipboard is busy with another program: nothing is copied, as nothing would be pasted.
+        }
+    }
+
+    /**
+     * Share on a picked message: the Windows Share panel (WindowsShare), as the phone's Share
+     * opens Android's share sheet (ChatScreen, R.id.share). A text and a link share their
+     * words; a picture, a video, a voice message share their file. An album shares all its
+     * pictures: on the phone its Share does nothing (ChatScreen has no case for it).
+     */
+    fun shareMessage(message: Message) {
+        selectedMessageId = null
+        scope.launch(Dispatchers.IO) {
+            val shown = when {
+                message.type == Type.TEXT || message.type == Type.WEB -> WindowsShare.shareText(message.text)
+                message.type == Type.MULTIPLE_IMAGES -> {
+                    val files = albumFilesOf(message)
+                    if (files.isEmpty()) {
+                        warning = Strings.MEDIA_NOT_AVAILABLE
+                        return@launch
+                    }
+                    WindowsShare.shareFiles(files)
+                }
+                else -> {
+                    val file = MediaFiles.fileFor(message)
+                    if (file == null) {
+                        warning = Strings.MEDIA_NOT_AVAILABLE
+                        return@launch
+                    }
+                    WindowsShare.shareFiles(listOf(file))
+                }
+            }
+            if (!shown) warning = Strings.SHARE_FAILED
+        }
+    }
+
     fun toggleSelection(message: Message) {
-        if (!canReplyOrForward(message) && !canReact(message)) return
+        if (actionsFor(message).isEmpty() && !canReact(message)) return
         selectedMessageId = if (selectedMessageId == message.messageId) null else message.messageId
     }
 

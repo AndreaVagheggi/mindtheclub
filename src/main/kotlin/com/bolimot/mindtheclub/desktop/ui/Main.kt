@@ -485,7 +485,11 @@ private fun Conversation(state: AppState) {
             }
         } else {
             SelectionBar(
+                actions = state.actionsFor(picked),
                 onClose = { state.clearSelection() },
+                onDelete = { state.deleteMessage(picked) },
+                onShare = { state.shareMessage(picked) },
+                onCopy = { state.copyMessage(picked) },
                 onReply = {
                     replyTo = picked
                     state.clearSelection()
@@ -499,8 +503,7 @@ private fun Conversation(state: AppState) {
                         forwarding = picked
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
-                showReplyForward = state.canReplyOrForward(picked)
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp)
             )
         }
         HorizontalDivider()
@@ -843,7 +846,7 @@ private fun Conversation(state: AppState) {
                     quoteText = plan.text,
                     onDropQuote = { forwardPlan = plan.withoutQuote() }
                 )
-                // Only these are forwarded through a send screen (AppState.canReplyOrForward).
+                // Only these are forwarded through a send screen (AppState.actionsFor).
                 else -> {}
             }
         }
