@@ -91,6 +91,16 @@ object Strings {
     const val VOICE_MESSAGE_UNPLAYABLE = "This voice message cannot be played on this PC."
     const val VOICE_MESSAGE_NOT_SAVED = "The voice message could not be prepared."
 
+    // A contact's changed key, in the App's own words (R.string.key_change_*).
+    const val KEY_CHANGE_TITLE = "Security code changed"
+    fun keyChangeMessage(name: String) =
+        "$name may have changed phone or reinstalled the app, so their security code is different now. " +
+                "If you want to be sure, verify it directly with your contact, then accept the new identity to keep messaging."
+    const val KEY_CHANGE_ACCEPT = "Accept new identity"
+    const val KEY_CHANGE_LATER = "Not now"
+    const val KEY_CHANGE_ACCEPTED = "New identity accepted"
+    const val KEY_CHANGE_FAILED = "Could not verify the new identity, try again later"
+
     // Adding a contact and a contact being added, in the App's own words (new_peer_dialog.xml,
     // NewPeerDialog, peer_view.xml).
     const val ADD_NEW_CONTACT = "Add new contact"

@@ -124,6 +124,28 @@ internal fun NewPeerDialog(contact: ContactToAdd, onYes: () -> Unit, onNo: () ->
     )
 }
 
+/**
+ * ChatScreen.maybeShowKeyChangeDialog: the contact [name]'s key is not the one verified when
+ * they were added. Only "Accept new identity" takes the new key; "Not now" asks again the next
+ * time the chat is opened. A plain AlertDialog with a title, a message and two buttons, as on
+ * the phone.
+ */
+@Composable
+internal fun KeyChangeDialog(name: String, onAccept: () -> Unit, onLater: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onLater,
+        properties = StaysOpen,
+        title = { Text(Strings.KEY_CHANGE_TITLE) },
+        text = { Text(Strings.keyChangeMessage(name), modifier = Modifier.width(400.dp)) },
+        confirmButton = {
+            TextButton(onClick = onAccept) { Text(Strings.KEY_CHANGE_ACCEPT) }
+        },
+        dismissButton = {
+            TextButton(onClick = onLater) { Text(Strings.KEY_CHANGE_LATER) }
+        }
+    )
+}
+
 /** @color/mtc_opaque: the phone's bottom bar and floating buttons. */
 private val MTC_OPAQUE = Color(0xFF607D9F)
 

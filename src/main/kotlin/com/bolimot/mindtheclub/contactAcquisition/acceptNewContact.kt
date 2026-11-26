@@ -8,9 +8,6 @@ package com.bolimot.mindtheclub.contactAcquisition
 //     request list, used only when auto-invite is off. The PC has no switch for auto-invite
 //     (OptionsActivity on the phone), so it keeps the App's default, ON, and every request is
 //     accepted the way the phone accepts it in that mode;
-//   - a contact whose request carries a different key is not recorded for the key change
-//     dialog (PeerIdentityChange), which is not on the PC yet: the request is left alone, never
-//     accepted in silence;
 //   - the request's picture is not downloaded (saveFirebaseImageToDisk) and the leftover in
 //     Storage is not deleted. Since the App wrote NO_PICTURE in every request
 //     (writeMySelfOnRemotePeerFirestore), the picture travels with the profile, and the
@@ -71,8 +68,8 @@ suspend fun autoAcceptRequestDocument(
                 val storedFp = existingPeer.publicKey?.takeIf { it.isNotEmpty() }
                     ?.let { com.bolimot.mindtheclub.crypto.KeyManager.fingerprintOf(it) }
                 if (!incomingFp.isNullOrEmpty() && storedFp != null && incomingFp != storedFp) {
-                    // DESKTOP: PeerIdentityChange.record is not on the PC, see the top of the file.
-                    debugLine("autoAcceptRequest", "Request from $userId carries a different key, left alone")
+                    com.bolimot.mindtheclub.functions.PeerIdentityChange
+                        .record(context, userId, incomingFp)
                 }
                 sameKey = !incomingFp.isNullOrEmpty() && incomingFp == storedFp
             } catch (e: Exception) {

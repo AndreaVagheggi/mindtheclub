@@ -28,6 +28,7 @@ import com.bolimot.mindtheclub.desktop.media.WindowsShare
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
 import com.bolimot.mindtheclub.desktop.web.WebPreview
 import com.bolimot.mindtheclub.desktop.web.WebsiteInfo
+import com.bolimot.mindtheclub.functions.PeerIdentityChange
 import com.bolimot.mindtheclub.functions.getFileDetailFromType
 import com.bolimot.mindtheclub.functions.getMessageRepository
 import com.bolimot.mindtheclub.functions.getPeerDao
@@ -281,10 +282,56 @@ class AppState(private val scope: CoroutineScope) {
             return@launch
         }
         selectedMessageId = null
+        if (userId != selectedUserId) keyChangePostponedFor = null
         selectedUserId = userId
         selectedName = chats.firstOrNull { it.userId == userId }?.name ?: ""
         reload()
         markSeen(userId)
+    }
+
+    // ------------------------------------------------------------ key change
+
+    /**
+     * The contact whose changed key the open chat asks about (ChatScreen.maybeShowKeyChangeDialog),
+     * with its name, or null. Asked when the chat opens, and while it is open if the change is
+     * noticed then.
+     */
+    var keyChangeOf: Pair<String, String>? by mutableStateOf<Pair<String, String>?>(null)
+        private set
+
+    /** "Not now" for this chat: asked again the next time it is opened, as on the phone. */
+    private var keyChangePostponedFor: String? = null
+
+    private fun checkKeyChange() {
+        val open = selectedUserId ?: return
+        if (keyChangeOf != null || keyChangePostponedFor == open) return
+        if (PeerIdentityChange.pending(App.context(), open) == null) return
+        keyChangeOf = open to selectedName
+    }
+
+    /**
+     * "Accept new identity": PeerIdentityChange.acceptNewIdentity, the one path that stores a
+     * changed key. On success the pairing is refreshed both ways: our profile goes to the
+     * contact, sealed with the key it can now read.
+     */
+    fun acceptKeyChange() {
+        val (userId, _) = keyChangeOf ?: return
+        keyChangeOf = null
+        scope.launch(Dispatchers.IO) {
+            val ok = PeerIdentityChange.acceptNewIdentity(App.context(), userId)
+            if (ok) {
+                warning = Strings.KEY_CHANGE_ACCEPTED
+                Outgoing.sendMyProfile(userId)
+            } else {
+                warning = Strings.KEY_CHANGE_FAILED
+            }
+        }
+    }
+
+    /** "Not now". */
+    fun postponeKeyChange() {
+        keyChangePostponedFor = keyChangeOf?.first
+        keyChangeOf = null
     }
 
     // ------------------------------------------------------------ picking a message
@@ -877,9 +924,8 @@ class AppState(private val scope: CoroutineScope) {
     /**
      * Add Contact on a shared contact: ChatScreen.onAddContactClick, then acquiringNewContact.
      * Nothing happens for this user's own card, nor for a contact already here, exactly as on
-     * the phone. The phone also records a contact already here whose card carries a different
-     * key, for the key change dialog; that dialog is not on the PC, so nothing is recorded and
-     * the key is never taken.
+     * the phone, except that a contact already here whose card carries a different key is
+     * recorded for the key change dialog (PeerIdentityChange), and its key is never taken.
      */
     fun addContactFrom(message: Message) {
         val peer = contactOf(message) ?: return
@@ -888,7 +934,16 @@ class AppState(private val scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             try {
                 if (peer.userId == myUserId) return@launch
-                if (getPeerDao(App.context()).getPeer(peer.userId) != null) return@launch
+                val existing = getPeerDao(App.context()).getPeer(peer.userId)
+                if (existing != null) {
+                    // acquiringNewContact: re-adding the card of a contact whose key changed is
+                    // how the change is noticed. Recorded, never taken: the chat asks the user.
+                    val storedFingerprint = existing.publicKey?.takeIf { it.isNotEmpty() }?.let { KeyManager.fingerprintOf(it) }
+                    if (!fingerprint.isNullOrEmpty() && storedFingerprint != null && fingerprint != storedFingerprint) {
+                        PeerIdentityChange.record(App.context(), peer.userId, fingerprint)
+                    }
+                    return@launch
+                }
                 contactToAdd = ContactToAdd(peer.userId, peer.name, peer.bio, fingerprint)
             } catch (e: Throwable) {
                 warning = "${Strings.DATABASE_ERROR} ${e.message}"
@@ -1031,6 +1086,7 @@ class AppState(private val scope: CoroutineScope) {
                 val list = db.messageDao().getRecentMessages(myUserId, open, MAX_MESSAGES_SHOWN).reversed()
                 messages.clear()
                 messages.addAll(list.filter { it.type != Type.PROFILE })
+                checkKeyChange()
             }
         } catch (e: Throwable) {
             warning = "${Strings.DATABASE_ERROR} ${e.message}"

@@ -260,6 +260,11 @@ private fun ChatsScreen(state: AppState) {
     state.contactToAdd?.let { contact ->
         NewPeerDialog(contact, onYes = { state.confirmAddContact() }, onNo = { state.cancelAddContact() })
     }
+
+    // A contact whose key changed, when its chat is open: the user decides.
+    state.keyChangeOf?.let { (_, name) ->
+        KeyChangeDialog(name, onAccept = { state.acceptKeyChange() }, onLater = { state.postponeKeyChange() })
+    }
 }
 
 @Composable

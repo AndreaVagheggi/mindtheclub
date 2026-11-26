@@ -10,13 +10,13 @@ package com.bolimot.mindtheclub.crypto
 //   - exportIdentityKeyset / importIdentityKeyset: the handover in and out is BackupImporter's
 //     job (and, later, the direct handover's).
 //
-// fetchAndStorePublicKeyVerified is the App's, with the document read over REST (Backend) and
-// one difference, marked there.
+// fetchAndStorePublicKeyVerified is the App's, with the document read over REST (Backend).
 
 import android.content.Context
 import com.bolimot.mindtheclub.desktop.backend.Backend
 import com.bolimot.mindtheclub.desktop.crypto.IdentityKeys
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
+import com.bolimot.mindtheclub.functions.PeerIdentityChange
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.transport.PeerIdentityResolver
@@ -81,10 +81,11 @@ object KeyManager {
                     debugLine("KeyManager", "Expected fingerprint is stale but stored key matches Firestore for $userId, treating as verified.")
                     return true
                 }
-                // DESKTOP: the App records a mismatch against an existing contact
-                // (PeerIdentityChange.record) so the chat offers the key change dialog. That
-                // dialog is not on the PC yet: the key is refused and nothing is recorded,
-                // never accepted in silence.
+                // A mismatch against an EXISTING contact is the changed phone signal: never
+                // stored in silence, recorded so the chat offers the key change dialog.
+                if (storedKey != null) {
+                    PeerIdentityChange.record(context, userId, fingerprintOf(publicKey))
+                }
                 debugLine("KeyManager", "Fingerprint MISMATCH for $userId. Not storing.")
                 return false
             }
