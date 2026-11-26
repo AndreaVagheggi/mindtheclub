@@ -11,14 +11,15 @@ package com.bolimot.mindtheclub.database.message
 //     linked media files and, for group content, tells the senders the content was refused.
 //     Here its one caller is the removal of an orphan RECEIVING placeholder, which has neither.
 //     A message the user deletes goes through deleteMessagesAndFiles, which takes its files too;
-//   - the paged queries, the chat deletion, the "seen" notifications and the last message
-//     preview are not here yet: they arrive with the screens that use them.
+//   - the paged queries, the chat deletion and the last message preview are not here yet:
+//     they arrive with the screens that use them.
 
 import com.bolimot.mindtheclub.database.reaction.toPillText
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
 import com.bolimot.mindtheclub.tools.MySelf
 import java.io.File
+import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getPeerDao
 import com.bolimot.mindtheclub.functions.getReactionRepository
@@ -221,13 +222,35 @@ class MessageRepository(private val messageDao: MessageDao) {
      * ReceivedSeen. Groups are not on the PC yet.
      */
     suspend fun sendSeenNotificationForUnseenMessages(remoteUserId: String) {
-        if (remoteUserId.startsWith("group")) return
-        val messages = messageDao.getUnseenMessages(remoteUserId)
-        if (messages.isNotEmpty()) {
-            for (message in messages) {
-                debugLine("sendSeenNotificationForUnseenMessages", "SEEN, Message: $message")
-                notifyRemotePeer(remoteUserId, message, Notify.SEEN)
+        if (remoteUserId.startsWith("group")) {
+            sendGroupSeenNotifications(remoteUserId)
+        } else {
+            val messages = messageDao.getUnseenMessages(remoteUserId)
+            if (messages.isNotEmpty()) {
+                for (message in messages) {
+                    debugLine("sendSeenNotificationForUnseenMessages", "SEEN, Message: $message")
+                    notifyRemotePeer(remoteUserId, message, Notify.SEEN)
+                }
             }
+        }
+    }
+
+    private suspend fun sendGroupSeenNotifications(groupId: String) {
+        val myUserId = MySelf.userId() ?: return
+        val messages = messageDao.getUnseenGroupMessages(groupId)
+
+        for (msg in messages) {
+            if (msg.originalSenderId != myUserId) {
+                debugLine("sendGroupSeenNotifications", "GROUP_SEEN for ${msg.messageId} to ${msg.originalSenderId}")
+                // The local SEEN below removes this message from the unseen set for
+                // ever, so this single FCM used to be the one and only chance: lost in
+                // transit meant the sender stayed at Delivered for good (16 Aug, Raoul's
+                // seens drowned in the 13 Aug flood). Recorded as unacked;
+                // PendingRetryWorker re-sends until the sender's GROUP_SEEN_ACK clears.
+                GroupSeenTracker.record(App.context(), msg.messageId, msg.originalSenderId)
+                notifyRemotePeer(msg.originalSenderId, msg.messageId, Notify.GROUP_SEEN)
+            }
+            messageDao.updateStatus(msg.messageId, Notify.SEEN)
         }
     }
 

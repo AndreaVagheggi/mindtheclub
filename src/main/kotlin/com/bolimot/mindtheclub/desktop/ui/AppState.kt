@@ -23,6 +23,7 @@ import com.bolimot.mindtheclub.desktop.media.Albums
 import com.bolimot.mindtheclub.desktop.media.AudioFiles
 import com.bolimot.mindtheclub.desktop.media.AudioRecorder
 import com.bolimot.mindtheclub.desktop.media.MediaFiles
+import com.bolimot.mindtheclub.desktop.media.Sounds
 import com.bolimot.mindtheclub.desktop.media.VideoCompressor
 import com.bolimot.mindtheclub.desktop.media.WindowsShare
 import com.bolimot.mindtheclub.desktop.storage.KeyVault
@@ -83,6 +84,9 @@ class ChatItem(
     /** A contact being acquired: its row says "Pending…" and opens its profile, not a chat (PeersFragment). */
     val isNew: Boolean get() = status == Contact.NEW
 }
+
+/** The writer of a group message, as its member header shows it: name and picture (or null). */
+class MemberView(val name: String, val picture: File?)
 
 /**
  * The profile on screen (PeerView): opened from a shared contact's View Profile, or from the
@@ -183,7 +187,13 @@ class AppState(private val scope: CoroutineScope) {
         DesktopEvents.onMessageSaved = { message -> scope.launch(Dispatchers.IO) { onMessageSaved(message) } }
         DesktopEvents.onStatusChanged = { _, _ -> scope.launch(Dispatchers.IO) { reload() } }
         DesktopEvents.onReactionChanged = { _, _ -> scope.launch(Dispatchers.IO) { reload() } }
-        DesktopEvents.chatOnScreen = { userId -> userId == selectedUserId }
+        DesktopEvents.chatOnScreen = { userId -> isOnScreen(userId) }
+        DesktopEvents.onMessageToNotify = { message -> scope.launch(Dispatchers.IO) { Notifications.show(message) } }
+        DesktopEvents.onMessageOnScreen = { message ->
+            Notifications.markShown(message.messageId)
+            Sounds.playIncoming()
+        }
+        DesktopEvents.onMessageSent = { Sounds.playOutgoing() }
         Engine.onPushLost = { warning = Strings.PUSH_LOST }
 
         try {
@@ -347,10 +357,11 @@ class AppState(private val scope: CoroutineScope) {
     /**
      * Whether the user can react to a message: ChatScreen.showReactionOverlay. In a chat with
      * one person, only to what that person sent (the phone shows no reaction bar on the user's
-     * own messages), and not to a content still arriving or a missed call.
+     * own messages); in a group to every message, the user's own too ("in a group you are one
+     * member among several"). Never to a content still arriving or a missed call.
      */
     fun canReact(message: Message): Boolean =
-        !isMine(message) && message.chatGroupId == null &&
+        (!isMine(message) || message.chatGroupId != null) &&
                 message.status != Status.RECEIVING && message.type != Type.MISSED_CALL
 
     /** Picks [message], or lets go of it when it is the one already picked. */
@@ -517,15 +528,22 @@ class AppState(private val scope: CoroutineScope) {
      * ChatScreen.messageReply builds it: the bubble quotes the words of the answered message
      * under the name of the chat's contact. (The App writes the contact's name even when the
      * answered message is the user's own: the PC does the same, so that a reply written here
-     * and one written on the phone are the same message.)
+     * and one written on the phone are the same message.) In a group the name is the writer's,
+     * the contact with the answered message's originalSenderId, else the chat's name.
      */
     fun send(text: String, replyTo: Message? = null, linkPreview: WebsiteInfo? = null) {
         val to = selectedUserId ?: return
         val body = text.trim()
         if (body.isEmpty()) return
-        val quotedName = selectedName
+        val chatName = selectedName
         scope.launch(Dispatchers.IO) {
             try {
+                val writerId = replyTo?.originalSenderId
+                val quotedName = if (writerId != null) {
+                    getPeerDao(App.context()).getPeer(writerId)?.name ?: chatName
+                } else {
+                    chatName
+                }
                 if (WebPreview.extractUrl(body) != null) {
                     // ChatScreen's send button: a text with a link in it is a link, with the
                     // preview read so far (none if the page could not be read, or not yet). A
@@ -551,10 +569,13 @@ class AppState(private val scope: CoroutineScope) {
         val targets = targetsOf(forward)
         if (targets.isEmpty() || files.isEmpty()) return
         scope.launch(Dispatchers.IO) {
-            for (to in targets) {
+            for (to in groupsFirst(targets)) {
                 try {
                     val sent = Outgoing.sendImages(to, files, caption.trim(), forward?.text, forward?.name)
                     if (sent == null) warning = Strings.SEND_FAILED
+                } catch (e: Outgoing.GroupSizeExceeded) {
+                    warning = Strings.MESSAGE_SIZE_LIMIT
+                    break
                 } catch (e: MediaFiles.Refused) {
                     warning = Strings.PHOTO_UNREADABLE
                 } catch (e: Throwable) {
@@ -582,6 +603,13 @@ class AppState(private val scope: CoroutineScope) {
             MediaFiles.fileFor(message) != null
         }
 
+    /**
+     * The groups of [targets] first: a content too large for a group stops the whole send before
+     * anyone has it, as the phone's Send screens refuse it whole (message_size_limit).
+     */
+    private fun groupsFirst(targets: List<String>): List<String> =
+        targets.sortedByDescending { it.startsWith("group") }
+
     /** Where a content goes: to the chats of a forward, or to the open chat. */
     private fun targetsOf(forward: ForwardPlan?): List<String> =
         forward?.toUserIds ?: listOfNotNull(selectedUserId)
@@ -594,10 +622,13 @@ class AppState(private val scope: CoroutineScope) {
         val targets = targetsOf(forward)
         if (targets.isEmpty()) return
         scope.launch(Dispatchers.IO) {
-            for (to in targets) {
+            for (to in groupsFirst(targets)) {
                 try {
                     val sent = Outgoing.sendImage(to, file, caption.trim(), forward?.text, forward?.name)
                     if (sent == null) warning = Strings.SEND_FAILED
+                } catch (e: Outgoing.GroupSizeExceeded) {
+                    warning = Strings.MESSAGE_SIZE_LIMIT
+                    break
                 } catch (e: MediaFiles.Refused) {
                     warning = Strings.PHOTO_UNREADABLE
                 } catch (e: Throwable) {
@@ -619,10 +650,13 @@ class AppState(private val scope: CoroutineScope) {
             val preparing = !MediaFiles.isKept(file) && VideoCompressor.mayCompress(file)
             if (preparing) videosBeingPrepared++
             try {
-                for (to in targets) {
+                for (to in groupsFirst(targets)) {
                     try {
                         val sent = Outgoing.sendVideo(to, file, caption.trim(), forward?.text, forward?.name)
                         if (sent == null) warning = Strings.SEND_FAILED
+                    } catch (e: Outgoing.GroupSizeExceeded) {
+                        warning = Strings.MESSAGE_SIZE_LIMIT
+                        break
                     } catch (e: MediaFiles.Refused) {
                         warning = Strings.FILE_UNREADABLE
                     } catch (e: Throwable) {
@@ -644,10 +678,13 @@ class AppState(private val scope: CoroutineScope) {
         // the one the original message carries.
         val realName = forward?.let { getFileDetailFromType(it.message.type).getOrNull(0) }
         scope.launch(Dispatchers.IO) {
-            for (to in targets) {
+            for (to in groupsFirst(targets)) {
                 try {
                     val sent = Outgoing.sendFile(to, file, caption.trim(), forward?.text, forward?.name, realName)
                     if (sent == null) warning = Strings.SEND_FAILED
+                } catch (e: Outgoing.GroupSizeExceeded) {
+                    warning = Strings.MESSAGE_SIZE_LIMIT
+                    break
                 } catch (e: MediaFiles.Refused) {
                     warning = Strings.FILE_UNREADABLE
                 } catch (e: Throwable) {
@@ -699,9 +736,12 @@ class AppState(private val scope: CoroutineScope) {
         val targets = targetsOf(forward)
         if (targets.isEmpty()) return
         scope.launch(Dispatchers.IO) {
-            for (to in targets) {
+            for (to in groupsFirst(targets)) {
                 try {
                     if (Outgoing.sendGif(to, file, caption.trim(), forward?.text, forward?.name) == null) warning = Strings.SEND_FAILED
+                } catch (e: Outgoing.GroupSizeExceeded) {
+                    warning = Strings.MESSAGE_SIZE_LIMIT
+                    break
                 } catch (e: MediaFiles.Refused) {
                     warning = Strings.PHOTO_UNREADABLE
                 } catch (e: Throwable) {
@@ -899,7 +939,13 @@ class AppState(private val scope: CoroutineScope) {
      * The contacts that can be shared in the open chat, or a message forwarded to: all of them
      * but the one being written to, and but the ones still being acquired, which have no chat.
      */
-    fun shareableContacts(): List<ChatItem> = chats.filter { it.userId != selectedUserId && it.status == Contact.ACTIVE }
+    /** SelectPeersForForward for a forward: the active chats, groups included. */
+    fun forwardTargets(): List<ChatItem> =
+        chats.filter { it.userId != selectedUserId && it.status == Contact.ACTIVE }
+
+    /** SelectPeersForForward in contact share mode: only real one to one contacts. */
+    fun shareableContacts(): List<ChatItem> =
+        chats.filter { it.userId != selectedUserId && it.status == Contact.ACTIVE && !it.userId.startsWith("group") }
 
     // ------------------------------------------------------------ contacts and profiles
 
@@ -1033,10 +1079,28 @@ class AppState(private val scope: CoroutineScope) {
     private suspend fun onMessageSaved(message: Message) {
         reload()
         // A message arriving in the chat the user is looking at is read as it arrives.
-        if (message.fromUserId == selectedUserId && message.status != Status.RECEIVING) {
+        if (isOnScreen(message.fromUserId) && message.status != Status.RECEIVING) {
             markSeen(message.fromUserId)
         }
     }
+
+    /**
+     * Whether MindTheClub is the program in front: what the phone's ChatScreen being resumed
+     * is. A chat is on screen only when it is open AND the window is in front, so a message
+     * arriving while the window is minimised or behind another program is notified, and read
+     * only when the user comes back to it.
+     */
+    @Volatile private var windowActive = true
+
+    /** Told by the window when it comes in front or leaves it. */
+    fun windowActivated(active: Boolean) {
+        if (active == windowActive) return
+        windowActive = active
+        // ChatScreen.onResume: the chat on screen is read now.
+        if (active) selectedUserId?.let { userId -> scope.launch(Dispatchers.IO) { markSeen(userId) } }
+    }
+
+    private fun isOnScreen(userId: String): Boolean = windowActive && userId == selectedUserId
 
     /** ChatScreen does this when a chat opens (sendSeenNotificationForUnseenMessages). */
     private suspend fun markSeen(userId: String) {
@@ -1053,9 +1117,9 @@ class AppState(private val scope: CoroutineScope) {
             val db = DatabaseProvider.provideDatabase()
             val items = ArrayList<ChatItem>()
             for (peer in db.peerDao().getAllPeers()) {
-                // Groups are not on the PC yet; neither are the App's two local pseudo
-                // contacts, the AI assistant and the note to self ("mtc-..." ids).
-                if (peer.userId.startsWith("group") || peer.userId.startsWith("mtc-")) continue
+                // The App's two local pseudo contacts, the AI assistant and the note to self
+                // ("mtc-..." ids), are not on the PC.
+                if (peer.userId.startsWith("mtc-")) continue
                 if (peer.userId == myUserId) continue
 
                 // A profile message is the engine's business and is never drawn (the phone gives
@@ -1084,6 +1148,23 @@ class AppState(private val scope: CoroutineScope) {
             val open = selectedUserId
             if (open != null) {
                 val list = db.messageDao().getRecentMessages(myUserId, open, MAX_MESSAGES_SHOWN).reversed()
+                // A group's messages say who wrote them (MessagesAdapter, getPeerName and
+                // getPeerPicture): the contact with that userId, or "Member" when the writer is
+                // not one of the user's contacts.
+                val writers = HashMap<String, MemberView>()
+                if (open.startsWith("group")) {
+                    for (message in list) {
+                        if (message.toUserId != myUserId) continue
+                        val writerId = message.originalSenderId ?: message.fromUserId
+                        if (writerId in writers) continue
+                        val peer = db.peerDao().getPeer(writerId)
+                        writers[writerId] = MemberView(
+                            peer?.name ?: Strings.MEMBER,
+                            peer?.picture?.let { MediaFiles.fileOfUri(it) }
+                        )
+                    }
+                }
+                groupWriters = writers
                 messages.clear()
                 messages.addAll(list.filter { it.type != Type.PROFILE })
                 checkKeyChange()
@@ -1094,6 +1175,20 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun isMine(message: Message): Boolean = message.fromUserId == myUserId
+
+    /** Who wrote the messages of the open group, by userId. Empty for a chat with one person. */
+    private var groupWriters: Map<String, MemberView> by mutableStateOf(emptyMap())
+
+    /** Who wrote an incoming group message: the name and picture above its bubble. */
+    fun writerOf(message: Message): MemberView =
+        groupWriters[message.originalSenderId ?: message.fromUserId] ?: MemberView(Strings.MEMBER, null)
+
+    /**
+     * Whether the open chat is a group's: its incoming bubbles get the writer's name and picture
+     * above them (the phone's Group*ViewHolder, member_header).
+     */
+    val isGroupOpen: Boolean get() = selectedUserId?.startsWith("group") == true
+
 
     /** Whether a message carries a quote: it replies to another message, or it was forwarded. */
     fun hasQuote(message: Message): Boolean =

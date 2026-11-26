@@ -37,9 +37,11 @@ import kotlin.reflect.KClass
  * queue lives in memory. The engine's own state survives a restart regardless (the batch tables
  * and the recovery ladders are on disk), and the PC resumes from that state when it starts.
  *
- * Also absent because they have no meaning on a PC: constraints, expedited work, foreground
- * notifications. A PC program is not put to sleep by the system, so a "15 minute" job here
- * really runs every 15 minutes.
+ * Also absent because they have no meaning on a PC: expedited work, foreground notifications.
+ * A PC program is not put to sleep by the system, so a "15 minute" job here really runs every
+ * 15 minutes. Constraints (the group workers' NetworkType.CONNECTED) are accepted and not
+ * enforced: an attempt made with no network fails and waits for its backoff, which is the
+ * worker's own answer to a failure. An initial delay is honoured.
  */
 
 class Data internal constructor(private val values: Map<String, Any?>) {
@@ -72,7 +74,8 @@ class OneTimeWorkRequest internal constructor(
     internal val inputData: Data,
     internal val tags: Set<String>,
     internal val backoffPolicy: BackoffPolicy,
-    internal val backoffDelayMs: Long
+    internal val backoffDelayMs: Long,
+    internal val initialDelayMs: Long = 0L
 ) : WorkRequest() {
 
     class Builder(private val workerClass: KClass<out CoroutineWorker>) {
@@ -80,6 +83,7 @@ class OneTimeWorkRequest internal constructor(
         private val tags = LinkedHashSet<String>()
         private var backoffPolicy = BackoffPolicy.EXPONENTIAL
         private var backoffDelayMs = 30_000L
+        private var initialDelayMs = 0L
 
         fun setInputData(inputData: Data): Builder {
             this.inputData = inputData
@@ -97,8 +101,16 @@ class OneTimeWorkRequest internal constructor(
             return this
         }
 
+        fun setInitialDelay(duration: Long, timeUnit: TimeUnit): Builder {
+            this.initialDelayMs = timeUnit.toMillis(duration).coerceAtLeast(0L)
+            return this
+        }
+
+        /** Accepted, not enforced: see the top of the file. */
+        fun setConstraints(constraints: Constraints): Builder = this
+
         fun build(): OneTimeWorkRequest =
-            OneTimeWorkRequest(workerClass, inputData, HashSet(tags), backoffPolicy, backoffDelayMs)
+            OneTimeWorkRequest(workerClass, inputData, HashSet(tags), backoffPolicy, backoffDelayMs, initialDelayMs)
     }
 }
 
@@ -106,6 +118,22 @@ inline fun <reified W : CoroutineWorker> OneTimeWorkRequestBuilder(): OneTimeWor
     OneTimeWorkRequest.Builder(W::class)
 
 enum class ExistingPeriodicWorkPolicy { KEEP, UPDATE }
+
+enum class NetworkType { NOT_REQUIRED, CONNECTED, UNMETERED }
+
+/** WorkManager's constraints, kept only so the App's workers read as they are: see the top. */
+class Constraints private constructor(val requiredNetworkType: NetworkType) {
+    class Builder {
+        private var networkType = NetworkType.NOT_REQUIRED
+
+        fun setRequiredNetworkType(networkType: NetworkType): Builder {
+            this.networkType = networkType
+            return this
+        }
+
+        fun build(): Constraints = Constraints(networkType)
+    }
+}
 
 class PeriodicWorkRequest internal constructor(
     internal val workerClass: KClass<out CoroutineWorker>,
@@ -249,6 +277,7 @@ class WorkManager private constructor(private val context: Context) {
     private suspend fun run(name: String, entry: Entry) {
         var attempt = 0
         try {
+            if (entry.request.initialDelayMs > 0) delay(entry.request.initialDelayMs)
             while (true) {
                 entry.state = WorkInfo.State.RUNNING
                 val result = try {

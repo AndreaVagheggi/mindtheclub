@@ -66,4 +66,33 @@ object DesktopEvents {
             // As above.
         }
     }
+
+    /**
+     * A complete incoming message arrived in the chat on screen: on the phone the message is
+     * marked as never to be notified (MessageReceivedNotification.markShown) and the incoming
+     * sound plays (SoundManager.playIncoming).
+     */
+    @Volatile var onMessageOnScreen: ((Message) -> Unit)? = null
+
+    fun messageOnScreen(message: Message) {
+        try {
+            onMessageOnScreen?.invoke(message)
+        } catch (e: Exception) {
+            // As above.
+        }
+    }
+
+    /**
+     * A message of ours was saved and is about to be sent: where the phone plays its outgoing
+     * sound (SoundManager.playOutgoing in sendManager.kt).
+     */
+    @Volatile var onMessageSent: ((Message) -> Unit)? = null
+
+    fun messageSent(message: Message) {
+        try {
+            onMessageSent?.invoke(message)
+        } catch (e: Exception) {
+            // As above.
+        }
+    }
 }

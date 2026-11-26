@@ -12,8 +12,9 @@ package com.bolimot.mindtheclub.receiving
 //     Confirming a content this program cannot save would make the sender delete it
 //     (docs/arch/transport.md section 2). When the identity goes back to the phone the phone
 //     asks for it again and gets it.
-//   - the group branches are gone (the echo of my own group message, stopRedundantSenders):
-//     group content never gets this far, receiveData refuses it;
+//   - stopRedundantSenders is gone: it asks ConnectionManager which other peers are sending
+//     the same content, and the PC does not keep that register (see SignalHandler, DATA_CALL).
+//     A second sender of one content simply finishes its transfer, wasted but harmless;
 //   - MessageNotifier (a LiveData the chat screen observes) is replaced by DesktopEvents, which
 //     the save itself already calls;
 //   - getFullMessage keeps its behaviour, with java.util.Base64 and a file URI in place of the
@@ -21,6 +22,7 @@ package com.bolimot.mindtheclub.receiving
 //   - addIncomingContact calls the repository's body (functions/database.kt) instead of the
 //     view model.
 
+import ProcessedMessageCache
 import com.bolimot.mindtheclub.contactAcquisition.receiveProfile
 import com.bolimot.mindtheclub.database.inbox.Inbox
 import com.bolimot.mindtheclub.database.peer.Peer
@@ -33,8 +35,10 @@ import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.isFileType
 import com.bolimot.mindtheclub.functions.isOnThePc
 import com.bolimot.mindtheclub.functions.resolveContentKey
+import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.App
+import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Notify
 import com.bolimot.mindtheclub.tools.Type
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +78,25 @@ suspend fun fullMessageReceivedEvent(messageId: String): Boolean {
         }
 
         val type = message.type
+
+        // A group relay echo of a message I originally sent. Seen on 12 Aug: Giovanni's own text
+        // came back through the Family group, saveMessage said "already exists" but returned true,
+        // and receiveText notified him about his own message. Acknowledge the relayer so its retry
+        // loop stops, drop the chunks, and never reach the save or notify paths. Group messages only
+        // (chatGroupId set), so 1:1 traffic and the note-to-self pseudo peer are untouched.
+        val echoGroupId = message.chatGroupId
+        val echoSenderId = message.originalSenderId
+        if (echoGroupId != null && !echoSenderId.isNullOrEmpty() && echoSenderId == MySelf.userId()) {
+            debugLine("receivedEvent", "Group echo of my own message $messageId, acking and discarding")
+            val echoDeliveryId = computeDeliveryDocId(echoGroupId, echoSenderId, message.date)
+            notifyRemotePeer(message.fromUserId, messageId, Notify.ALL_RECEIVED, echoDeliveryId)
+            val echoContentKey = resolveContentKey(inboxDao, messageId)
+            inboxDao.deleteByContent(echoContentKey)
+            // A completed FCM for this echo may still arrive: answer it from the cache, not with an
+            // allMissing that would make the relayer resend the echo.
+            ProcessedMessageCache.markProcessed(messageId)
+            return false
+        }
 
         // DESKTOP: see the note at the top. Nothing is deleted and nothing is confirmed.
         if (!isOnThePc(type)) {

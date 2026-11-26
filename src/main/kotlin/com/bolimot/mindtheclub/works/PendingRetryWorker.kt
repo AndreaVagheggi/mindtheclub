@@ -1,13 +1,9 @@
 package com.bolimot.mindtheclub.works
 
-// DESKTOP: this is the App's PendingRetryWorker.kt with the group parts taken out. The two
-// ladders it drives, the outgoing one (re-announce what a peer has not confirmed) and the
-// incoming one (ask again for what a peer announced), are the App's code unchanged. Removed:
-//
-//   - retryGroupSeen and GroupSeenTracker: read receipts of group messages;
-//   - pickRecoverySource: choosing a group member that holds a complete copy. A 1:1 message
-//     has one holder, the peer that announced it, which is also the App's fallback;
-//   - DeliveryHealth.recordHeartbeat: statistics about Android suppressing background work.
+// DESKTOP: this is the App's PendingRetryWorker.kt. The three ladders it drives, the outgoing
+// one (re-announce what a peer has not confirmed), the incoming one (ask again for what a peer
+// announced) and the group read receipts (GroupSeenTracker), are the App's code unchanged.
+// Removed: DeliveryHealth.recordHeartbeat, statistics about Android suppressing background work.
 
 import android.content.Context
 import androidx.work.CoroutineWorker
@@ -16,6 +12,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.bolimot.mindtheclub.functions.CancelledTransferRegistry
+import com.bolimot.mindtheclub.functions.GroupSeenTracker
 import com.bolimot.mindtheclub.functions.IncomingPendingTracker
 import com.bolimot.mindtheclub.functions.PendingMessageTracker
 import com.bolimot.mindtheclub.functions.contentKeyOf
@@ -23,6 +20,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.getPeerDao
+import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
@@ -47,6 +45,7 @@ class PendingRetryWorker(
     companion object {
         private const val UNIQUE_WORK_NAME = "PendingRetryWorker"
         private const val INTERVAL_MINUTES = 15L
+        private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
 
         /**
          * A one to one entry whose peer is no longer in the address book: the user deleted the
@@ -128,7 +127,45 @@ class PendingRetryWorker(
     override suspend fun doWork(): Result {
         retryOutgoing()
         retryIncoming()
+        retryGroupSeen()
         return Result.success()
+    }
+
+    /**
+     * GROUP_SEEN notifications still waiting for the sender's ack: re-send them. A group seen
+     * used to be one fire and forget FCM with no second chance (16 Aug: two messages stuck at
+     * Delivered because Raoul's seens died in the 13 Aug notification flood). Cleared by
+     * GROUP_SEEN_ACK; against older senders that never ack, the cap drains them quietly.
+     */
+    private suspend fun retryGroupSeen() {
+        val entries = GroupSeenTracker.getAll(applicationContext)
+        if (entries.isEmpty()) return
+
+        debugLine("GroupSeen", "Checking ${entries.size} unacked seen notification(s)")
+        val now = System.currentTimeMillis()
+
+        for (entry in entries) {
+            if (now - entry.createdAt > GroupSeenTracker.MAX_AGE_MS) {
+                GroupSeenTracker.remove(applicationContext, entry.messageId, entry.originalSenderId, "expired")
+                continue
+            }
+            if (entry.retryCount >= GroupSeenTracker.MAX_RETRIES) {
+                GroupSeenTracker.remove(applicationContext, entry.messageId, entry.originalSenderId, "retry cap reached")
+                continue
+            }
+            if (now - entry.lastRetryAt < GroupSeenTracker.getBackoffDelay(entry.retryCount)) {
+                continue
+            }
+
+            debugLine(
+                "GroupSeen",
+                "Re-sending GROUP_SEEN for ${entry.messageId} to ${entry.originalSenderId} " +
+                        "(retry #${entry.retryCount + 1}/${GroupSeenTracker.MAX_RETRIES})"
+            )
+            notifyRemotePeer(entry.originalSenderId, entry.messageId, Notify.GROUP_SEEN)
+            GroupSeenTracker.updateRetry(applicationContext, entry)
+            delay(500L)
+        }
     }
 
     /** Messages WE owe a peer: re-send the `pending` signal. */
@@ -198,6 +235,9 @@ class PendingRetryWorker(
         val messageDao = getMessageDao(applicationContext)
         val inboxDao = getInboxDao(applicationContext)
         val now = System.currentTimeMillis()
+        // Same bound as InboxRecoveryWorker: informed choices are welcome, a Firestore read
+        // per entry in a loop is not (lezione del 15 Aug).
+        var seederLookups = 0
 
         for (entry in entries) {
             // After refusing a transfer, never go on asking the sender for the very chunks
@@ -270,8 +310,16 @@ class PendingRetryWorker(
             val missingRange =
                 if (missing.isNotEmpty()) "${missing.min()},${missing.max()}" else null
 
-            // DESKTOP: the announcer. The App may pick another group member here, see the top.
-            val askTarget = entry.fromUserId
+            // Ask a registered complete member when one is known; the announcer stays the
+            // fallback, it declared it holds the content.
+            val askTarget = if (message != null && !message.chatGroupId.isNullOrEmpty()
+                && seederLookups < MAX_SEEDER_LOOKUPS_PER_PASS
+            ) {
+                seederLookups++
+                pickRecoverySource(message.chatGroupId, message.originalSenderId, message.date, entry.fromUserId)
+            } else {
+                entry.fromUserId
+            }
             debugLine(
                 "IncomingPending",
                 "Re-requesting ${entry.messageId} from $askTarget " +

@@ -11,8 +11,6 @@ package com.bolimot.mindtheclub.works
 //     chunks included: they are complete sets the
 //     PC cannot process yet and has deliberately not confirmed, so the sender still holds
 //     them. Deleting them here would make the PC ask for them again at every announcement;
-//   - pickRecoverySource (asking a group member that holds a complete copy) is gone: the PC
-//     asks the original sender, which is also the App's fallback;
 //   - DeliveryHealth.recordHeartbeat is gone.
 //
 // Passes 2 and 3, the ones that re-solicit a stalled transfer, are the App's code unchanged.
@@ -29,6 +27,7 @@ import com.bolimot.mindtheclub.functions.debugLine
 import com.bolimot.mindtheclub.functions.getInboxDao
 import com.bolimot.mindtheclub.functions.getMessageDao
 import com.bolimot.mindtheclub.functions.isOnThePc
+import com.bolimot.mindtheclub.functions.pickRecoverySource
 import com.bolimot.mindtheclub.receiving.fullMessageReceivedEvent
 import com.bolimot.mindtheclub.receiving.isProcessingActive
 import com.bolimot.mindtheclub.receiving.missingChunksByContent
@@ -54,6 +53,8 @@ class InboxRecoveryWorker(
 
         /** Ceiling for pass 2, same window as [MAX_ORPHAN_AGE_MS]. See the use site. */
         private const val MAX_RECEIVING_AGE_MS = 24 * 60 * 60 * 1000L
+
+        private const val MAX_SEEDER_LOOKUPS_PER_PASS = 5
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<InboxRecoveryWorker>(
@@ -125,6 +126,10 @@ class InboxRecoveryWorker(
 
         // Pass 2: incomplete RECEIVING messages (placeholders stuck with partial chunks)
         try {
+            // Bounded seeder lookups for the whole pass: an informed choice is worth one doc
+            // read, a Firestore crawl over a pile of stalled contents is the 15 Aug mistake and
+            // must stay impossible.
+            var seederLookups = 0
             val receivingMessages = messageDao.getReceivingMessages()
             if (receivingMessages.isNotEmpty()) {
                 debugLine(TAG, "Found ${receivingMessages.size} RECEIVING message(s) to check")
@@ -167,8 +172,19 @@ class InboxRecoveryWorker(
                             } else {
                                 null
                             }
-                            debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $originalSender (missing: ${missingRange ?: "all"})")
-                            notifyRemotePeer(originalSender, msg.messageId, Notify.SEND_ME, missingRange)
+                            // Ask a member holding a COMPLETE copy when one is known, the
+                            // original sender otherwise. The origin may be on a weak holiday
+                            // uplink while a seeder sits on the same Wi-Fi.
+                            val recoveryTarget = if (!msg.chatGroupId.isNullOrEmpty()
+                                && seederLookups < MAX_SEEDER_LOOKUPS_PER_PASS
+                            ) {
+                                seederLookups++
+                                pickRecoverySource(msg.chatGroupId, msg.originalSenderId, msg.date, originalSender)
+                            } else {
+                                originalSender
+                            }
+                            debugLine(TAG, "RECEIVING ${msg.messageId} stalled at $count/$total, sending sendMe to $recoveryTarget (missing: ${missingRange ?: "all"})")
+                            notifyRemotePeer(recoveryTarget, msg.messageId, Notify.SEND_ME, missingRange)
                         } else {
                             debugLine(TAG, "RECEIVING ${msg.messageId} has no resolvable sender, skipping")
                         }

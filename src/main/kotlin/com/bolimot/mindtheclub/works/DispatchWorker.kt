@@ -8,12 +8,7 @@ package com.bolimot.mindtheclub.works
 //   - getForegroundInfo and the notification channel (an Android foreground notification);
 //   - the "Android state" log line and the "stopped by the system" one (doze, standby bucket,
 //     expedited quota: none of it exists here);
-//   - the catch of SecurityException around dispatchMessage (a missing Bluetooth permission);
-//   - THE GROUP BRANCH AT EXHAUSTION, which releases the failed member in the Firestore
-//     delivery document and picks the next one. Sending to a group is not on the PC yet
-//     (sendMessage refuses it), so no dispatch with group coordinates can reach this worker.
-//     If one ever did it is handled as a 1:1 target, which announces and records it: nothing
-//     is lost, only the move to the next member is missing.
+//   - the catch of SecurityException around dispatchMessage (a missing Bluetooth permission).
 
 import android.content.Context
 import androidx.core.content.edit
@@ -29,6 +24,11 @@ import com.bolimot.mindtheclub.functions.debugLine2
 import com.bolimot.mindtheclub.functions.deleteBatchTables
 import com.bolimot.mindtheclub.sending.dispatchMessage
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
+import com.bolimot.mindtheclub.sending.computeDeliveryDocId
+import com.bolimot.mindtheclub.sending.releaseFailedGroupTarget
+import com.bolimot.mindtheclub.sending.tryDispatchNextGroupMember
+import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.tasks.await
 
 class DispatchWorker(
     context: Context,
@@ -243,31 +243,118 @@ class DispatchWorker(
                 debugLine2("doWork", "Marked $toUserId as offline (cooldown ${newCooldownMs}ms)")
             }
             if (attemptCount >= MAX_ATTEMPTS) {
-                // DESKTOP: the App has a group branch here, see the top of the file.
-                val currentCycles = sharedPreferences.getInt(globalCycleKey, 0) + 1
-                sharedPreferences.edit {
-                    putInt(globalCycleKey, currentCycles)
-                    if (currentCycles == 1) putLong(globalCycleTimeKey, System.currentTimeMillis())
-                }
+                if (!chatGroupId.isNullOrEmpty() && !originalSenderId.isNullOrEmpty() && messageDate > 0L) {
+                    debugLine2("doWork", "Max attempts reached for group target $toUserId. Moving to next member.")
 
-                if (currentCycles >= MAX_GLOBAL_CYCLES) {
-                    debugLine2("doWork", "Global circuit breaker: $messageId to $toUserId after $currentCycles cycles. Abandoning.")
+                    val earlyPendingKey = "earlyPendingSent_${messageId}_${toUserId}"
+                    val exhaustPendingKey = "exhaustPendingSent_${messageId}_${toUserId}"
+                    if (!sharedPreferences.getBoolean(earlyPendingKey, false)) {
+                        notifyRemotePeer(toUserId, "$messageKey#$chatGroupId", "pending")
+                        sharedPreferences.edit { putBoolean(earlyPendingKey, true) }
+                    } else if (!sharedPreferences.getBoolean(exhaustPendingKey, false)) {
+                        // 23 Aug. The early announcement of this cycle is already spent:
+                        // the peer asked, we tried three times, we failed. Saying nothing
+                        // here left it waiting for its own 15 minute rung, which is how
+                        // one line of text from Noemi took 20 minutes to reach Gio. One
+                        // more announcement, so it can ask again now.
+                        //
+                        // Once per message and target, and deliberately NOT cleared by
+                        // clearInternalState: the answer to this is a sendMe, which opens
+                        // a fresh cycle, which would end here again. The group branch
+                        // never increments globalCycleKey, so nothing else would stop it.
+                        // One extra cycle is the fix, un loop ogni due minuti no.
+                        debugLine2("doWork", "Attempts exhausted after an early pending for $toUserId, announcing once more")
+                        notifyRemotePeer(toUserId, "$messageKey#$chatGroupId", "pending")
+                        sharedPreferences.edit { putBoolean(exhaustPendingKey, true) }
+                    } else {
+                        debugLine2("doWork", "Pending FCM already sent earlier for $toUserId, skipping duplicate")
+                    }
+                    PendingMessageTracker.record(
+                        applicationContext, messageId, toUserId, "$messageKey#$chatGroupId",
+                        chatGroupId = chatGroupId,
+                        originalSenderId = originalSenderId,
+                        messageDate = messageDate
+                    )
+
+                    // NonCancellable, and this is the whole point of it: an incoming
+                    // sendMe re-submits this same unique work and REPLACE kills the run
+                    // mid flight. On 20 Aug that happened 24 times, always here, always
+                    // logging "Failed to pick next group member: Job was cancelled", so
+                    // releaseFailedGroupTarget never ran and the target stayed RESERVED in
+                    // the delivery document with nothing left anywhere to clear it. From
+                    // then on no peer would ever relay to that member proactively.
+                    //
+                    // Bounded by withTimeoutOrNull because NonCancellable alone can hang:
+                    // an offline Firestore update() never completes, and uninterruptible
+                    // plus unbounded is how a worker holds the process until WorkManager
+                    // force stops it.
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    kotlinx.coroutines.withTimeoutOrNull(20_000L) {
+                    try {
+                        val deliveryDocId = computeDeliveryDocId(chatGroupId, originalSenderId, messageDate)
+                        val db = com.google.firebase.Firebase.firestore
+                        val deliveryRef = db.collection("groupDelivery").document(deliveryDocId)
+
+                        val doc = deliveryRef.get().await()
+
+                        if (doc.exists()) {
+                            releaseFailedGroupTarget(
+                                chatGroupId = chatGroupId,
+                                originalSenderId = originalSenderId,
+                                messageDate = messageDate,
+                                toUserId = toUserId
+                            )
+
+                            val originalMsgId = doc.getString("originalMessageId") ?: messageKey
+                            tryDispatchNextGroupMember(
+                                context = applicationContext,
+                                originalMessageId = originalMsgId,
+                                chatGroupId = chatGroupId,
+                                originalSenderId = originalSenderId,
+                                messageDate = messageDate,
+                                // "Moving to next member" must mean it. The line above
+                                // has just put this target back among the available ones,
+                                // and without this the draw can hand it straight back.
+                                excludeUserId = toUserId
+                            )
+                        }
+                    } catch (e: Exception) {
+                        debugLine2("doWork", "Failed to pick next group member: ${e.message}")
+                    }
+                    } ?: debugLine2("doWork", "Release and re-pick timed out, target may stay reserved")
+                    }
+
+                    // Give up on this target: free the line for whoever is waiting.
+                    finishServing(serveContentId, toUserId)
+                    clearInternalState(messageId, toUserId)
+                    Result.success()
+
+                } else {
+                    val currentCycles = sharedPreferences.getInt(globalCycleKey, 0) + 1
+                    sharedPreferences.edit {
+                        putInt(globalCycleKey, currentCycles)
+                        if (currentCycles == 1) putLong(globalCycleTimeKey, System.currentTimeMillis())
+                    }
+
+                    if (currentCycles >= MAX_GLOBAL_CYCLES) {
+                        debugLine2("doWork", "Global circuit breaker: $messageId to $toUserId after $currentCycles cycles. Abandoning.")
+                        notifyRemotePeer(toUserId, messageKey, "pending")
+                        PendingMessageTracker.record(applicationContext, messageId, toUserId, messageKey)
+                        clearInternalState(messageId, toUserId)
+                        sharedPreferences.edit {
+                            remove(globalCycleKey)
+                            remove(globalCycleTimeKey)
+                        }
+                        return Result.success()
+                    }
+
+                    debugLine2("doWork", "Max attempts ($attemptCount) reached, cycle $currentCycles/$MAX_GLOBAL_CYCLES. Sending pending message.")
                     notifyRemotePeer(toUserId, messageKey, "pending")
                     PendingMessageTracker.record(applicationContext, messageId, toUserId, messageKey)
+
                     clearInternalState(messageId, toUserId)
-                    sharedPreferences.edit {
-                        remove(globalCycleKey)
-                        remove(globalCycleTimeKey)
-                    }
-                    return Result.success()
+                    Result.success()
                 }
-
-                debugLine2("doWork", "Max attempts ($attemptCount) reached, cycle $currentCycles/$MAX_GLOBAL_CYCLES. Sending pending message.")
-                notifyRemotePeer(toUserId, messageKey, "pending")
-                PendingMessageTracker.record(applicationContext, messageId, toUserId, messageKey)
-
-                clearInternalState(messageId, toUserId)
-                Result.success()
             } else {
                 debugLine2("doWork", "dispatchMessage failed: work=retry ($attemptCount/$MAX_ATTEMPTS)")
                 saveInternalState(newState, attemptCount)

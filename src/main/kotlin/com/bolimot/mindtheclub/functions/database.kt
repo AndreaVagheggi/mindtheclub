@@ -104,6 +104,50 @@ suspend fun addOrUpdatePeer(peer: Peer): Boolean = withContext(Dispatchers.IO) {
     }
 }
 
+suspend fun saveNewGroupAsPeer(gId: String, groupName: String): Boolean {
+    val newPeer = Peer(
+        userId = gId,
+        name = groupName,
+        bio = "",
+        picture = "",
+        uid = 0,
+        token = "",
+        status = Contact.ACTIVE,
+        privateId = ""
+    )
+    return addNewPeer(newPeer)
+}
+
+/**
+ * DESKTOP: the body of the App's PeerRepository.addNewPeer, which saveNewGroupAsPeer reaches
+ * through getPeerViewModel().addNewPeer: a peer already there is left as it is.
+ */
+suspend fun addNewPeer(peer: Peer): Boolean = withContext(Dispatchers.IO) {
+    val success: Boolean
+
+    if(peer.userId.isEmpty()){
+        debugLine("addOrUpdatePeer", "Peer userId is null or empty")
+        return@withContext false
+    }
+
+    try {
+        val peerDao = DatabaseProvider.provideDatabase().peerDao()
+        success = if (peerDao.exist(peer.userId)) {
+            false
+        } else {
+            peerDao.insert(peer) > 0
+        }
+
+        if (!success) {
+            debugLine("addOrUpdatePeer", "Failed to add or update peer")
+        }
+        success
+    } catch (ex: Exception){
+        debugLine("addOrUpdatePeer", "Exception: ${ex.message}")
+        false
+    }
+}
+
 // ---------------------------------------------------------------- batch tables
 // DESKTOP: same functions as the App, same SQL, on the PC's own batch file instead of
 // SupportSQLiteDatabase and Cursor (desktop/storage/BatchDb.kt explains why).

@@ -14,11 +14,12 @@ package com.bolimot.mindtheclub.receiving
 //     file already there;
 //   - the preview of a reply to an album or to a video is made by QuotedPictures, as the App's
 //     buildMultiImagePreview and saveFirstVideoFrame make it;
-//   - propagateGroupMessage is not called: a group text never reaches this function on the PC
-//     (receiveData refuses group content), and for a 1:1 message the App's call does nothing.
+//   - receiveImages relays an album rebuilt from its saved pictures (MessageData.fromMessage,
+//     Albums.merge) where the App relays the file it arrived as: the same bytes.
 
 import ProcessedMessageCache
 import android.content.Context
+import com.bolimot.mindtheclub.dataModels.MessageData
 import com.bolimot.mindtheclub.database.image.Image
 import com.bolimot.mindtheclub.database.message.Message
 import com.bolimot.mindtheclub.database.message.MessageRepository
@@ -45,6 +46,7 @@ import com.bolimot.mindtheclub.functions.getVideoDao
 import com.bolimot.mindtheclub.functions.resolveContentKey
 import com.bolimot.mindtheclub.sending.computeDeliveryDocId
 import com.bolimot.mindtheclub.sending.markContentComplete
+import com.bolimot.mindtheclub.sending.propagateGroupMessage
 import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.MySelf
@@ -106,9 +108,30 @@ suspend fun receiveReaction(messageId: String, emoji: String) {
     }
     notifyRemotePeer(inboxMessage.fromUserId, messageId, Notify.ALL_RECEIVED, deliveryId)
 
-    // DESKTOP: the App acknowledges the original group sender too and relays the reaction to the
-    // other members (propagateGroupMessage). Group content never reaches this function on the PC
-    // (receiveData refuses it), so for every reaction here chatGroupId is null and both are no-ops.
+    if (deliveryId != null && inboxMessage.originalSenderId != null
+        && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
+        notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
+    }
+
+    propagateGroupMessage(
+        MessageData(
+            fromUserId = inboxMessage.chatGroupId ?: (inboxMessage.originalSenderId ?: inboxMessage.fromUserId),
+            toUserId = MySelf.userId()!!,
+            messageId = messageId,
+            replyId = inboxMessage.replyId,
+            groupId = inboxMessage.groupId,
+            groupSize = inboxMessage.groupSize,
+            text = emoji,
+            textAttached = inboxMessage.textAttached,
+            nameAttached = inboxMessage.nameAttached,
+            uri = "",
+            type = inboxMessage.type,
+            subType = inboxMessage.subType,
+            date = inboxMessage.date,
+            chatGroupId = inboxMessage.chatGroupId,
+            originalSenderId = inboxMessage.originalSenderId
+        )
+    )
 }
 
 suspend fun receiveText(messageId: String) {
@@ -206,10 +229,14 @@ suspend fun receiveText(messageId: String) {
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
             }
 
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            propagateGroupMessage(MessageData.fromMessage(message).copy(messageId = messageId))
 
             if (!chatScreenIsInForeground(message.fromUserId)) {
                 DesktopEvents.notifyMessage(message)
+            } else {
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
+                DesktopEvents.messageOnScreen(message)
             }
         } else {
             debugLine("fullMessageReceivedEvent", "Failed to save text message")
@@ -291,10 +318,18 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
             }
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            val propagateData = MessageData.fromMessage(existingMessage).copy(messageId = messageId)
+            if (type == Type.WEB) {
+                propagateGroupMessage(propagateData.copy(uri = ""))
+            } else {
+                propagateGroupMessage(propagateData)
+            }
             inboxDao.deleteByContent(contentKey)
             ProcessedMessageCache.markProcessed(messageId)
             assembledPicture?.delete()
+            if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
+                DesktopEvents.notifyMessage(existingMessage)
+            }
             return
         }
         val originalSender = inboxMessage.originalSenderId ?: fromUserId
@@ -410,10 +445,19 @@ suspend fun receiveObject(messageId: String, content: String, text: String, from
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
             }
 
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            val propagateData = MessageData.fromMessage(message).copy(messageId = messageId)
+            if (type == Type.WEB) {
+                propagateGroupMessage(propagateData.copy(uri = ""))
+            } else {
+                propagateGroupMessage(propagateData)
+            }
 
             if (!chatScreenIsInForeground(message.fromUserId)) {
                 DesktopEvents.notifyMessage(message)
+            } else {
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
+                DesktopEvents.messageOnScreen(message)
             }
         } else {
             debugLine("fullMessageReceivedEvent", "Failed to save $type message")
@@ -461,9 +505,12 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
                 && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
             }
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            propagateGroupMessage(MessageData.fromMessage(existingMessage).copy(messageId = messageId))
             inboxDao.deleteByContent(contentKey)
             ProcessedMessageCache.markProcessed(messageId)
+            if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
+                DesktopEvents.notifyMessage(existingMessage)
+            }
             return
         }
 
@@ -533,7 +580,7 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
         )
 
         if (messageRepository.saveMessage(message, messageIn = true)) {
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            propagateGroupMessage(MessageData.fromMessage(message).copy(messageId = messageId))
 
             inboxDao.deleteByContent(contentKey)
             ProcessedMessageCache.markProcessed(messageId)
@@ -557,6 +604,10 @@ suspend fun receiveVideo(messageId: String, content: String, text: String, fromU
 
             if (!chatScreenIsInForeground(message.fromUserId)) {
                 DesktopEvents.notifyMessage(message)
+            } else {
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
+                DesktopEvents.messageOnScreen(message)
             }
         } else {
             debugLine("fullMessageReceivedEvent", "Failed to save video message")
@@ -604,9 +655,12 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
                 && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
             }
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            propagateGroupMessage(MessageData.fromMessage(existingMessage).copy(messageId = messageId))
             inboxDao.deleteByContent(contentKey)
             ProcessedMessageCache.markProcessed(messageId)
+            if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
+                DesktopEvents.notifyMessage(existingMessage)
+            }
             return
         }
 
@@ -679,7 +733,7 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
 
         if (messageRepository.saveMessage(message, messageIn = true)) {
 
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            propagateGroupMessage(MessageData.fromMessage(message).copy(messageId = messageId))
 
             inboxDao.deleteByContent(contentKey)
             ProcessedMessageCache.markProcessed(messageId)
@@ -705,6 +759,10 @@ suspend fun receiveImage(messageId: String, content: String, text: String, fromU
 
             if (!chatScreenIsInForeground(message.fromUserId)) {
                 DesktopEvents.notifyMessage(message)
+            } else {
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
+                DesktopEvents.messageOnScreen(message)
             }
         } else {
             debugLine("fullMessageReceivedEvent", "Failed to save image message")
@@ -760,10 +818,15 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
                 && inboxMessage.originalSenderId != inboxMessage.fromUserId) {
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, earlyDeliveryId)
             }
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            // DESKTOP: the App passes the album as it arrived (uri); here it is rebuilt from
+            // the saved pictures by MessageData.fromMessage (Albums.merge), the same bytes.
+            propagateGroupMessage(MessageData.fromMessage(existingMessage).copy(messageId = messageId))
             inboxDao.deleteByContent(contentKey)
             ProcessedMessageCache.markProcessed(messageId)
             merged?.delete()
+            if (!chatScreenIsInForeground(existingMessage.fromUserId)) {
+                DesktopEvents.notifyMessage(existingMessage)
+            }
             return
         }
 
@@ -850,10 +913,16 @@ suspend fun receiveImages(messageId: String, content: String, text: String, from
                 notifyRemotePeer(inboxMessage.originalSenderId, messageId, Notify.ALL_RECEIVED, deliveryId)
             }
 
-            // DESKTOP: propagateGroupMessage not called, see the top of the file.
+            // DESKTOP: the App passes the album as it arrived (uri); here it is rebuilt from
+            // the saved pictures by MessageData.fromMessage (Albums.merge), the same bytes.
+            propagateGroupMessage(MessageData.fromMessage(message).copy(messageId = messageId))
 
             if (!chatScreenIsInForeground(message.fromUserId)) {
                 DesktopEvents.notifyMessage(message)
+            } else {
+                // Gia' letto a schermo: so a later relay echo or sendMe resend cannot
+                // notify a message the user already saw.
+                DesktopEvents.messageOnScreen(message)
             }
         } else {
             debugLine("fullMessageReceivedEvent", "Failed to save image message")

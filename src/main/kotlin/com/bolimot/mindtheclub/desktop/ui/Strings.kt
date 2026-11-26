@@ -91,6 +91,23 @@ object Strings {
     const val VOICE_MESSAGE_UNPLAYABLE = "This voice message cannot be played on this PC."
     const val VOICE_MESSAGE_NOT_SAVED = "The voice message could not be prepared."
 
+    // A notification, in the App's own words (R.string.new_message, image, new_contact, new_group).
+    const val NEW_MESSAGE = "New message"
+    const val IMAGE = "Image"
+    const val NEW_CONTACT = "New Contact"
+    const val NEW_GROUP = "New Group"
+
+    // A content too large for a group, in the App's own words (R.string.message_size_limit).
+    const val MESSAGE_SIZE_LIMIT = "50 MB limit for messages to a group, exceeded"
+
+    // The icon in the notification area and its menu.
+    const val OPEN_APP = "Open MindTheClub"
+    const val QUIT_ON_CLOSE = "Quit when the window is closed"
+    const val QUIT = "Quit"
+    const val STILL_RUNNING =
+        "MindTheClub is still running and will notify you of new messages. " +
+                "To close it, right-click its icon here and choose Quit."
+
     // A contact's changed key, in the App's own words (R.string.key_change_*).
     const val KEY_CHANGE_TITLE = "Security code changed"
     fun keyChangeMessage(name: String) =

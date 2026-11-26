@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -78,8 +80,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
+import java.awt.KeyboardFocusManager
+import java.beans.PropertyChangeListener
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -98,10 +103,29 @@ fun main() = application {
     val state = remember { AppState(scope) }
     LaunchedEffect(Unit) { state.boot() }
 
+    // The window, once it exists: closing it hides it, and the icon in the notification area
+    // shows it again.
+    val mainWindow = remember { arrayOfNulls<ComposeWindow>(1) }
+
+    fun quit() {
+        Notifications.remove()
+        Engine.stop()
+        exitApplication()
+    }
+
     Window(
         onCloseRequest = {
-            Engine.stop()
-            exitApplication()
+            // The window goes, MindTheClub stays in the notification area receiving and
+            // notifying, as the phone keeps receiving when the App is closed. It quits instead
+            // when the user chose so in the icon's menu, when there is no icon to come back
+            // from, and when nothing is running (no identity loaded, or it failed to start).
+            val window = mainWindow[0]
+            if (window != null && state.screen is Screen.Chats && Notifications.isInstalled && !Notifications.quitOnClose) {
+                window.isVisible = false
+                Notifications.windowClosedToTray()
+            } else {
+                quit()
+            }
         },
         title = Strings.APP_NAME,
         state = rememberWindowState(width = 1000.dp, height = 700.dp),
@@ -119,6 +143,32 @@ fun main() = application {
         DisposableEffect(window) {
             installDropTarget(window) { item -> state.drop(item) }
             onDispose { window.dropTarget = null }
+        }
+        // The icon in the notification area. A click on a notification brings the window in
+        // front with that contact's chat open, as the phone's notification opens ChatScreen;
+        // Open, or a double click on the icon, brings it back as it was; Quit quits.
+        DisposableEffect(window) {
+            mainWindow[0] = window
+            Notifications.install(
+                openWindow = { EventQueue.invokeLater { WindowFront.bring(window) } },
+                openChat = { userId ->
+                    EventQueue.invokeLater { WindowFront.bring(window) }
+                    state.select(userId)
+                },
+                quit = { EventQueue.invokeLater { quit() } }
+            )
+            onDispose {
+                mainWindow[0] = null
+                Notifications.remove()
+            }
+        }
+        // Whether MindTheClub is in front: any of its windows, so that one of its dialogs open
+        // over the chat still counts, as a dialog over ChatScreen does on the phone.
+        DisposableEffect(Unit) {
+            val focus = KeyboardFocusManager.getCurrentKeyboardFocusManager()
+            val listener = PropertyChangeListener { state.windowActivated(focus.activeWindow != null) }
+            focus.addPropertyChangeListener("activeWindow", listener)
+            onDispose { focus.removePropertyChangeListener("activeWindow", listener) }
         }
         MaterialTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
@@ -519,10 +569,16 @@ private fun Conversation(state: AppState) {
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(state.messages, key = { it.messageId }) { message ->
+                itemsIndexed(state.messages, key = { _, item -> item.messageId }) { index, message ->
+                    // MessagesAdapter: the writer is shown again when it changes, and on a new day.
+                    val before = state.messages.getOrNull(index - 1)
+                    val showWriter = before == null ||
+                            (before.originalSenderId ?: before.fromUserId) != (message.originalSenderId ?: message.fromUserId) ||
+                            !sameDay(before.date, message.date)
                     Bubble(
                         state,
                         message,
+                        showWriter = showWriter,
                         onMoreEmojis = {
                             state.clearSelection()
                             choosingEmojiFor = message
@@ -739,7 +795,7 @@ private fun Conversation(state: AppState) {
     // go through the screen they are sent from (ChatScreen, getPeersResult).
     forwarding?.let { message ->
         ContactPickerDialog(
-            contacts = state.shareableContacts(),
+            contacts = state.forwardTargets(),
             title = Strings.SELECT_CONTACTS,
             maxSelectable = FORWARD_MAX_CONTACTS,
             onSend = { userIds ->
@@ -858,8 +914,40 @@ private fun Conversation(state: AppState) {
     }
 }
 
+/**
+ * One message. In a group, an incoming message whose writer is not the one of the message
+ * before it ([showWriter]) has the writer's picture and name above it, as the phone's
+ * Group*ViewHolder shows its member_header (partial_chat_member_header.xml: a round picture of
+ * 32dp, then the name in bold, @color/primary_dark).
+ */
 @Composable
-private fun Bubble(state: AppState, message: Message, onMoreEmojis: () -> Unit, onShowReactions: () -> Unit) {
+private fun Bubble(
+    state: AppState,
+    message: Message,
+    showWriter: Boolean,
+    onMoreEmojis: () -> Unit,
+    onShowReactions: () -> Unit
+) {
+    if (showWriter && message.chatGroupId != null && !state.isMine(message)) {
+        val writer = state.writerOf(message)
+        Column {
+            Row(modifier = Modifier.padding(top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Avatar(writer.picture, 32.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(writer.name, color = PRIMARY_DARK, fontWeight = FontWeight.Bold)
+            }
+            MessageRow(state, message, onMoreEmojis, onShowReactions)
+        }
+    } else {
+        MessageRow(state, message, onMoreEmojis, onShowReactions)
+    }
+}
+
+/** @color/primary_dark: the name of a group message's writer. */
+private val PRIMARY_DARK = Color(0xFF0288D1)
+
+@Composable
+private fun MessageRow(state: AppState, message: Message, onMoreEmojis: () -> Unit, onShowReactions: () -> Unit) {
     val mine = state.isMine(message)
     val picked = state.selectedMessageId == message.messageId
     val pill = message.reaction?.takeIf { it.isNotEmpty() && message.status != Status.RECEIVING }
@@ -1061,6 +1149,12 @@ private val timeOnly: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm").w
 private val dateAndTime: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.systemDefault())
 
 /** Today's messages show the time, older ones the date too. */
+/** Whether two moments fall on the same day here: where the phone puts a date header between them. */
+private fun sameDay(a: Long, b: Long): Boolean {
+    val zone = ZoneId.systemDefault()
+    return Instant.ofEpochMilli(a).atZone(zone).toLocalDate() == Instant.ofEpochMilli(b).atZone(zone).toLocalDate()
+}
+
 private fun formatTime(millis: Long): String {
     val instant = Instant.ofEpochMilli(millis)
     val today = LocalDate.now(ZoneId.systemDefault())

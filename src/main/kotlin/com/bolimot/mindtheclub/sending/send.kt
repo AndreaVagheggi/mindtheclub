@@ -3,8 +3,8 @@ package com.bolimot.mindtheclub.sending
 // DESKTOP: this file is NOT a copy of the App's send.kt, but its functions keep the App's
 // names, signatures and logic. The differences:
 //
-//   - sendMessage: the App's two local pseudo peers (AI assistant, note to self) and the group
-//     branch are not on the PC. The trial clock, which the first message to a real person
+//   - sendMessage: the App's two local pseudo peers (AI assistant, note to self) are not on
+//     the PC. The trial clock, which the first message to a real person
 //     starts, is recorded for the identity (it goes back to the phone with it);
 //   - sendSingleMessage: the App waits for a network callback when the phone is offline. The
 //     PC submits at once; with no network the dispatch fails and its own retries take over;
@@ -58,10 +58,6 @@ private val chunkEncoder: Base64.Encoder = Base64.getMimeEncoder(76, byteArrayOf
 private fun encodeChunk(bytes: ByteArray): String = chunkEncoder.encodeToString(bytes) + "\n"
 
 fun sendMessage(message: MessageData) {
-    if (message.toUserId.startsWith("group")) {
-        debugLine("sendMessage", "Group ${message.toUserId}: sending to a group is not on the PC yet, nothing sent")
-        return
-    }
     // The first message the user authors to a real person starts the 30 day trial clock
     // (TrialManager.startsTrial in the App). The clock belongs to the identity: it is kept
     // with what the phone handed over, and the server only ever moves it earlier.
@@ -70,7 +66,11 @@ fun sendMessage(message: MessageData) {
         val carried = Prefs.of("desktop_carried")
         if (carried.getLong("trialStartedAt") == null) carried.putLong("trialStartedAt", System.currentTimeMillis())
     }
-    sendSingleMessage(message)
+    if(message.toUserId.startsWith("group")){
+        sendGroupMessage(message)
+    } else {
+        sendSingleMessage(message)
+    }
 }
 
 fun sendSingleMessage(message: MessageData) {

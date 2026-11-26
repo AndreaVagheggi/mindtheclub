@@ -20,6 +20,7 @@ import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.Status
 import com.bolimot.mindtheclub.tools.Type
 import com.bolimot.mindtheclub.works.AssembleMessageWorker
+import com.bolimot.mindtheclub.works.StalePlaceholderCheckWorker
 import kotlinx.serialization.json.Json
 
 private val jsonParser = Json { ignoreUnknownKeys = true }
@@ -35,15 +36,6 @@ suspend fun receiveData(remoteUserId: String,
     }
 
     val message = jsonParser.decodeFromString<Outbox>(receivedMessage)
-
-    // DESKTOP: group content is refused here, whole. A group member that confirms a message must
-    // also relay it to the others (fanout plus relay, docs/arch/group.md), and relay is not on
-    // the PC yet: accepting would make the sender count this device as served and nobody would
-    // carry the content on. Dropped unconfirmed, the sender simply serves another member.
-    if (!message.chatGroupId.isNullOrEmpty()) {
-        debugLine("receiveData", "Group content ${message.messageId} dropped: groups are not on the PC yet")
-        return
-    }
 
     if (CancelledTransferRegistry.isCancelled(App.context(), message.messageId)) {
         debugLine("receiveData", "Transfer ${message.messageId} was cancelled, dropping chunk ${message.sequenceNo}")
@@ -310,7 +302,7 @@ private suspend fun insertReceivingPlaceholder(chunk: Inbox) {
         debugLine("receivingPlaceholder", "Placeholder created for messageKey: $messageKey, type: ${chunk.type}")
 
         if (!chunk.chatGroupId.isNullOrEmpty() && !chunk.originalSenderId.isNullOrEmpty()) {
-            // DESKTOP: StalePlaceholderCheckWorker not scheduled, it concerns group content only.
+            StalePlaceholderCheckWorker.schedule(App.context(), messageKey)
         }
     } catch (e: Exception) {
         debugLine("receivingPlaceholder", "Failed to create placeholder: ${e.message}")

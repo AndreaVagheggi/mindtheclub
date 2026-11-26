@@ -21,6 +21,7 @@ import com.bolimot.mindtheclub.sending.notifyRemotePeer
 import com.bolimot.mindtheclub.sending.sendMessage
 import com.bolimot.mindtheclub.start.App
 import com.bolimot.mindtheclub.tools.Contact
+import com.bolimot.mindtheclub.tools.MAX_GROUP_MESSAGE_BYTES
 import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.tools.NO_PICTURE
 import com.bolimot.mindtheclub.tools.Notify
@@ -39,9 +40,41 @@ import java.io.File
  */
 object Outgoing {
 
+    /**
+     * sendManager: a message to a group carries the group as chatGroupId and this user as its
+     * original sender ("chatGroupId = if (toUserId.startsWith("group")) toUserId else null").
+     */
+    /**
+     * SendImage, SendImages, SendGif, SendVideo, SendFile: a content for a group larger than
+     * MAX_GROUP_MESSAGE_BYTES (50 MB) is not sent (R.string.message_size_limit). Measured on what
+     * actually leaves, as the App measures it: a picture after its preparation, a video after
+     * its compression, a GIF and a file as they are.
+     */
+    class GroupSizeExceeded : Exception("50 MB limit for messages to a group, exceeded")
+
+    private fun checkGroupSize(toUserId: String, bytes: Long) {
+        if (toUserId.startsWith("group") && bytes > MAX_GROUP_MESSAGE_BYTES) throw GroupSizeExceeded()
+    }
+
+    private fun groupOf(toUserId: String): String? = if (toUserId.startsWith("group")) toUserId else null
+
+    private fun originalSenderFor(toUserId: String): String? =
+        if (toUserId.startsWith("group")) MySelf.userId() else null
+
     /** sendManager.sendObject: a content is marked "forwarded" when it quotes some words. */
     private fun forwardSubType(textAttached: String?): String =
         if (!textAttached.isNullOrEmpty()) SubType.FORWARD else ""
+
+    /**
+     * Saves a message of ours, as each send function of the App does with viewModel.insert or
+     * repo.saveMessage, and on success plays the outgoing sound where the App plays it
+     * (SoundManager.playOutgoing), through DesktopEvents.
+     */
+    private suspend fun saveOutgoing(message: Message): Boolean {
+        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return false
+        DesktopEvents.messageSent(message)
+        return true
+    }
 
     /**
      * sendManager.sendText for a 1:1 chat: a plain text, or a reply. Returns the saved message,
@@ -81,15 +114,15 @@ object Outgoing {
             subType = subType,
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
         if (message.subType == SubType.REPLY && !message.replyId.isNullOrBlank()) {
             message.uri = quotedPictureUri(replyId)
         }
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -123,11 +156,11 @@ object Outgoing {
             subType = subType,
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -152,11 +185,11 @@ object Outgoing {
             subType = SubType.FORWARD,
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -189,10 +222,12 @@ object Outgoing {
     fun sendReaction(message: Message, emoji: String) {
         val myUserId = MySelf.userId() ?: return
 
+        val isGroup = message.chatGroupId != null
+
         val reaction = Message(
             uid = 0,
             fromUserId = myUserId,
-            toUserId = message.fromUserId,
+            toUserId = if (isGroup) message.chatGroupId!! else message.fromUserId,
             messageId = guid(),
             replyId = message.messageId,
             groupId = "",
@@ -205,8 +240,8 @@ object Outgoing {
             subType = "",
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null
+            chatGroupId = message.chatGroupId,
+            originalSenderId = if (isGroup) MySelf.userId() else null
         )
 
         sendMessage(MessageData.fromMessage(reaction))
@@ -235,11 +270,11 @@ object Outgoing {
             subType = SubType.FORWARD,
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -267,6 +302,7 @@ object Outgoing {
         // A file already in the media folder went through prepareForSending when it was sent or
         // was prepared by the phone that sent it: doing it again would only lose quality.
         val prepared = if (MediaFiles.isKept(source)) source else MediaFiles.prepareForSending(source)
+        checkGroupSize(toUserId, prepared.length())
 
         val message = Message(
             uid = 0,
@@ -284,11 +320,11 @@ object Outgoing {
             subType = forwardSubType(textAttached),
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
 
         // sendManager.addObjectForBrowsing: the row the phone's gallery of a chat is built from.
@@ -324,6 +360,7 @@ object Outgoing {
         if (sources.isEmpty()) return null
 
         val prepared = sources.map { if (MediaFiles.isKept(it)) it else MediaFiles.prepareForSending(it) }
+        checkGroupSize(toUserId, prepared.sumOf { it.length() })
 
         val message = Message(
             uid = 0,
@@ -341,11 +378,11 @@ object Outgoing {
             subType = forwardSubType(textAttached),
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
 
         // sendManager.addObjectForBrowsing: one row of the chat's gallery per picture.
@@ -393,6 +430,8 @@ object Outgoing {
         type: String,
     ): Message? {
         val myUserId = MySelf.userId() ?: return null
+        // SendGif measures the GIF; a sticker leaves the phone with no such check.
+        if (type == Type.GIF) checkGroupSize(toUserId, source.length())
         val copy = if (MediaFiles.isKept(source)) source else MediaFiles.keepCopyForSending(source)
 
         val message = Message(
@@ -411,11 +450,11 @@ object Outgoing {
             subType = forwardSubType(textAttached),
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -455,6 +494,7 @@ object Outgoing {
                 compressed?.delete()
             }
         }
+        checkGroupSize(toUserId, copy.length())
 
         val message = Message(
             uid = 0,
@@ -472,11 +512,11 @@ object Outgoing {
             subType = forwardSubType(textAttached),
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
 
         // sendManager.addObjectForBrowsing: the row the phone's gallery of a chat is built from.
@@ -518,6 +558,7 @@ object Outgoing {
         val extension = if (fullName.contains(".")) fullName.substringAfterLast(".", "Unknown") else "Unknown"
         val size = source.length()
         val detailCSV = "$fullName,$extension,$size"
+        checkGroupSize(toUserId, size)
 
         val copy = if (MediaFiles.isKept(source)) source else MediaFiles.keepCopyForSending(source)
 
@@ -537,11 +578,11 @@ object Outgoing {
             subType = forwardSubType(textAttached),
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -570,11 +611,11 @@ object Outgoing {
             subType = forwardSubType(""),
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -603,11 +644,11 @@ object Outgoing {
             subType = SubType.FORWARD,
             date = System.currentTimeMillis(),
             status = DesktopStrings.sending(),
-            chatGroupId = null,
-            originalSenderId = null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId),
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
@@ -646,10 +687,12 @@ object Outgoing {
             null,
             System.currentTimeMillis(),
             "",
-            null
+            null,
+            chatGroupId = groupOf(toUserId),
+            originalSenderId = originalSenderFor(toUserId)
         )
 
-        if (!getMessageRepository(App.context()).saveMessage(message, messageIn = false)) return null
+        if (!saveOutgoing(message)) return null
         sendMessage(MessageData.fromMessage(message))
         return message
     }
