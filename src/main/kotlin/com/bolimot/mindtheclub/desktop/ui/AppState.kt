@@ -18,6 +18,7 @@ import com.bolimot.mindtheclub.desktop.backup.BackupExporter
 import com.bolimot.mindtheclub.desktop.backup.BackupImporter
 import com.bolimot.mindtheclub.desktop.engine.DesktopEvents
 import com.bolimot.mindtheclub.desktop.engine.Engine
+import com.bolimot.mindtheclub.desktop.engine.Groups
 import com.bolimot.mindtheclub.desktop.engine.Outgoing
 import com.bolimot.mindtheclub.desktop.media.Albums
 import com.bolimot.mindtheclub.desktop.media.AudioFiles
@@ -195,6 +196,8 @@ class AppState(private val scope: CoroutineScope) {
         }
         DesktopEvents.onMessageSent = { Sounds.playOutgoing() }
         Engine.onPushLost = { warning = Strings.PUSH_LOST }
+        // The engine reconnects by itself: the notice goes when the channel is back.
+        Engine.onPushRestored = { if (warning == Strings.PUSH_LOST) warning = null }
 
         try {
             Engine.start()
@@ -284,6 +287,8 @@ class AppState(private val scope: CoroutineScope) {
         // A recording belongs to the chat it was started in: leaving that chat throws it away,
         // as leaving ChatScreen does on the phone.
         if (userId != selectedUserId) cancelRecording()
+        // Choosing a chat in the list leaves a group's screen, as Back leaves GroupMembersActivity.
+        closeGroupScreen()
         // A contact being acquired has no chat yet: its row opens its profile (PeersFragment).
         val chat = chats.firstOrNull { it.userId == userId }
         if (chat != null && chat.isNew) {
@@ -447,6 +452,218 @@ class AppState(private val scope: CoroutineScope) {
     fun toggleSelection(message: Message) {
         if (actionsFor(message).isEmpty() && !canReact(message)) return
         selectedMessageId = if (selectedMessageId == message.messageId) null else message.messageId
+    }
+
+    // ------------------------------------------------------------------- managing groups
+
+    /**
+     * Chats picked in the contact list with the right mouse button, the PC's long press
+     * (PeersFragment's selection). Two or more contacts build a group with the button at the
+     * bottom of the list; one group alone offers leaving or deleting it (AppTab).
+     */
+    val pickedChats = mutableStateListOf<String>()
+
+    /** For one group picked alone: whether this user is its admin; null until Firestore answers. */
+    var pickedGroupAdmin: Boolean? by mutableStateOf<Boolean?>(null)
+        private set
+
+    /**
+     * PeersFragment.canToggleSelection: the MTC team never enters a group, and a group never
+     * sits next to contacts: it is picked on its own, and while it is picked only that same
+     * group can be clicked again, to let it go.
+     */
+    fun togglePick(userId: String) {
+        if (userId == SUPPORT_USER_ID) return
+        if (pickedChats.isNotEmpty()) {
+            val groupPicked = pickedChats.any { it.startsWith("group") }
+            if (groupPicked && userId !in pickedChats) return
+            if (!groupPicked && userId.startsWith("group")) return
+        }
+        if (userId in pickedChats) pickedChats.remove(userId) else pickedChats.add(userId)
+
+        pickedGroupAdmin = null
+        val single = pickedChats.singleOrNull()?.takeIf { it.startsWith("group") } ?: return
+        // Leave or delete depends on being an admin, which only Firestore knows (AppTab).
+        scope.launch(Dispatchers.IO) {
+            val admin = Groups.isGroupAdmin(single)
+            if (pickedChats.singleOrNull() == single) pickedGroupAdmin = admin
+        }
+    }
+
+    fun clearPicks() {
+        pickedChats.clear()
+        pickedGroupAdmin = null
+    }
+
+    /** PeersFragment.createNewGroup: then, as on the phone, the new group's screen opens. */
+    fun createGroup(name: String) {
+        val members = pickedChats.toList()
+        clearPicks()
+        scope.launch(Dispatchers.IO) {
+            try {
+                val groupId = Groups.create(members, name)
+                reload()
+                select(groupId).join()
+                openGroupScreen(groupId)
+            } catch (e: Groups.Refused) {
+                warning = e.message
+            } catch (e: Throwable) {
+                warning = "${Strings.GROUP_FAILED} ${e.message}"
+            }
+        }
+    }
+
+    /** AppTab's toolbar with one group picked: delete it when an admin, leave it otherwise. */
+    fun exitPickedGroup() {
+        val groupId = pickedChats.singleOrNull()?.takeIf { it.startsWith("group") } ?: return
+        val admin = pickedGroupAdmin ?: return
+        clearPicks()
+        exitGroup(groupId, admin)
+    }
+
+    private fun exitGroup(groupId: String, admin: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (admin) Groups.delete(groupId) else Groups.leave(groupId)
+            } catch (e: Throwable) {
+                warning = "${Strings.GROUP_FAILED} ${e.message}"
+                return@launch
+            }
+            if (groupScreen?.info?.groupId == groupId) groupScreen = null
+            if (selectedUserId == groupId) {
+                selectedUserId = null
+                selectedName = ""
+                messages.clear()
+            }
+            reload()
+        }
+    }
+
+    /** One member in the group screen (members.kt): picture, name, bio, the Admin badge. */
+    class MemberRow(val userId: String, val name: String, val bio: String?, val picture: File?, val isAdmin: Boolean)
+
+    /** The group screen (GroupMembersActivity) as last read from the group document. */
+    class GroupScreen(val info: Groups.Info, val members: List<MemberRow>, val picture: File?, val isAdmin: Boolean)
+
+    /** The group screen on show, in place of the conversation, or null. */
+    var groupScreen: GroupScreen? by mutableStateOf<GroupScreen?>(null)
+        private set
+
+    /** Members picked in the group screen with the right mouse button (MembersAdapter selection). */
+    val pickedMembers = mutableStateListOf<String>()
+
+    /** Opened by a click on a group chat's header, as ChatScreen opens GroupMembersActivity. */
+    fun openGroupScreen(groupId: String) {
+        pickedMembers.clear()
+        scope.launch(Dispatchers.IO) { refreshGroupScreen(groupId) }
+    }
+
+    fun closeGroupScreen() {
+        groupScreen = null
+        pickedMembers.clear()
+    }
+
+    /**
+     * GroupMembersFragment's snapshot listener, read once: the name, the picture, the roles and
+     * every member but this user, with the contact's name and picture where it is a contact.
+     */
+    private suspend fun refreshGroupScreen(groupId: String) {
+        val info = try {
+            Groups.info(groupId)
+        } catch (e: Throwable) {
+            warning = "${Strings.GROUP_FAILED} ${e.message}"
+            return
+        }
+        if (info == null) {
+            groupScreen = null
+            return
+        }
+        val peerDao = getPeerDao(App.context())
+        val rows = info.roles.keys.filter { it != myUserId }.map { userId ->
+            val peer = peerDao.getPeer(userId)
+            MemberRow(
+                userId = userId,
+                name = peer?.name ?: "Unknown",
+                bio = peer?.bio,
+                picture = peer?.picture?.let { MediaFiles.fileOfUri(it) },
+                isAdmin = info.roles[userId] == "admin"
+            )
+        }
+        // Update local Peer with latest picture URL from Firestore.
+        info.pictureUrl?.let { peerDao.updatePeerPicture(groupId, it) }
+        groupScreen = GroupScreen(info, rows, Groups.pictureFile(info.pictureUrl), info.isAdmin(myUserId))
+        pickedMembers.retainAll(rows.map { it.userId }.toSet())
+    }
+
+    fun togglePickMember(userId: String) {
+        if (userId in pickedMembers) pickedMembers.remove(userId) else pickedMembers.add(userId)
+    }
+
+    /** A member clicked with none picked: its profile, as PeerView from the group screen. */
+    fun showMemberProfile(row: MemberRow) {
+        profileShown = ProfileView(row.userId, row.name, row.bio ?: "", row.picture, pending = false)
+    }
+
+    /** Runs [action] on the open group screen, then reads the group again. */
+    private fun onGroupScreen(action: suspend (GroupScreen) -> Unit) {
+        val screen = groupScreen ?: return
+        scope.launch(Dispatchers.IO) {
+            try {
+                action(screen)
+            } catch (e: Groups.Refused) {
+                warning = e.message
+            } catch (e: Throwable) {
+                warning = "${Strings.GROUP_FAILED} ${e.message}"
+            }
+            refreshGroupScreen(screen.info.groupId)
+            reload()
+        }
+    }
+
+    /** GroupMembersFragment.saveGroupName. */
+    fun renameGroup(newName: String) {
+        val name = newName.trim()
+        val screen = groupScreen ?: return
+        if (name.isEmpty() || name == screen.info.name) return
+        onGroupScreen { Groups.rename(it.info.groupId, name) }
+        if (selectedUserId == screen.info.groupId) selectedName = name
+    }
+
+    /** GroupMembersFragment.uploadGroupPicture. */
+    fun setGroupPicture(file: File) = onGroupScreen { Groups.setPicture(it.info.groupId, file) }
+
+    /** The contacts that can be added: SelectPeersForGroup, everyone active not already in. */
+    fun addableContacts(): List<ChatItem> {
+        val inGroup = groupScreen?.info?.roles?.keys ?: emptySet()
+        return chats.filter {
+            it.status == Contact.ACTIVE && !it.userId.startsWith("group") &&
+                    it.userId != SUPPORT_USER_ID && it.userId !in inGroup
+        }
+    }
+
+    fun addGroupMembers(userIds: List<String>) {
+        if (userIds.isEmpty()) return
+        onGroupScreen { Groups.addMembers(it.info.groupId, it.info.name, it.members.size + 1, userIds) }
+    }
+
+    fun removePickedMembers() {
+        val picked = pickedMembers.toList()
+        pickedMembers.clear()
+        if (picked.isEmpty()) return
+        onGroupScreen { if (Groups.remove(it.info, picked)) warning = Strings.FOUNDER_NOT_REMOVABLE }
+    }
+
+    fun promotePickedMembers() {
+        val picked = pickedMembers.toList()
+        pickedMembers.clear()
+        if (picked.isEmpty()) return
+        onGroupScreen { Groups.promote(it.info, picked) }
+    }
+
+    /** The group screen's Leave Group (a member) or Delete (an admin). */
+    fun exitOpenGroup() {
+        val screen = groupScreen ?: return
+        exitGroup(screen.info.groupId, screen.isAdmin)
     }
 
     // ---------------------------------------------------------------------- reactions
@@ -1268,6 +1485,9 @@ class AppState(private val scope: CoroutineScope) {
         if (message.status == Notify.SEEN) Strings.SEEN else message.status
 
     private companion object {
+        /** Support.USER_ID: the MTC team never enters a group. */
+        const val SUPPORT_USER_ID = "71ac8846f90144dea8087ae02fe0272b"
+
         const val MAX_MESSAGES_SHOWN = 300
 
         /** How far back the contact list looks for a message to preview past profile messages. */

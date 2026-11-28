@@ -3,6 +3,7 @@ package com.bolimot.mindtheclub.desktop.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -133,6 +134,9 @@ fun main() = application {
         onPreviewKeyEvent = { event ->
             if (event.type == KeyEventType.KeyDown && event.key == Key.Escape && state.selectedMessageId != null) {
                 state.clearSelection()
+                true
+            } else if (event.type == KeyEventType.KeyDown && event.key == Key.Escape && state.pickedChats.isNotEmpty()) {
+                state.clearPicks()
                 true
             } else {
                 false
@@ -291,7 +295,9 @@ private fun ChatsScreen(state: AppState) {
         Row(modifier = Modifier.fillMaxSize()) {
             ContactList(state, onReturnToPhone = { returning = true })
             VerticalDivider()
-            Conversation(state)
+            // A group's screen takes the conversation's place while it is open, as
+            // GroupMembersActivity opens over ChatScreen.
+            if (state.groupScreen != null) GroupScreenPane(state) else Conversation(state)
         }
     }
 
@@ -319,24 +325,36 @@ private fun ChatsScreen(state: AppState) {
 
 @Composable
 private fun ContactList(state: AppState, onReturnToPhone: () -> Unit) {
+    var namingGroup by remember { mutableStateOf(false) }
     Column(modifier = Modifier.width(300.dp).fillMaxHeight()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(state.myName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             TextButton(onClick = onReturnToPhone) { Text(Strings.RETURN_TO_PHONE) }
         }
         HorizontalDivider()
+        // One group picked alone: leave it or delete it (AppTab).
+        PickedGroupBar(state)
 
         if (state.chats.isEmpty()) {
             Text(Strings.NO_CHATS, modifier = Modifier.padding(16.dp))
         }
+        Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(state.chats, key = { it.userId }) { chat ->
                 val selected = chat.userId == state.selectedUserId
+                val pickedRow = chat.userId in state.pickedChats
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
-                        .clickable { state.select(chat.userId) }
+                        .background(
+                            if (pickedRow) PICKED
+                            else if (selected) MaterialTheme.colorScheme.secondaryContainer
+                            else MaterialTheme.colorScheme.surface
+                        )
+                        // The right mouse button picks, the PC's long press (PeersFragment);
+                        // while something is picked, a click picks too.
+                        .onRightClick(chat.userId) { state.togglePick(chat.userId) }
+                        .clickable { if (state.pickedChats.isNotEmpty()) state.togglePick(chat.userId) else state.select(chat.userId) }
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -370,6 +388,26 @@ private fun ContactList(state: AppState, onReturnToPhone: () -> Unit) {
                 }
             }
         }
+        // fab_add_group, at the bottom of the list.
+        NewGroupButton(
+            state,
+            onAsk = { namingGroup = true },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp)
+        )
+        }
+    }
+    if (namingGroup) {
+        NewGroupDialog(
+            onCreate = { name ->
+                namingGroup = false
+                state.createGroup(name)
+            },
+            // Cancel lets go of the picked contacts too, as on the phone.
+            onCancel = {
+                namingGroup = false
+                state.clearPicks()
+            }
+        )
     }
 }
 
@@ -528,7 +566,10 @@ private fun Conversation(state: AppState) {
         val picked = state.selectedMessage
         if (picked == null) {
             Box(
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+                    // A group's header opens its screen (GroupMembersActivity).
+                    .then(if (state.isGroupOpen) Modifier.clickable { state.selectedUserId?.let { state.openGroupScreen(it) } } else Modifier)
+                    .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
@@ -567,6 +608,8 @@ private fun Conversation(state: AppState) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                // Room above the first message and below the last, so neither touches the edge.
+                contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 itemsIndexed(state.messages, key = { _, item -> item.messageId }) { index, message ->
@@ -1119,7 +1162,7 @@ private fun ReturnToPhoneDialog(state: AppState, onClose: () -> Unit) {
 }
 
 /** What the paperclip's Images offers: the kinds of picture Java reads. On Windows a pattern in the name box filters the list. */
-private const val PICTURE_FILES = "*.jpg;*.jpeg;*.png;*.bmp;*.gif"
+internal const val PICTURE_FILES = "*.jpg;*.jpeg;*.png;*.bmp;*.gif"
 
 /**
  * What the paperclip's Video offers. Only the kinds a phone plays under the name ".mp4", which
@@ -1137,7 +1180,7 @@ private fun chooseFiles(suggested: String?): List<File> {
     return dialog.files?.toList() ?: emptyList()
 }
 
-private fun chooseFile(save: Boolean, suggested: String?): File? {
+internal fun chooseFile(save: Boolean, suggested: String?): File? {
     val dialog = FileDialog(null as Frame?, Strings.APP_NAME, if (save) FileDialog.SAVE else FileDialog.LOAD)
     if (suggested != null) dialog.file = suggested
     dialog.isVisible = true

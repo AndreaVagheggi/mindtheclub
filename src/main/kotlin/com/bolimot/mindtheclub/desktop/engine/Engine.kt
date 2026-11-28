@@ -12,6 +12,10 @@ import com.bolimot.mindtheclub.tools.MySelf
 import com.bolimot.mindtheclub.works.ContactRequestRetryWorker
 import com.bolimot.mindtheclub.works.InboxRecoveryWorker
 import com.bolimot.mindtheclub.works.PendingRetryWorker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -33,7 +37,8 @@ import java.util.UUID
  *   3. the database opens and the WebRTC library loads;
  *   4. a push channel opens and is registered for the identity, with proof of possession of
  *      the key. From that moment signals for the identity come here, and the phone that held
- *      it deactivates itself at its next start (one identity, one installation).
+ *      it deactivates itself at its next start (one identity, one installation). The channel
+ *      is then watched and reopened by itself when it drops (watchChannel).
  *
  * Nothing is registered if any earlier step fails.
  */
@@ -49,9 +54,24 @@ object Engine {
     class StartFailed(message: String) : Exception(message)
 
     @Volatile private var subscriber: NtfySubscriber? = null
+    @Volatile private var pushKeys: WebPushKeys? = null
+    @Volatile private var watchdog: Job? = null
 
-    /** Called when the push channel drops. The program must be restarted, for now. */
+    /** Called when the push channel drops. Engine reconnects by itself; this is for display. */
     @Volatile var onPushLost: ((reason: String) -> Unit)? = null
+
+    /** Called when the push channel is back after a loss. */
+    @Volatile var onPushRestored: (() -> Unit)? = null
+
+    /**
+     * How the channel is watched. A websocket ping goes out every PING_EVERY_MS and its pong
+     * proves the connection alive (see NtfySubscriber): silence for longer than
+     * SILENCE_LIMIT_MS, four pings unanswered, means the connection is dead even if nobody said
+     * so. Checked every WATCH_EVERY_MS; a reconnection that fails is tried again at the next check.
+     */
+    private const val SILENCE_LIMIT_MS = 120_000L
+    private const val PING_EVERY_MS = 30_000L
+    private const val WATCH_EVERY_MS = 15_000L
 
     fun start() {
         if (!WebPushKeys.selfTest()) throw StartFailed("La decifratura Web Push non funziona su questo PC.")
@@ -111,34 +131,12 @@ object Engine {
 
         // The push channel. Subscribed BEFORE it is registered, so nothing is missed.
         val pushKeys = WebPushKeys.generate()
-        val channel = NtfySubscriber(
-            onMessage = { body -> onPushBody(body, pushKeys) },
-            onClosed = { reason ->
-                debugLine(TAG, "Push channel lost: $reason")
-                try {
-                    onPushLost?.invoke(reason)
-                } catch (e: Exception) {
-                    // Display only.
-                }
-            }
-        )
+        this.pushKeys = pushKeys
+        val channel = newSubscriber(pushKeys, topic = null, previousMessageId = null)
         if (!channel.connect()) throw StartFailed("Non riesco ad aprire il canale push (ntfy.sh non raggiungibile).")
 
         try {
-            val sealedChallenge = (Backend.call("getPushChallenge", buildJsonObject { put("userId", userId) })["challenge"]
-                    as? JsonPrimitive)?.contentOrNull
-                ?: throw StartFailed("Il server non conosce questa identita'.")
-            Backend.call("updateMyPushEndpoint", buildJsonObject {
-                put("userId", userId)
-                put("proof", identity.decrypt(sealedChallenge))
-                put("endpoint", channel.endpoint)
-                put("p256dh", pushKeys.p256dh)
-                put("auth", pushKeys.auth)
-                put("publicKey", identity.publicKey)
-                put("installationId", installationId())
-                // The trial clock belongs to the identity; the server only ever moves it earlier.
-                Prefs.of("desktop_carried").getLong("trialStartedAt")?.let { put("trialStartedAt", it) }
-            })
+            publishEndpoint(userId, channel, pushKeys)
         } catch (e: StartFailed) {
             throw e
         } catch (e: Backend.CallableException) {
@@ -150,6 +148,7 @@ object Engine {
         subscriber = channel
         installation.putBoolean(KEY_CLAIMED, true)
         debugLine(TAG, "Started, signals for $userId come to this PC")
+        watchChannel()
 
         // Only now, with the identity registered here, the recovery layer starts, as in the
         // App's MainActivity: the two periodic workers, and one pass over the outgoing ladder.
@@ -175,8 +174,141 @@ object Engine {
     }
 
     fun stop() {
+        watchdog?.cancel()
+        watchdog = null
+        subscriber?.abort()
+        subscriber = null
         DataLink.closeAll()
         DatabaseProvider.close()
+    }
+
+    /**
+     * Registers [channel]'s endpoint for the identity with proof of possession of its key
+     * (getPushChallenge, updateMyPushEndpoint). Done at every start, and again after every
+     * reconnection: the server keeps the endpoint in pushEndpoints/<userId>, which no client
+     * can read, and drops it when a send to it fails as "gone". A device that registered only
+     * once would never learn it had been dropped and would stay unreachable (Black's phone,
+     * 28 Nov 2026: every signal to it answered not-found).
+     */
+    private fun publishEndpoint(userId: String, channel: NtfySubscriber, keys: WebPushKeys) {
+        val identity = KeyManager.identity() ?: throw StartFailed("Su questo PC non c'e' un'identita'.")
+        val sealedChallenge = (Backend.call("getPushChallenge", buildJsonObject { put("userId", userId) })["challenge"]
+                as? JsonPrimitive)?.contentOrNull
+            ?: throw StartFailed("Il server non conosce questa identita'.")
+        Backend.call("updateMyPushEndpoint", buildJsonObject {
+            put("userId", userId)
+            put("proof", identity.decrypt(sealedChallenge))
+            put("endpoint", channel.endpoint)
+            put("p256dh", keys.p256dh)
+            put("auth", keys.auth)
+            put("publicKey", identity.publicKey)
+            put("installationId", installationId())
+            // The trial clock belongs to the identity; the server only ever moves it earlier.
+            Prefs.of("desktop_carried").getLong("trialStartedAt")?.let { put("trialStartedAt", it) }
+        })
+    }
+
+    /**
+     * After a reconnection: publishes the endpoint again, unless the identity has meanwhile
+     * moved to another device (its installationId on the server is not this PC's). Taking it
+     * back would steal it from the phone that restored it; that PC stays as it is and the next
+     * start deactivates it, as on the phone.
+     */
+    private fun republishAfterReconnect(channel: NtfySubscriber, keys: WebPushKeys) {
+        try {
+            val userId = MySelf.userId() ?: return
+            val remoteInstallation = Backend.userDocument(userId)?.get("installationId")?.takeIf { it.isNotEmpty() }
+            if (remoteInstallation != null && remoteInstallation != installationId()) {
+                debugLine(TAG, "Identity owned by installation $remoteInstallation, not republishing the endpoint")
+                return
+            }
+            publishEndpoint(userId, channel, keys)
+            debugLine(TAG, "Endpoint published again after the reconnection")
+        } catch (e: Exception) {
+            debugLine(TAG, "Endpoint not published again: ${e.message}")
+        }
+    }
+
+    /** A subscriber whose loss is reported only while it is the current one. */
+    private fun newSubscriber(keys: WebPushKeys, topic: String?, previousMessageId: String?): NtfySubscriber {
+        lateinit var channel: NtfySubscriber
+        val onMessage: (ByteArray) -> Unit = { body -> onPushBody(body, keys) }
+        val onClosed: (String) -> Unit = { reason ->
+            if (channel === subscriber) {
+                debugLine(TAG, "Push channel lost: $reason")
+                reportLost(reason)
+            }
+        }
+        channel = if (topic == null) {
+            NtfySubscriber(onMessage = onMessage, onClosed = onClosed)
+        } else {
+            NtfySubscriber(onMessage = onMessage, onClosed = onClosed, topic = topic, previousMessageId = previousMessageId)
+        }
+        return channel
+    }
+
+    private fun reportLost(reason: String) {
+        try {
+            onPushLost?.invoke(reason)
+        } catch (e: Exception) {
+            // Display only.
+        }
+    }
+
+    /**
+     * Watches the push channel for as long as the engine runs. A channel that closed, or that
+     * has been silent past SILENCE_LIMIT_MS (no keepalive either: a connection that died without
+     * saying so, or a PC that has just woken from sleep), is replaced by a new subscriber on the
+     * same topic, so the endpoint registered for the identity stays the same and nothing has to
+     * be registered again. It asks ntfy for what it kept after the last message received here:
+     * a signal ntfy accepted while this PC was not listening arrives now. A signal ntfy refused
+     * cannot be recovered here; the sender's recovery ladder announces it again.
+     */
+    private fun watchChannel() {
+        watchdog?.cancel()
+        watchdog = App.instance!!.applicationScope.launch(Dispatchers.IO) {
+            var lostSince = 0L
+            var lastPingAt = 0L
+            while (isActive) {
+                delay(WATCH_EVERY_MS)
+                val current = subscriber ?: continue
+                val keys = pushKeys ?: continue
+                if (!current.closed && System.currentTimeMillis() - lastPingAt >= PING_EVERY_MS) {
+                    current.ping()
+                    lastPingAt = System.currentTimeMillis()
+                }
+                val silentFor = System.currentTimeMillis() - current.lastFrameAt
+                if (!current.closed && silentFor <= SILENCE_LIMIT_MS) continue
+
+                if (lostSince == 0L) {
+                    lostSince = current.lastFrameAt
+                    if (!current.closed) {
+                        debugLine(TAG, "Push channel lost: silent for ${silentFor / 1000}s")
+                        reportLost("silent for ${silentFor / 1000}s")
+                    }
+                }
+                current.abort()
+
+                // A message id when one was received; otherwise the moment the old channel last
+                // proved alive, a minute earlier for safety (nothing came before it to repeat).
+                val since = current.lastMessageId ?: ((lostSince - 60_000L) / 1000L).toString()
+                val replacement = newSubscriber(keys, current.topic, current.lastMessageId)
+                subscriber = replacement
+                if (replacement.connect(since = since)) {
+                    debugLine(TAG, "Push channel back after ${(System.currentTimeMillis() - lostSince) / 1000}s, asked ntfy for what it kept since $since")
+                    lostSince = 0L
+                    republishAfterReconnect(replacement, keys)
+                    try {
+                        onPushRestored?.invoke()
+                    } catch (e: Exception) {
+                        // Display only.
+                    }
+                } else {
+                    debugLine(TAG, "Push channel reconnection failed, trying again in ${WATCH_EVERY_MS / 1000}s")
+                    replacement.abort()
+                }
+            }
+        }
     }
 
     /** True when this PC gave the identity back or lost it, and must not start the engine. */

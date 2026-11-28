@@ -97,6 +97,27 @@ object Strings {
     const val NEW_CONTACT = "New Contact"
     const val NEW_GROUP = "New Group"
 
+    // Making and running a group, in the App's own words (dialog_create_group, PeersFragment,
+    // GroupMembersActivity, members_fragment.xml, groupActions.kt).
+    const val GROUP_NAME = "Group Name"
+    const val CREATE = "Create"
+    const val NAME_EMPTY = "Name cannot be empty"
+    const val SELECT_GROUP = "Select 2 or more contacts to create a group"
+    const val MEMBERS = "Members"
+    const val ADMIN_LABEL = "Admin"
+    const val ADD_MEMBER = "Add"
+    const val REMOVE_MEMBER = "Remove"
+    const val MAKE_ADMIN = "Admin"
+    const val DELETE_GROUP_MENU = "Delete"
+    const val DELETE_GROUP = "Remove group"
+    const val DELETE_GROUP_CONFIRM = "This will permanently delete the group for all members. This action cannot be undone."
+    const val LEAVE_GROUP = "Leave Group"
+    const val LEAVE_GROUP_ALERT = "You will no longer receive messages from this group."
+    const val LEAVE = "Leave"
+    const val FOUNDER_NOT_REMOVABLE = "The group founder cannot be removed"
+    const val GROUP_FAILED = "The group could not be changed."
+    const val CHANGE_PICTURE = "Change picture"
+
     // A content too large for a group, in the App's own words (R.string.message_size_limit).
     const val MESSAGE_SIZE_LIMIT = "50 MB limit for messages to a group, exceeded"
 
@@ -155,7 +176,7 @@ object Strings {
     const val CANCEL = "Cancel"
     const val CLOSE = "Close"
 
-    const val PUSH_LOST = "Connection lost: new messages are not arriving. Close and reopen MindTheClub."
+    const val PUSH_LOST = "Connection lost: new messages are not arriving. Reconnecting…"
     const val SEND_FAILED = "The message could not be saved."
     const val DATABASE_ERROR = "The database could not be read."
 }
